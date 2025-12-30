@@ -1,0 +1,21 @@
+my backend has:
+
+Uses ES Modules consistently (import/export)
+-connect to local MongoDB correctly
+-handles bcryptjs password hashing and comparison
+-has a working router + controller + model flow (mvc structure)
+-runs smoothly with npm run dev and nodemon
+
+-added "type":"module" in package.json to folow es 
+
+# NOW FROM ES Modules CHANGES USE:
+
+Keep ES Modules consistent — don’t mix require/module.exports with import/export.
+always include .js in local imports when using ES Modules.
+Use named exports in models if you want to export helper functions (create, findOne) instead of the raw model.
+.env should have your MONGO_URI and any other secrets; never commit it publicly.
+Nodemon will auto-restart when you save files — keep an eye on logs for DB connection or route errors.
+
+#used a proxy-ready version for frontend to automatically connect to backend without 404 issue
+- changes made in App.jsx
+-changes made in vite.config.js
