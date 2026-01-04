@@ -1,8 +1,24 @@
+// Post types
+export interface Post {
+  _id: string;
+  image: string;
+  caption: string;
+  likes: number;
+  comments: number;
+  createdAt: string;
+}
+
 // User types
 export interface User {
   _id: string;
   email: string;
+  username?: string;
+  bio?: string;
+  profilePicture?: string;
+  coverImage?: string;
+  posts?: Post[];
   createdAt?: string;
+  updatedAt?: string;
 }
 
 // Auth types
@@ -34,6 +50,39 @@ export interface UserPreferences {
 export interface PreferencesResponse {
   success: boolean;
   message?: string;
+  error?: string;
+}
+
+// Profile types
+export interface ProfileUpdateData {
+  username?: string;
+  bio?: string;
+  profilePicture?: string;
+  coverImage?: string;
+}
+
+export interface ProfileResponse {
+  success: boolean;
+  user?: User;
+  message?: string;
+  error?: string;
+}
+
+export interface PostData {
+  image: string;
+  caption?: string;
+}
+
+export interface PostResponse {
+  success: boolean;
+  post?: Post;
+  message?: string;
+  error?: string;
+}
+
+export interface PostsResponse {
+  success: boolean;
+  posts?: Post[];
   error?: string;
 }
 

@@ -6,7 +6,8 @@ import bcrypt from 'bcryptjs';
 import cors from 'cors';
 import connectDB from './config/db_connection.js';
 import dotenv from 'dotenv';
-import authRoute from './routes/auth.js'
+import authRoute from './routes/auth.js';
+import profileRoute from './routes/profile.js';
 
 // require('dotenv').config();  //commonjs structure
 dotenv.config();  //es module style ma environment var load gareko
@@ -20,6 +21,7 @@ connectDB();
 
 // routes
 app.use('/api/auth', authRoute);
+app.use('/api/profile', profileRoute);
 // app.use('/api/auth', require('./routes/auth'));
 
 
