@@ -5,10 +5,25 @@ import mongoose from "mongoose";  //es module style
 this part ensures how the data looks like, data lai kasari store hunxa etc and 
 data kasari database ma store hunxa
 */
+// Post schema for user posts
+const postSchema = new mongoose.Schema({
+  image: { type: String, required: true },
+  caption: { type: String, default: '' },
+  likes: { type: Number, default: 0 },
+  comments: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+});
+
 const userSchema = new mongoose.Schema({  //this is user schema 
   email: { type: String, unique: true, required: true, lowercase: true, trim: true },
   password: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
+  username: { type: String, unique: true, sparse: true, trim: true },
+  bio: { type: String, default: '', maxlength: 500 },
+  profilePicture: { type: String, default: '' },
+  coverImage: { type: String, default: '' },
+  posts: [postSchema],
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
 
 const userPreferences = new mongoose.Schema({
@@ -27,6 +42,15 @@ export default User;
 export const create = (data) => User.create(data);
 
 export const findOne = (query) => User.findOne(query);
+
+export const findById = (id) => User.findById(id);
+
+export const findByIdAndUpdate = (id, data, options = {}) => {
+  data.updatedAt = new Date();
+  return User.findByIdAndUpdate(id, data, { new: true, ...options });
+};
+
+export const findByIdAndDelete = (id) => User.findByIdAndDelete(id);
 
 //note es module ma
 // use import 
