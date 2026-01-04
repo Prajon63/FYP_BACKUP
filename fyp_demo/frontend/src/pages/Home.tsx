@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Heart, MessageCircle, Share2, MoreVertical, MapPin, Calendar } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Heart, MessageCircle, Share2, MoreVertical, MapPin, Calendar, User } from "lucide-react";
 
 // Random user profile data
 const userProfiles = [
@@ -109,6 +110,7 @@ const userProfiles = [
 ];
 
 const Home: React.FC = () => {
+  const navigate = useNavigate();
   const [likedPosts, setLikedPosts] = useState<Set<number>>(new Set());
 
   const toggleLike = (postId: number) => {
@@ -144,7 +146,17 @@ const Home: React.FC = () => {
               <button className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors">
                 Messages
               </button>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 cursor-pointer"></div>
+              <button
+                onClick={() => navigate('/profile')}
+                className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors flex items-center gap-2"
+              >
+                <User className="w-5 h-5" />
+                Profile
+              </button>
+              <div
+                onClick={() => navigate('/profile')}
+                className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 cursor-pointer hover:ring-2 hover:ring-pink-300 transition-all"
+              ></div>
             </div>
           </div>
         </div>
