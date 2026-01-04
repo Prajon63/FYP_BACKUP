@@ -41,7 +41,7 @@ export async function register(req, res) {
     
     return res.status(201).json({ 
       success: true, 
-      user: { email } 
+      user: { _id: user._id, email: user.email } 
     });
 
   } catch (err) {
@@ -71,7 +71,7 @@ export async function login(req, res) {
   const { email, password } = req.body;
   const user = await findOne({ email });  //user db ma xa ki nai check garxa
   if (user && await bcrypt.compare(password, user.password)) {  //if true bhayo bhane
-    res.json({ success: true, user: { email } });            // success dekhauxa
+    res.json({ success: true, user: { _id: user._id, email: user.email } });            // success dekhauxa
   } else {
     res.json({ success: false, error: 'Invalid credentials' });
   }
