@@ -19,6 +19,12 @@ const userSchema = new mongoose.Schema({  //this is user schema
   password: { type: String, required: true },
   username: { type: String, unique: true, sparse: true, trim: true },
   bio: { type: String, default: '', maxlength: 500 },
+  about: {
+  type: String,
+  default: '',
+  maxlength: 3000,  // Plenty of room for detailed text
+  trim: true
+},
   profilePicture: { type: String, default: '' },
   coverImage: { type: String, default: '' },
   posts: [postSchema],
