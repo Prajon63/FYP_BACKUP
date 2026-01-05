@@ -14,6 +14,7 @@ export interface User {
   email: string;
   username?: string;
   bio?: string;
+  about?: string;
   profilePicture?: string;
   coverImage?: string;
   posts?: Post[];
@@ -59,6 +60,7 @@ export interface ProfileUpdateData {
   bio?: string;
   profilePicture?: string;
   coverImage?: string;
+  about?: string;
 }
 
 export interface ProfileResponse {
