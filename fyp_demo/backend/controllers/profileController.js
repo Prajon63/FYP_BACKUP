@@ -28,11 +28,11 @@ export async function getProfile(req, res) {
   }
 }
 
-// Update user profile (bio, username, profile picture)
+// Update user profile (bio, username, profile picture, about)
 export async function updateProfile(req, res) {
   try {
     const { userId } = req.params;
-    const { username, bio, profilePicture, coverImage } = req.body;
+    const { username, bio, profilePicture, coverImage, about } = req.body;
 
     // Build update object with only provided fields
     const updateData = {};
@@ -40,6 +40,7 @@ export async function updateProfile(req, res) {
     if (bio !== undefined) updateData.bio = bio;
     if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
     if (coverImage !== undefined) updateData.coverImage = coverImage;
+    if (about !== undefined) updateData.about = about;
 
     const user = await findByIdAndUpdate(userId, updateData);
     
