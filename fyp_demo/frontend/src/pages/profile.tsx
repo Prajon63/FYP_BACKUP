@@ -347,6 +347,22 @@ const Profile: React.FC = () => {
           </div>
         </div>
 
+        {/* About Me preview section (always visible on profile page) */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xl font-semibold text-gray-800">About Me</h3>
+            <button
+              onClick={() => navigate('/about')}
+              className="text-sm text-pink-600 hover:text-purple-600 underline flex items-center gap-1"
+            >
+              {user.about ? 'Read more' : 'Add About'} →
+            </button>
+          </div>
+          <p className="text-gray-700 text-sm line-clamp-3">
+            {user.about || "Tell your story, share your passions, what you're looking for..."}
+          </p>
+        </div>
+
         {/* Edit Profile Modal */}
         <AnimatePresence>
           {isEditingProfile && (
@@ -374,13 +390,18 @@ const Profile: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="space-y-4">
+                {/*//space increased from y 4-6*/}
+                <div className="space-y-6">  
+
+                  {/*user name field*/}
                   <Input
                     label="Username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Enter username"
                   />
+
+                  {/*short description for bio*/}
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
                       Bio
@@ -395,19 +416,41 @@ const Profile: React.FC = () => {
                     />
                     <p className="text-xs text-gray-500 mt-1">{bio.length}/500</p>
                   </div>
+
+                  {/*profile pircture url*/}
                   <Input
                     label="Profile Picture URL"
                     value={profilePicture}
                     onChange={(e) => setProfilePicture(e.target.value)}
                     placeholder="https://example.com/image.jpg"
                   />
+
+                  {/*cover pircture url*/}
                   <Input
                     label="Cover Image URL"
                     value={coverImage}
                     onChange={(e) => setCoverImage(e.target.value)}
                     placeholder="https://example.com/cover.jpg"
                   />
-                </div>
+
+              {/* About page Preview */}
+              <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+             <h4 className="font-semibold text-white">About Me</h4>
+             <button
+              onClick={() => navigate('/about')} // or '/profile/about'//
+              className="text-sm text-white/90 hover:text-white underline flex items-center gap-1"
+    >
+              {user.about ? 'Read more' : 'Add About'} →
+             </button>
+             </div>
+  
+             <p className="text-white/90 text-sm line-clamp-3">
+              {user.about || "Tell your story, share your passions, what you're looking for..."}
+             </p>
+            </div>
+            </div>
+            
 
                 <div className="flex gap-4 mt-6">
                   <Button
