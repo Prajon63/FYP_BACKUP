@@ -18,13 +18,34 @@ const userSchema = new mongoose.Schema({  //this is user schema
   email: { type: String, unique: true, required: true, lowercase: true, trim: true },
   password: { type: String, required: true },
   username: { type: String, unique: true, sparse: true, trim: true },
+  //setting up field for bio
   bio: { type: String, default: '', maxlength: 500 },
   about: {
   type: String,
   default: '',
-  maxlength: 3000,  // Plenty of room for detailed text
+  maxlength: 3000,  // enough of room for detailed bio
   trim: true
 },
+
+// setting up preferences and personal details, flat fields
+  pronouns: { type: String, default: '' },
+  pronounsVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
+
+  gender: { type: String, default: '' },
+  genderVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
+
+  interestedIn: [{ type: String }],               // array of strings e.g. ["Men", "Women"]
+  interestedInVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
+
+  workTitle: { type: String, default: '' },
+  workCompany: { type: String, default: '' },
+  workVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
+
+  educationSchool: { type: String, default: '' },
+  educationDegree: { type: String, default: '' },
+  educationVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
+   //can add more like height,location,hobbies
+
   profilePicture: { type: String, default: '' },
   coverImage: { type: String, default: '' },
   posts: [postSchema],

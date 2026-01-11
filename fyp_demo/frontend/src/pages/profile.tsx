@@ -441,7 +441,7 @@ const Profile: React.FC = () => {
               onClick={() => navigate('/about')} // or '/profile/about'//
               className="text-sm text-white/90 hover:text-white underline flex items-center gap-1"
     >
-              {user.about ? 'Read more' : 'Add About'} →
+              {user.about ? 'View more' : 'Add About'} →
              </button>
              </div>
   
