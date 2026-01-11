@@ -32,7 +32,8 @@ export async function getProfile(req, res) {
 export async function updateProfile(req, res) {
   try {
     const { userId } = req.params;
-    const { username, bio, profilePicture, coverImage, about } = req.body;
+    const { username, bio, profilePicture, coverImage, about,pronouns, gender, 
+      interestedIn, work, education } = req.body;
 
     // Build update object with only provided fields
     const updateData = {};
@@ -41,6 +42,26 @@ export async function updateProfile(req, res) {
     if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
     if (coverImage !== undefined) updateData.coverImage = coverImage;
     if (about !== undefined) updateData.about = about;
+
+    // New fields for users preference/interests and their visibilty updates
+if (req.body.pronouns !== undefined) updateData.pronouns = req.body.pronouns;
+if (req.body.pronounsVisibility !== undefined) updateData.pronounsVisibility = req.body.pronounsVisibility;
+
+if (req.body.gender !== undefined) updateData.gender = req.body.gender;
+if (req.body.genderVisibility !== undefined) updateData.genderVisibility = req.body.genderVisibility;
+
+if (req.body.interestedIn !== undefined) updateData.interestedIn = req.body.interestedIn;
+
+if (req.body.interestedInVisibility !== undefined) updateData.interestedInVisibility = req.body.interestedInVisibility;
+
+if (req.body.workTitle !== undefined) updateData.workTitle = req.body.workTitle;
+if (req.body.workCompany !== undefined) updateData.workCompany = req.body.workCompany;
+if (req.body.workVisibility !== undefined) updateData.workVisibility = req.body.workVisibility;
+
+if (req.body.educationSchool !== undefined) updateData.educationSchool = req.body.educationSchool;
+if (req.body.educationDegree !== undefined) updateData.educationDegree = req.body.educationDegree;
+if (req.body.educationVisibility !== undefined) updateData.educationVisibility = req.body.educationVisibility;
+
 
     const user = await findByIdAndUpdate(userId, updateData);
     

@@ -13,13 +13,25 @@ export interface User {
   _id: string;
   email: string;
   username?: string;
-  bio?: string;
-  about?: string;
   profilePicture?: string;
   coverImage?: string;
   posts?: Post[];
   createdAt?: string;
   updatedAt?: string;
+  bio?: string;
+  about?: string;
+  pronouns?: string;
+  pronounsVisibility?: 'public' | 'private';
+  gender?: string;
+  genderVisibility?: 'public' | 'private';
+  interestedIn?: string[];
+  interestedInVisibility?: 'public' | 'private';
+  workTitle?: string;
+  workCompany?: string;
+  workVisibility?: 'public' | 'private';
+  educationSchool?: string;
+  educationDegree?: string;
+  educationVisibility?: 'public' | 'private';
 }
 
 // Auth types
@@ -61,6 +73,18 @@ export interface ProfileUpdateData {
   profilePicture?: string;
   coverImage?: string;
   about?: string;
+  pronouns?: string;
+  pronounsVisibility?: 'public' | 'private';
+  gender?: string;
+  genderVisibility?: 'public' | 'private';
+  interestedIn?: string[];
+  interestedInVisibility?: 'public' | 'private';
+  workTitle?: string;
+  workCompany?: string;
+  workVisibility?: 'public' | 'private';
+  educationSchool?: string;
+  educationDegree?: string;
+  educationVisibility?: 'public' | 'private';
 }
 
 export interface ProfileResponse {
