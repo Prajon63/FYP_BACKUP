@@ -101,6 +101,18 @@ const Login = () => {
             </Button>
           </form>
 
+          {/* Forgot Password Link */}
+          {isLogin && (
+            <div className="text-center">
+              <button
+                onClick={() => window.location.href = '/forgot-password'}
+                className="text-sm text-pink-600 font-semibold hover:text-purple-600 transition-colors"
+              >
+                Forgot Password?
+              </button>
+            </div>
+          )}
+
           {/* Toggle Login/Register */}
           <div className="text-center text-sm text-gray-600">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
