@@ -49,6 +49,33 @@ export const authService = {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   },
+
+  /**
+   * Request password reset (forgot password)
+   */
+  async forgotPassword(email: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const response = await api.post<{ success: boolean; message?: string; error?: string }>('/auth/forgot-password', { email });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to send reset email');
+    }
+  },
+
+  /**
+   * Reset password with token
+   */
+  async resetPassword(token: string, password: string, confirmPassword: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const response = await api.post<{ success: boolean; message?: string; error?: string }>(`/auth/reset-password/${token}`, {
+        password,
+        confirmPassword,
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to reset password');
+    }
+  },
 };
 
 

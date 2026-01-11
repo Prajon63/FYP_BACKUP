@@ -23,7 +23,9 @@ const userSchema = new mongoose.Schema({  //this is user schema
   coverImage: { type: String, default: '' },
   posts: [postSchema],
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+  passwordResetToken: { type: String },
+  passwordResetExpires: { type: Date },
 });
 
 const userPreferences = new mongoose.Schema({
