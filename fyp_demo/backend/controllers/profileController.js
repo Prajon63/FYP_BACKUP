@@ -6,16 +6,16 @@ CRUD operations for user profile: bio, username, profile picture, posts
 import { findById, findByIdAndUpdate, findByIdAndDelete } from '../models/User.js';
 
 // Get user profile
-export async function getProfile(req, res) {
+export async function getProfile(req, res) {   //function to retrieve user data 
   try {
     const { userId } = req.params;
-    const user = await findById(userId);
+    const user = await findById(userId);  //used to locate user by userId
     
     if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+      return res.status(404).json({ success: false, error: 'User not found' });  //if id not present in db
     }
 
-    // Return user data without password
+    // Return user data without password for security
     const { password, ...userData } = user.toObject();
     return res.status(200).json({ success: true, user: userData });
   } catch (err) {

@@ -96,20 +96,20 @@ export const forgotPassword = async (req, res) => {
     const genericMsg = "If that email exists, a reset link has been sent.";
 
     if (!email) {
-      console.log("❌ No email provided");
+      console.log(" No email provided");
       return res.status(400).json({ success: false, error: "Email is required" });
     }
 
-    console.log("📧 Looking for user with email:", email.toLowerCase().trim());
+    console.log("Looking for user with email:", email.toLowerCase().trim());
     const user = await User.findOne({ email: email.toLowerCase().trim() });
 
     // If user not found, still return generic success
     if (!user) {
-      console.log("⚠️  User not found, but returning generic message for security");
+      console.log(" User not found, but returning generic message for security");
       return res.status(200).json({ success: true, message: genericMsg });
     }
 
-    console.log("✅ User found, generating reset token");
+    console.log("User found, generating reset token");
 
     // create token (raw) + store hashed token in DB
     const rawToken = crypto.randomBytes(32).toString("hex");
@@ -118,18 +118,18 @@ export const forgotPassword = async (req, res) => {
     user.passwordResetToken = hashedToken;
     user.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
     await user.save();
-    console.log("💾 Reset token saved to database");
+    console.log(" Reset token saved to database");
 
     const frontendBase = process.env.FRONTEND_URL || "http://localhost:5173";
     const resetLink = `${frontendBase}/reset-password/${rawToken}`;
-    console.log("🔗 Reset link:", resetLink);
+    console.log(" Reset link:", resetLink);
 
     await sendResetEmail({ to: user.email, resetLink });
-    console.log("✅ Password reset process completed");
+    console.log("Password reset process completed");
 
     return res.status(200).json({ success: true, message: genericMsg });
   } catch (err) {
-    console.error("❌ forgotPassword error:", err);
+    console.error("forgotPassword error:", err);
     return res.status(500).json({ success: false, error: "Server error", detail: err.message });
   }
 };
