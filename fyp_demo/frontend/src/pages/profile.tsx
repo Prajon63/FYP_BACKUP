@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Edit2, Camera, X, Save, Plus, Image as ImageIcon } from 'lucide-react';
+import { Edit2, X, Save, Plus, Image as ImageIcon, Settings, LogOut } from 'lucide-react';
 import { userService } from '../services/userService';
 import type { User, Post, ProfileUpdateData, PostData } from '../types';
 import PostCard from '../components/PostCard';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import toast from 'react-hot-toast';
-import { Toaster } from 'react-hot-toast';
+import ProfileCompletion from '../components/ProfileCompletion';
+import ImageUpload from '../components/ImageUpload';
+import { ProfileSkeleton, PostSkeleton } from '../components/SkeletonLoader';
+import toast, { Toaster } from 'react-hot-toast';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +20,7 @@ const Profile: React.FC = () => {
   const [isAddingPost, setIsAddingPost] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [showSettings, setShowSettings] = useState(false);
 
   // Form states
   const [username, setUsername] = useState('');
@@ -29,31 +32,19 @@ const Profile: React.FC = () => {
   const [postImage, setPostImage] = useState('');
   const [postCaption, setPostCaption] = useState('');
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
-  const postImageInputRef = useRef<HTMLInputElement>(null);
-
-  // Get current user from localStorage (you might want to get this from auth context)
   const getCurrentUserId = () => {
     const userStr = localStorage.getItem('user');
     if (userStr) {
       try {
         const userData = JSON.parse(userStr);
-        const userId = userData._id || userData.id;
-        if (!userId) {
-          console.warn('User ID not found in localStorage. User needs to log in again.');
-          toast.error('Please log out and log back in to access your profile');
-        }
-        return userId;
+        return userData._id || userData.id;
       } catch (error) {
-        console.error('Error parsing user data from localStorage:', error);
         return null;
       }
     }
     return null;
   };
 
-  // Load user profile
   useEffect(() => {
     loadProfile();
   }, []);
@@ -63,10 +54,7 @@ const Profile: React.FC = () => {
     if (!userId) {
       toast.error('Please login to view profile');
       setLoading(false);
-      // Redirect to login if no user ID
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
+      setTimeout(() => navigate('/'), 2000);
       return;
     }
 
@@ -83,7 +71,6 @@ const Profile: React.FC = () => {
         toast.error(response.error || 'Failed to load profile');
       }
     } catch (error: any) {
-      console.error('Profile load error:', error);
       toast.error(error.message || 'Failed to load profile');
       setUser(null);
     } finally {
@@ -107,7 +94,10 @@ const Profile: React.FC = () => {
       if (response.success && response.user) {
         setUser(response.user);
         setIsEditingProfile(false);
-        toast.success('Profile updated successfully!');
+        toast.success('✨ Profile updated successfully!', {
+          icon: '🎉',
+          duration: 3000,
+        });
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to update profile');
@@ -131,11 +121,11 @@ const Profile: React.FC = () => {
 
       const response = await userService.addPost(userId, postData);
       if (response.success) {
-        toast.success('Post added successfully!');
+        toast.success('📸 Post added successfully!');
         setIsAddingPost(false);
         setPostImage('');
         setPostCaption('');
-        loadProfile(); // Reload to get new post
+        loadProfile();
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to add post');
@@ -175,7 +165,7 @@ const Profile: React.FC = () => {
     try {
       const response = await userService.deletePost(userId, postId);
       if (response.success) {
-        toast.success('Post deleted successfully!');
+        toast.success('🗑️ Post deleted successfully!');
         loadProfile();
       }
     } catch (error: any) {
@@ -200,6 +190,13 @@ const Profile: React.FC = () => {
     setLikedPosts(newLiked);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    toast.success('👋 Logged out successfully!');
+    navigate('/');
+  };
+
   const openEditProfile = () => {
     if (user) {
       setUsername(user.username || '');
@@ -220,10 +217,19 @@ const Profile: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+        <nav className="bg-white shadow-md sticky top-0 z-50">
+          <div className="max-w-6xl mx-auto px-4 py-4">
+            <div className="h-8 bg-gray-200 rounded-lg w-32"></div>
+          </div>
+        </nav>
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <ProfileSkeleton />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+            <PostSkeleton />
+            <PostSkeleton />
+            <PostSkeleton />
+          </div>
         </div>
       </div>
     );
@@ -240,160 +246,162 @@ const Profile: React.FC = () => {
   }
 
   const defaultAvatar = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop';
-  const defaultCover = 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&h=600&fit=crop';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       <Toaster position="top-center" />
-      {/* Navigation Bar */}
-      <nav className="bg-white shadow-md sticky top-0 z-50">
+      
+      {/* Enhanced Navigation Bar */}
+      <nav className="bg-white shadow-md sticky top-0 z-50 backdrop-blur-lg bg-white/95">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
               Capella
             </h1>
             <div className="flex items-center gap-4">
-              <a href="/home" className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors">
+              <a href="/home" className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors font-medium">
                 Home
               </a>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 cursor-pointer"></div>
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="p-2 text-gray-600 hover:text-pink-600 transition-colors"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 cursor-pointer ring-2 ring-pink-200 hover:ring-4 transition-all"></div>
             </div>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Profile Header */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8">
-          <div className="relative">
-            {/* Cover Image */}
-            <div className="relative h-64 bg-gradient-to-r from-pink-500 to-purple-600">
-              {coverImage ? (
-                <img
-                  src={coverImage}
-                  alt="Cover"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-r from-pink-500 to-purple-600"></div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-              
-              {/* Edit Cover Button */}
-              {isEditingProfile && (
-                <button
-                  onClick={() => coverInputRef.current?.click()}
-                  className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 rounded-full p-2 transition-colors"
-                >
-                  <Camera className="w-5 h-5 text-white" />
-                </button>
-              )}
-              <input
-                ref={coverInputRef}
-                type="text"
-                className="hidden"
-                onChange={(e) => setCoverImage(e.target.value)}
-                placeholder="Cover image URL"
-              />
+      {/* Settings Dropdown */}
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed top-20 right-4 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 min-w-[200px] z-50"
+          >
+            <button
+              onClick={handleLogout}
+              className="w-full px-4 py-3 text-left hover:bg-red-50 flex items-center gap-3 text-red-600 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-              {/* Profile Picture and Info */}
-              <div className="absolute bottom-4 left-4 right-4">
-                <div className="flex items-end gap-4">
-                  <div className="relative">
+      <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+        {/* Profile Header with Enhanced Design */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-3xl shadow-xl overflow-hidden"
+        >
+          <div className="relative">
+            {/* Enhanced Cover Image */}
+            <div className="relative h-72 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600">
+              {coverImage && (
+                <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+              
+              {/* Profile Info Overlay */}
+              <div className="absolute bottom-6 left-6 right-6">
+                <div className="flex items-end gap-6">
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    className="relative"
+                  >
                     <img
                       src={profilePicture || defaultAvatar}
                       alt={user.username || user.email}
-                      className="w-24 h-24 rounded-full border-4 border-white object-cover"
+                      className="w-32 h-32 rounded-2xl border-4 border-white object-cover shadow-2xl"
                     />
-                    {isEditingProfile && (
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute bottom-0 right-0 bg-pink-600 hover:bg-pink-700 rounded-full p-2 transition-colors"
-                      >
-                        <Camera className="w-4 h-4 text-white" />
-                      </button>
-                    )}
-                    <input
-                      ref={fileInputRef}
-                      type="text"
-                      className="hidden"
-                      onChange={(e) => setProfilePicture(e.target.value)}
-                      placeholder="Profile picture URL"
-                    />
-                  </div>
-                  <div className="flex-1 text-white">
-                    <h2 className="font-bold text-2xl">
+                    <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 rounded-full border-4 border-white"></div>
+                  </motion.div>
+                  
+                  <div className="flex-1 text-white pb-2">
+                    <h2 className="font-bold text-3xl mb-1">
                       {user.username || user.email.split('@')[0]}
                     </h2>
-                    <p className="text-sm opacity-90">
-                      {user.email}
-                    </p>
+                    <p className="text-sm opacity-90 mb-2">{user.email}</p>
                     {user.bio && (
-                      <p className="text-sm mt-2 opacity-90">{user.bio}</p>
+                      <p className="text-sm opacity-95 max-w-2xl">{user.bio}</p>
                     )}
                   </div>
+                  
                   {!isEditingProfile && (
-                    <button
-                      onClick={openEditProfile}
-                      className="bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl px-4 py-2 flex items-center gap-2 transition-colors"
-                    >
-                      <Edit2 className="w-4 h-4" />
+                    <Button onClick={openEditProfile} className="mb-2">
+                      <Edit2 className="w-4 h-4 mr-2" />
                       Edit Profile
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* About Me preview section (always visible on profile page) */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-          <div className="flex items-center justify-between mb-2">
+        {/* Profile Completion Card */}
+        <ProfileCompletion 
+          user={user} 
+          onNavigateToAbout={() => navigate('/about')}
+        />
+
+        {/* About Me Preview */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-2xl shadow-lg p-6"
+        >
+          <div className="flex items-center justify-between mb-3">
             <h3 className="text-xl font-semibold text-gray-800">About Me</h3>
             <button
               onClick={() => navigate('/about')}
-              className="text-sm text-pink-600 hover:text-purple-600 underline flex items-center gap-1"
+              className="text-sm text-pink-600 hover:text-purple-600 font-semibold flex items-center gap-1"
             >
-              {user.about ? 'Read more' : 'Add About'} →
+              {user.about ? 'View Full Profile' : 'Complete About'} →
             </button>
           </div>
-          <p className="text-gray-700 text-sm line-clamp-3">
+          <p className="text-gray-700 text-sm line-clamp-3 leading-relaxed">
             {user.about || "Tell your story, share your passions, what you're looking for..."}
           </p>
-        </div>
+        </motion.div>
 
-        {/* Edit Profile Modal */}
+        {/* Edit Profile Modal with Enhanced Image Upload */}
         <AnimatePresence>
           {isEditingProfile && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
               onClick={cancelEdit}
             >
               <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
+                className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
               >
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold">Edit Profile</h3>
-                  <button
-                    onClick={cancelEdit}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-3xl">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                      Edit Profile
+                    </h3>
+                    <button onClick={cancelEdit} className="text-gray-500 hover:text-gray-700">
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
                 </div>
 
-                {/*//space increased from y 4-6*/}
-                <div className="space-y-6">  
-
-                  {/*user name field*/}
+                <div className="p-6 space-y-6">
                   <Input
                     label="Username"
                     value={username}
@@ -401,11 +409,8 @@ const Profile: React.FC = () => {
                     placeholder="Enter username"
                   />
 
-                  {/*short description for bio*/}
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Bio
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Bio</label>
                     <textarea
                       value={bio}
                       onChange={(e) => setBio(e.target.value)}
@@ -417,53 +422,38 @@ const Profile: React.FC = () => {
                     <p className="text-xs text-gray-500 mt-1">{bio.length}/500</p>
                   </div>
 
-                  {/*profile pircture url*/}
-                  <Input
-                    label="Profile Picture URL"
+                  <ImageUpload
+                    label="Profile Picture"
                     value={profilePicture}
-                    onChange={(e) => setProfilePicture(e.target.value)}
-                    placeholder="https://example.com/image.jpg"
+                    onChange={setProfilePicture}
+                    aspectRatio="square"
                   />
 
-                  {/*cover pircture url*/}
-                  <Input
-                    label="Cover Image URL"
+                  <ImageUpload
+                    label="Cover Image"
                     value={coverImage}
-                    onChange={(e) => setCoverImage(e.target.value)}
-                    placeholder="https://example.com/cover.jpg"
+                    onChange={setCoverImage}
+                    aspectRatio="cover"
                   />
 
-              {/* About page Preview */}
-              <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-             <h4 className="font-semibold text-white">About Me</h4>
-             <button
-              onClick={() => navigate('/about')} // or '/profile/about'//
-              className="text-sm text-white/90 hover:text-white underline flex items-center gap-1"
-    >
-              {user.about ? 'View more' : 'Add About'} →
-             </button>
-             </div>
-  
-             <p className="text-white/90 text-sm line-clamp-3">
-              {user.about || "Tell your story, share your passions, what you're looking for..."}
-             </p>
-            </div>
-            </div>
-            
+                  <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
+                    <p className="text-sm text-purple-700">
+                      💡 <strong>Complete your About Me</strong> section for better matches!{' '}
+                      <button
+                        onClick={() => navigate('/about')}
+                        className="text-purple-600 hover:text-purple-800 font-semibold underline"
+                      >
+                        Go to About →
+                      </button>
+                    </p>
+                  </div>
+                </div>
 
-                <div className="flex gap-4 mt-6">
-                  <Button
-                    onClick={cancelEdit}
-                    variant="outline"
-                    fullWidth
-                  >
+                <div className="sticky bottom-0 bg-gray-50 px-6 py-4 rounded-b-3xl flex gap-4">
+                  <Button onClick={cancelEdit} variant="outline" fullWidth>
                     Cancel
                   </Button>
-                  <Button
-                    onClick={handleUpdateProfile}
-                    fullWidth
-                  >
+                  <Button onClick={handleUpdateProfile} fullWidth>
                     <Save className="w-4 h-4 mr-2" />
                     Save Changes
                   </Button>
@@ -480,7 +470,7 @@ const Profile: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
               onClick={cancelEdit}
             >
               <motion.div
@@ -488,42 +478,29 @@ const Profile: React.FC = () => {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6"
+                className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col"
               >
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold">
-                    {editingPost ? 'Edit Post' : 'Add New Post'}
-                  </h3>
-                  <button
-                    onClick={cancelEdit}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-3xl z-10">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-2xl font-bold">
+                      {editingPost ? 'Edit Post' : 'Create Post'}
+                    </h3>
+                    <button onClick={cancelEdit} className="text-gray-500 hover:text-gray-700">
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-4">
-                  <Input
-                    label="Image URL"
+                <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                  <ImageUpload
+                    label="Post Image"
                     value={postImage}
-                    onChange={(e) => setPostImage(e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                    icon={<ImageIcon className="w-4 h-4" />}
+                    onChange={setPostImage}
+                    aspectRatio="square"
                   />
-                  {postImage && (
-                    <img
-                      src={postImage}
-                      alt="Preview"
-                      className="w-full h-64 object-cover rounded-xl"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  )}
+                  
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Caption
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Caption</label>
                     <textarea
                       value={postCaption}
                       onChange={(e) => setPostCaption(e.target.value)}
@@ -534,20 +511,13 @@ const Profile: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-4 mt-6">
-                  <Button
-                    onClick={cancelEdit}
-                    variant="outline"
-                    fullWidth
-                  >
+                <div className="sticky bottom-0 bg-gray-50 px-6 py-4 rounded-b-3xl flex gap-4 border-t border-gray-200">
+                  <Button onClick={cancelEdit} variant="outline" fullWidth>
                     Cancel
                   </Button>
-                  <Button
-                    onClick={editingPost ? handleUpdatePost : handleAddPost}
-                    fullWidth
-                  >
+                  <Button onClick={editingPost ? handleUpdatePost : handleAddPost} fullWidth>
                     <Save className="w-4 h-4 mr-2" />
-                    {editingPost ? 'Update Post' : 'Add Post'}
+                    {editingPost ? 'Update Post' : 'Publish'}
                   </Button>
                 </div>
               </motion.div>
@@ -556,42 +526,9 @@ const Profile: React.FC = () => {
         </AnimatePresence>
 
         {/* Posts Section */}
-        <div className="mb-6 flex items-center justify-between">
-          <h3 className="text-2xl font-bold text-gray-800">My Posts</h3>
-          <Button
-            onClick={() => {
-              setIsAddingPost(true);
-              setEditingPost(null);
-              setPostImage('');
-              setPostCaption('');
-            }}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Post
-          </Button>
-        </div>
-
-        {user.posts && user.posts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {user.posts.map((post) => (
-              <PostCard
-                key={post._id}
-                post={post}
-                username={user.username || user.email.split('@')[0]}
-                profilePicture={user.profilePicture}
-                onLike={handleToggleLike}
-                onEdit={handleEditPost}
-                onDelete={handleDeletePost}
-                isOwnPost={true}
-                liked={likedPosts.has(post._id)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-            <ImageIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h4 className="text-xl font-semibold text-gray-700 mb-2">No posts yet</h4>
-            <p className="text-gray-500 mb-6">Start sharing your moments with the world!</p>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-bold text-gray-800">My Posts</h3>
             <Button
               onClick={() => {
                 setIsAddingPost(true);
@@ -601,15 +538,60 @@ const Profile: React.FC = () => {
               }}
             >
               <Plus className="w-4 h-4 mr-2" />
-              Create Your First Post
+              New Post
             </Button>
           </div>
-        )}
+
+          {user.posts && user.posts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {user.posts.map((post, index) => (
+                <motion.div
+                  key={post._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <PostCard
+                    post={post}
+                    username={user.username || user.email.split('@')[0]}
+                    profilePicture={user.profilePicture}
+                    onLike={handleToggleLike}
+                    onEdit={handleEditPost}
+                    onDelete={handleDeletePost}
+                    isOwnPost={true}
+                    liked={likedPosts.has(post._id)}
+                  />
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-3xl shadow-lg p-12 text-center border-2 border-dashed border-pink-200"
+            >
+              <ImageIcon className="w-20 h-20 text-pink-400 mx-auto mb-4" />
+              <h4 className="text-2xl font-bold text-gray-800 mb-2">No posts yet</h4>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                Start sharing your moments with the world and connect with others!
+              </p>
+              <Button
+                onClick={() => {
+                  setIsAddingPost(true);
+                  setEditingPost(null);
+                  setPostImage('');
+                  setPostCaption('');
+                }}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Your First Post
+              </Button>
+            </motion.div>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
 export default Profile;
-
-

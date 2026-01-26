@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer from "nodemailer";  //using nodemailer for now, later shift changes
 
 let transporterPromise = null;
 
@@ -25,7 +25,7 @@ async function sendResetEmail({ to, resetLink }) {
     console.log("📧 Preparing to send reset email to:", to);
     
     const transporter = await getTransporter();
-    console.log("✅ Transporter ready");
+    console.log("Transporter ready");
 
     const info = await transporter.sendMail({
       from: '"Capella Support" <no-reply@capella.local>',
@@ -60,7 +60,7 @@ async function sendResetEmail({ to, resetLink }) {
     
     return { success: true, messageId: info.messageId, previewUrl };
   } catch (error) {
-    console.error("❌ Error sending reset email:", error);
+    console.error("Error sending reset email:", error);
     throw error;
   }
 }

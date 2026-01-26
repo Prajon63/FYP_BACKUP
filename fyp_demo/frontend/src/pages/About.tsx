@@ -7,6 +7,7 @@ import { userService } from '../services/userService';
 import type { User } from '../types';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import InterestTags from '../components/InterestTags';
 import toast from 'react-hot-toast';
 import { Toaster } from 'react-hot-toast';
 
@@ -167,33 +168,22 @@ const About: React.FC = () => {
                 </button>
               </div>
 
-              {/* Interested In - simple multi-select simulation */}
+              {/* Interested In - using InterestTags component */}
               <div>
                 <label className="block text-sm font-medium mb-2">Interested In</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {interestedIn.map((v, i) => (
-                    <div key={i} className="bg-pink-100 px-3 py-1 rounded-full flex items-center gap-2">
-                      {v}
-                      <X className="w-4 cursor-pointer" onClick={() => setInterestedIn(prev => prev.filter(item => item !== v))} />
-                    </div>
-                  ))}
-                </div>
-                <select
-                  className="p-2 border rounded w-full"
-                  onChange={e => {
-                    if (e.target.value && !interestedIn.includes(e.target.value)) {
-                      setInterestedIn([...interestedIn, e.target.value]);
-                    }
-                    e.target.value = '';
-                  }}
+                <InterestTags
+                  tags={interestedIn}
+                  onTagsChange={setInterestedIn}
+                  editable={true}
+                  maxTags={10}
+                  suggestions={['Men', 'Women', 'Everyone', 'Non-binary', 'Men & Women', 'Non-binary & Genderqueer']}
+                  colorScheme="gradient"
+                />
+                <button 
+                  type="button" 
+                  onClick={() => toggleVis(setInterestedInVis)} 
+                  className="mt-3 flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <option value="">Add option...</option>
-                  <option value="Men">Men</option>
-                  <option value="Women">Women</option>
-                  <option value="Everyone">Everyone</option>
-                  <option value="Non-binary">Non-binary</option>
-                </select>
-                <button type="button" onClick={() => toggleVis(setInterestedInVis)} className="mt-3 flex items-center gap-2 px-4 py-2 border rounded-lg">
                   {interestedInVis === 'public' ? <Eye className="w-4" /> : <EyeOff className="w-4" />}
                   {interestedInVis}
                 </button>
@@ -256,12 +246,13 @@ const About: React.FC = () => {
                 )}
                 {interestedIn.length > 0 && (
                   <div className="bg-gray-50 p-5 rounded-2xl">
-                    <h4 className="font-medium text-gray-700">Interested In</h4>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {interestedIn.map((v, i) => (
-                        <span key={i} className="bg-pink-100 px-3 py-1 rounded-full text-sm">{v}</span>
-                      ))}
-                    </div>
+                    <h4 className="font-medium text-gray-700 mb-2">Interested In</h4>
+                    <InterestTags
+                      tags={interestedIn}
+                      onTagsChange={() => {}}
+                      editable={false}
+                      colorScheme="gradient"
+                    />
                   </div>
                 )}
                 {(workTitle || workCompany) && (
