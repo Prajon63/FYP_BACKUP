@@ -7,11 +7,15 @@ data kasari database ma store hunxa
 */
 // Post schema for user posts
 const postSchema = new mongoose.Schema({
-  image: { type: String, required: true },
+  images: {
+    type: [String],
+    required: true,
+    validate: v => v.length > 0 && v.length <= 10,
+  },
   caption: { type: String, default: '' },
   likes: { type: Number, default: 0 },
   comments: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
 });
 
 const userSchema = new mongoose.Schema({  //this is user schema 
@@ -48,16 +52,19 @@ const userSchema = new mongoose.Schema({  //this is user schema
 
   profilePicture: { type: String, default: '' },
   coverImage: { type: String, default: '' },
+
+  // carousel / gallery photos
+  photos: {
+    type: [String],
+    default: [],
+  },
+
   posts: [postSchema],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   passwordResetToken: { type: String },
   passwordResetExpires: { type: Date },
 });
-
-const userPreferences = new mongoose.Schema({
-  
-})
 
 //yo mongoose model export is in old style
 // module.exports = mongoose.model('User', userSchema);

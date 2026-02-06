@@ -8,6 +8,7 @@ import connectDB from './config/db_connection.js';
 import dotenv from 'dotenv';
 import authRoute from './routes/auth.js';
 import profileRoute from './routes/profile.js';
+import cloudinary from './config/cloudinary.js';  //  import to initialize config for cloudinary
 
 // require('dotenv').config();  //commonjs structure
 dotenv.config();  //es module style ma environment var load gareko

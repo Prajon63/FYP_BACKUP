@@ -87,6 +87,103 @@ export const userService = {
   },
 
   /**
+   * Upload multiple photos for the user's carousel/gallery
+   * Uses multipart/form-data and Cloudinary via backend
+   */
+  async uploadPhotos(
+    userId: string,
+    files: File[]
+  ): Promise<{ success: boolean; photos?: string[]; message?: string; error?: string }> {
+    try {
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append('photos', file);
+      });
+
+      const response = await api.post(`/profile/${userId}/photos`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to upload photos');
+    }
+  },
+
+  /**
+   * Upload profile picture (file-based)
+   */
+  async uploadProfilePicture(
+    userId: string,
+    file: File
+  ): Promise<{ success: boolean; profilePicture?: string; message?: string; error?: string }> {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await api.post(`/profile/${userId}/profile-picture`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to upload profile picture');
+    }
+  },
+
+  /**
+   * Upload cover image (file-based)
+   */
+  async uploadCoverImage(
+    userId: string,
+    file: File
+  ): Promise<{ success: boolean; coverImage?: string; message?: string; error?: string }> {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await api.post(`/profile/${userId}/cover-image`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to upload cover image');
+    }
+  },
+
+  /**
+   * Add a new post with image file (Cloudinary)
+   */
+  async addPostWithImage(
+    userId: string,
+    file: File,
+    caption: string
+  ): Promise<PostResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('caption', caption);
+
+      const response = await api.post<PostResponse>(`/profile/${userId}/posts-with-image`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to add post');
+    }
+  },
+
+  /**
    * Get user feed/posts
    */
   async getUserFeed() {
@@ -99,5 +196,6 @@ export const userService = {
     }
   },
 };
+
 
 
