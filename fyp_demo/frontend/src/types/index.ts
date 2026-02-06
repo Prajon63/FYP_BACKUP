@@ -1,7 +1,7 @@
 // Post types
 export interface Post {
   _id: string;
-  image: string;
+  images: string[];
   caption: string;
   likes: number;
   comments: number;
@@ -32,6 +32,7 @@ export interface User {
   educationSchool?: string;
   educationDegree?: string;
   educationVisibility?: 'public' | 'private';
+  photos?: string[];  // array of image URLs
 }
 
 // Auth types
@@ -49,6 +50,7 @@ export interface AuthResponse {
   success: boolean;
   user?: User;
   error?: string;
+  token?: string;
 }
 
 // Preference types
@@ -95,7 +97,7 @@ export interface ProfileResponse {
 }
 
 export interface PostData {
-  image: string;
+  images: string[];
   caption?: string;
 }
 
@@ -111,5 +113,6 @@ export interface PostsResponse {
   posts?: Post[];
   error?: string;
 }
+
 
 

@@ -13,6 +13,7 @@ import { sendResetEmail } from "../config/mailer.js";
 // import { hash, compare } from 'bcryptjs';   // yo method ni commomjs bhayo
 
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 const {hash,compare}= bcrypt;  //hash() ra compare() is accessed from bcrypt now!!
 
 //1
@@ -41,10 +42,14 @@ export async function register(req, res) {
     const hashed = await bcrypt.hash(password, 10);
     
     const user = await create({ email, password: hashed });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '7d',
+    });
     
     return res.status(201).json({ 
       success: true, 
-      user: { _id: user._id, email: user.email } 
+      user: { _id: user._id, email: user.email },
+      token,
     });
 
   } catch (err) {
@@ -74,7 +79,10 @@ export async function login(req, res) {
   const { email, password } = req.body;
   const user = await findOne({ email });  //user db ma xa ki nai check garxa
   if (user && await bcrypt.compare(password, user.password)) {  //if true bhayo bhane
-    res.json({ success: true, user: { _id: user._id, email: user.email } });            // success dekhauxa
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '7d',
+    });
+    res.json({ success: true, user: { _id: user._id, email: user.email }, token });            // success dekhauxa
   } else {
     res.json({ success: false, error: 'Invalid credentials' });
   }

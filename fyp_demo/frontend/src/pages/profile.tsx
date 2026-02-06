@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Edit2, X, Save, Plus, Image as ImageIcon, Settings, LogOut } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
 import { userService } from '../services/userService';
+import api from '../services/api';
 import type { User, Post, ProfileUpdateData, PostData } from '../types';
 import PostCard from '../components/PostCard';
 import Button from '../components/Button';
@@ -10,7 +13,7 @@ import Input from '../components/Input';
 import ProfileCompletion from '../components/ProfileCompletion';
 import ImageUpload from '../components/ImageUpload';
 import { ProfileSkeleton, PostSkeleton } from '../components/SkeletonLoader';
-import toast, { Toaster } from 'react-hot-toast';
+import PhotoCarousel from '../components/PhotoCarousel';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -21,15 +24,21 @@ const Profile: React.FC = () => {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
+  const [isUploadingProfile, setIsUploadingProfile] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isUploadingPost, setIsUploadingPost] = useState(false);
+  const [galleryPhotoFiles, setGalleryPhotoFiles] = useState<File[]>([]);  //a new state for carousel
 
   // Form states
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
-  const [profilePicture, setProfilePicture] = useState('');
-  const [coverImage, setCoverImage] = useState('');
+
+  // File states for uploads
+  const [profilePictureFiles, setProfilePictureFiles] = useState<File[]>([]);
+  const [coverImageFiles, setCoverImageFiles] = useState<File[]>([]);
+  const [postImageFiles, setPostImageFiles] = useState<File[]>([]);
 
   // Post form states
-  const [postImage, setPostImage] = useState('');
   const [postCaption, setPostCaption] = useState('');
 
   const getCurrentUserId = () => {
@@ -65,8 +74,6 @@ const Profile: React.FC = () => {
         setUser(response.user);
         setUsername(response.user.username || '');
         setBio(response.user.bio || '');
-        setProfilePicture(response.user.profilePicture || '');
-        setCoverImage(response.user.coverImage || '');
       } else {
         toast.error(response.error || 'Failed to load profile');
       }
@@ -78,22 +85,127 @@ const Profile: React.FC = () => {
     }
   };
 
+  // Upload profile picture to Cloudinary
+  const uploadProfilePicture = async (file: File): Promise<string | null> => {
+    const userId = getCurrentUserId();
+    if (!userId) return null;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      setIsUploadingProfile(true);
+      const response = await api.post(`/profile/${userId}/profile-picture`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (response.data.success) {
+        return response.data.profilePicture;
+      }
+      return null;
+    } catch (error: any) {
+      toast.error('Failed to upload profile picture');
+      return null;
+    } finally {
+      setIsUploadingProfile(false);
+    }
+  };
+
+  // Upload cover image to Cloudinary
+  const uploadCoverImage = async (file: File): Promise<string | null> => {
+    const userId = getCurrentUserId();
+    if (!userId) return null;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      setIsUploadingCover(true);
+      const response = await api.post(`/profile/${userId}/cover-image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (response.data.success) {
+        return response.data.coverImage;
+      }
+      return null;
+    } catch (error: any) {
+      toast.error('Failed to upload cover image');
+      return null;
+    } finally {
+      setIsUploadingCover(false);
+    }
+  };
+
+  //for photo carousel
+  // Upload gallery photos
+  const uploadGalleryPhotos = async (files: File[]): Promise<string[] | null> => {
+    const userId = getCurrentUserId();
+    if (!userId) return null;
+
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('photos', file);
+    });
+
+    try {
+      const response = await api.post(`/profile/${userId}/photos`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (response.data.success) {
+        return response.data.photos;
+      }
+      return null;
+    } catch (error: any) {
+      toast.error('Failed to upload gallery photos');
+      return null;
+    }
+  };
+
+
   const handleUpdateProfile = async () => {
     const userId = getCurrentUserId();
     if (!userId) return;
 
     try {
+      let profilePictureUrl = user?.profilePicture;
+      let coverImageUrl = user?.coverImage;
+
+      // Upload profile picture if new file selected
+      if (profilePictureFiles.length > 0) {
+        const url = await uploadProfilePicture(profilePictureFiles[0]);
+        if (url) profilePictureUrl = url;
+      }
+
+      // Upload cover image if new file selected
+      if (coverImageFiles.length > 0) {
+        const url = await uploadCoverImage(coverImageFiles[0]);
+        if (url) coverImageUrl = url;
+      }
+
+      // Upload gallery photos if new files selected
+      if (galleryPhotoFiles.length > 0) {
+        const urls = await uploadGalleryPhotos(galleryPhotoFiles);
+        if (urls) {
+          // Photos will be saved by the backend endpoint
+          setGalleryPhotoFiles([]);
+        }
+      }
+
       const updateData: ProfileUpdateData = {
         username: username.trim() || undefined,
         bio: bio.trim() || undefined,
-        profilePicture: profilePicture.trim() || undefined,
-        coverImage: coverImage.trim() || undefined,
+        profilePicture: profilePictureUrl,
+        coverImage: coverImageUrl,
       };
 
       const response = await userService.updateProfile(userId, updateData);
       if (response.success && response.user) {
         setUser(response.user);
         setIsEditingProfile(false);
+        setProfilePictureFiles([]);
+        setCoverImageFiles([]);
         toast.success('✨ Profile updated successfully!', {
           icon: '🎉',
           duration: 3000,
@@ -108,28 +220,47 @@ const Profile: React.FC = () => {
     const userId = getCurrentUserId();
     if (!userId) return;
 
-    if (!postImage.trim()) {
-      toast.error('Please provide an image URL');
+    if (postImageFiles.length === 0) {
+      toast.error('Please select an image');
       return;
     }
 
     try {
-      const postData: PostData = {
-        image: postImage.trim(),
-        caption: postCaption.trim() || '',
-      };
 
-      const response = await userService.addPost(userId, postData);
-      if (response.success) {
+
+      setIsUploadingPost(true);
+
+      const formData = new FormData();
+
+      postImageFiles.forEach((file) => {
+        formData.append('images', file);
+      });
+      formData.append('caption', postCaption.trim() || '');        // send caption in same request
+
+
+      const token = localStorage.getItem('token'); // Add this 
+      const res = await api.post(`/profile/${userId}/posts`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`, //  Add this
+        },
+      });
+
+      if (res.data?.success) {
         toast.success('📸 Post added successfully!');
         setIsAddingPost(false);
-        setPostImage('');
+        setPostImageFiles([]);
         setPostCaption('');
         loadProfile();
+      } else {
+        toast.error(res.data?.error || 'Failed to add post');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to add post');
+      console.error('Add post error:', error); //  Add detailed logging
+      toast.error(error?.response?.data?.error || error.message || 'Failed to add post');
+    } finally {
+      setIsUploadingPost(false);
     }
+
   };
 
   const handleUpdatePost = async () => {
@@ -138,23 +269,35 @@ const Profile: React.FC = () => {
     if (!userId) return;
 
     try {
-      const postData: Partial<PostData> = {
-        image: postImage.trim() || editingPost.image,
-        caption: postCaption.trim() || editingPost.caption,
-      };
+      setIsUploadingPost(true);
 
-      const response = await userService.updatePost(userId, editingPost._id, postData);
-      if (response.success) {
-        toast.success('Post updated successfully!');
+      const formData = new FormData();
+
+      // Add new images if selected
+      if (postImageFiles.length > 0) {
+        postImageFiles.forEach(file => {
+          formData.append('images', file);
+        });
+      }
+
+      formData.append('caption', postCaption.trim() || editingPost.caption);
+
+      const response = await api.put(`/profile/${userId}/posts/${editingPost._id}`, formData);
+
+      if (response.data.success) {
+        toast.success('🎉 Post updated successfully!');
         setEditingPost(null);
-        setPostImage('');
+        setPostImageFiles([]);
         setPostCaption('');
         loadProfile();
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to update post');
+    } finally {
+      setIsUploadingPost(false);
     }
   };
+
 
   const handleDeletePost = async (postId: string) => {
     if (!confirm('Are you sure you want to delete this post?')) return;
@@ -175,8 +318,8 @@ const Profile: React.FC = () => {
 
   const handleEditPost = (post: Post) => {
     setEditingPost(post);
-    setPostImage(post.image);
     setPostCaption(post.caption);
+    setPostImageFiles([]);
     setIsAddingPost(false);
   };
 
@@ -201,8 +344,8 @@ const Profile: React.FC = () => {
     if (user) {
       setUsername(user.username || '');
       setBio(user.bio || '');
-      setProfilePicture(user.profilePicture || '');
-      setCoverImage(user.coverImage || '');
+      setProfilePictureFiles([]);
+      setCoverImageFiles([]);
     }
     setIsEditingProfile(true);
   };
@@ -211,8 +354,10 @@ const Profile: React.FC = () => {
     setIsEditingProfile(false);
     setIsAddingPost(false);
     setEditingPost(null);
-    setPostImage('');
+    setPostImageFiles([]);
     setPostCaption('');
+    setProfilePictureFiles([]);
+    setCoverImageFiles([]);
   };
 
   if (loading) {
@@ -250,7 +395,7 @@ const Profile: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       <Toaster position="top-center" />
-      
+
       {/* Enhanced Navigation Bar */}
       <nav className="bg-white shadow-md sticky top-0 z-50 backdrop-blur-lg bg-white/95">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -295,21 +440,19 @@ const Profile: React.FC = () => {
       </AnimatePresence>
 
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-        {/* Profile Header with Enhanced Design */}
+        {/* Profile Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-3xl shadow-xl overflow-hidden"
         >
           <div className="relative">
-            {/* Enhanced Cover Image */}
             <div className="relative h-72 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600">
-              {coverImage && (
-                <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+              {user.coverImage && (
+                <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-              
-              {/* Profile Info Overlay */}
+
               <div className="absolute bottom-6 left-6 right-6">
                 <div className="flex items-end gap-6">
                   <motion.div
@@ -317,13 +460,13 @@ const Profile: React.FC = () => {
                     className="relative"
                   >
                     <img
-                      src={profilePicture || defaultAvatar}
+                      src={user.profilePicture || defaultAvatar}
                       alt={user.username || user.email}
                       className="w-32 h-32 rounded-2xl border-4 border-white object-cover shadow-2xl"
                     />
                     <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 rounded-full border-4 border-white"></div>
                   </motion.div>
-                  
+
                   <div className="flex-1 text-white pb-2">
                     <h2 className="font-bold text-3xl mb-1">
                       {user.username || user.email.split('@')[0]}
@@ -333,7 +476,7 @@ const Profile: React.FC = () => {
                       <p className="text-sm opacity-95 max-w-2xl">{user.bio}</p>
                     )}
                   </div>
-                  
+
                   {!isEditingProfile && (
                     <Button onClick={openEditProfile} className="mb-2">
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -347,8 +490,8 @@ const Profile: React.FC = () => {
         </motion.div>
 
         {/* Profile Completion Card */}
-        <ProfileCompletion 
-          user={user} 
+        <ProfileCompletion
+          user={user}
           onNavigateToAbout={() => navigate('/about')}
         />
 
@@ -365,7 +508,7 @@ const Profile: React.FC = () => {
               onClick={() => navigate('/about')}
               className="text-sm text-pink-600 hover:text-purple-600 font-semibold flex items-center gap-1"
             >
-              {user.about ? 'View Full Profile' : 'Complete About'} →
+              {user.about ? 'View Full Profile' : 'Complete About'}...
             </button>
           </div>
           <p className="text-gray-700 text-sm line-clamp-3 leading-relaxed">
@@ -373,7 +516,19 @@ const Profile: React.FC = () => {
           </p>
         </motion.div>
 
-        {/* Edit Profile Modal with Enhanced Image Upload */}
+        {/* Photo Gallery Carousel/gallery concept */}
+        {user.photos && user.photos.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-2xl shadow-lg p-6"
+          >
+            <PhotoCarousel photos={user.photos} />
+          </motion.div>
+        )}
+
+        {/* Edit Profile Modal */}
         <AnimatePresence>
           {isEditingProfile && (
             <motion.div
@@ -390,7 +545,7 @@ const Profile: React.FC = () => {
                 onClick={(e) => e.stopPropagation()}
                 className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
               >
-                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-3xl">
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-3xl z-10">
                   <div className="flex items-center justify-between">
                     <h3 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
                       Edit Profile
@@ -414,7 +569,7 @@ const Profile: React.FC = () => {
                     <textarea
                       value={bio}
                       onChange={(e) => setBio(e.target.value)}
-                      placeholder="Tell us about yourself..."
+                      placeholder="Share something about yourself..."
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all resize-none"
                       rows={4}
                       maxLength={500}
@@ -424,16 +579,31 @@ const Profile: React.FC = () => {
 
                   <ImageUpload
                     label="Profile Picture"
-                    value={profilePicture}
-                    onChange={setProfilePicture}
+                    files={profilePictureFiles}     //newly added
+                    onFilesChange={setProfilePictureFiles}
+                    maxFiles={1}
                     aspectRatio="square"
+                    helperText="Upload your profile picture"
                   />
 
                   <ImageUpload
                     label="Cover Image"
-                    value={coverImage}
-                    onChange={setCoverImage}
+                    files={coverImageFiles}
+                    onFilesChange={setCoverImageFiles}
+                    maxFiles={1}
                     aspectRatio="cover"
+                    helperText="Upload your cover image"
+                  />
+
+                  {/* a new concept for carousel */}
+                  <ImageUpload
+                    label="Gallery Photos"
+                    files={galleryPhotoFiles}
+                    onFilesChange={setGalleryPhotoFiles}
+                    multiple={true}
+                    maxFiles={10}
+                    aspectRatio="square"
+                    helperText="Upload photos for your gallery carousel (up to 10)"
                   />
 
                   <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
@@ -443,7 +613,7 @@ const Profile: React.FC = () => {
                         onClick={() => navigate('/about')}
                         className="text-purple-600 hover:text-purple-800 font-semibold underline"
                       >
-                        Go to About →
+                        Go to About...’
                       </button>
                     </p>
                   </div>
@@ -453,7 +623,11 @@ const Profile: React.FC = () => {
                   <Button onClick={cancelEdit} variant="outline" fullWidth>
                     Cancel
                   </Button>
-                  <Button onClick={handleUpdateProfile} fullWidth>
+                  <Button
+                    onClick={handleUpdateProfile}
+                    fullWidth
+                    isLoading={isUploadingProfile || isUploadingCover}
+                  >
                     <Save className="w-4 h-4 mr-2" />
                     Save Changes
                   </Button>
@@ -480,7 +654,7 @@ const Profile: React.FC = () => {
                 onClick={(e) => e.stopPropagation()}
                 className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col"
               >
-                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-3xl z-10">
+                <div className="px-6 py-4 border-b border-gray-200 rounded-t-3xl">
                   <div className="flex items-center justify-between">
                     <h3 className="text-2xl font-bold">
                       {editingPost ? 'Edit Post' : 'Create Post'}
@@ -492,32 +666,59 @@ const Profile: React.FC = () => {
                 </div>
 
                 <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                  {editingPost && editingPost.images && editingPost.images.length > 0 && postImageFiles.length === 0 && (
+                    <div className="mb-4">
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">
+                        Current Images
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {editingPost.images.map((img, idx) => (
+                          <img
+                            key={idx}
+                            src={img}
+                            alt={`Current post ${idx + 1}`}
+                            className="w-full h-32 object-cover rounded-xl"
+                          />
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Upload new images to replace these
+                      </p>
+                    </div>
+                  )}
+
                   <ImageUpload
-                    label="Post Image"
-                    value={postImage}
-                    onChange={setPostImage}
+                    label={editingPost ? "Replace Post Image (optional)" : "Post Image"}
+                    files={postImageFiles}
+                    onFilesChange={setPostImageFiles}
+                    maxFiles={5}
                     aspectRatio="square"
+                    helperText="Select pictures for your post"
                   />
-                  
+
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">Caption</label>
                     <textarea
                       value={postCaption}
                       onChange={(e) => setPostCaption(e.target.value)}
                       placeholder="What's on your mind?"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all resize-none"
+                      className="w-full px-4 py-3 border border-gray-250 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all resize-none"
                       rows={3}
                     />
                   </div>
                 </div>
 
-                <div className="sticky bottom-0 bg-gray-50 px-6 py-4 rounded-b-3xl flex gap-4 border-t border-gray-200">
+                <div className="px-6 py-4 bg-gray-50 rounded-b-3xl flex gap-4 border-t border-gray-100">
                   <Button onClick={cancelEdit} variant="outline" fullWidth>
                     Cancel
                   </Button>
-                  <Button onClick={editingPost ? handleUpdatePost : handleAddPost} fullWidth>
-                    <Save className="w-4 h-4 mr-2" />
-                    {editingPost ? 'Update Post' : 'Publish'}
+                  <Button
+                    onClick={editingPost ? handleUpdatePost : handleAddPost}
+                    fullWidth
+                    isLoading={isUploadingPost}
+                  >
+                    <Save className="w-3 h-3 mr-2" />
+                    {editingPost ? 'Update Post' : 'POST'}
                   </Button>
                 </div>
               </motion.div>
@@ -533,7 +734,7 @@ const Profile: React.FC = () => {
               onClick={() => {
                 setIsAddingPost(true);
                 setEditingPost(null);
-                setPostImage('');
+                setPostImageFiles([]);
                 setPostCaption('');
               }}
             >
@@ -579,7 +780,7 @@ const Profile: React.FC = () => {
                 onClick={() => {
                   setIsAddingPost(true);
                   setEditingPost(null);
-                  setPostImage('');
+                  setPostImageFiles([]);
                   setPostCaption('');
                 }}
               >

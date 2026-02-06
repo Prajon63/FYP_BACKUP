@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Image as ImageIcon, Upload, X } from 'lucide-react';
 
 interface ImageUploadProps {
   label: string;
-  value: string;
-  onChange: (value: string) => void;
+  files: File[];
+  onFilesChange: (files: File[]) => void;
+  multiple?: boolean;
+  maxFiles?: number;
   aspectRatio?: 'square' | 'cover' | 'portrait';
   helperText?: string;
   error?: string;
@@ -13,62 +15,52 @@ interface ImageUploadProps {
 
 const ImageUpload: React.FC<ImageUploadProps> = ({
   label,
-  value,
-  onChange,
+  files,
+  onFilesChange,
+  multiple = true,
+  maxFiles = 10,
+  helperText="Allowed upto 10 photos",
   aspectRatio = 'square',
-  helperText,
   error,
 }) => {
-  const [preview, setPreview] = useState<string | null>(value || null);
-  const [imageError, setImageError] = useState(false);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [previews, setPreviews] = useState<string[]>([]);
 
-  const aspectRatioClasses = {
+  const aspectRatioClasses: Record<string, string> = {
     square: 'aspect-square max-h-64',
     cover: 'aspect-video max-h-64',
     portrait: 'aspect-[3/4] max-h-64',
   };
 
-  // Debounce preview update to prevent flickering while typing
+  // Create/revoke object URLs for local file previews
   useEffect(() => {
-    // Clear previous timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // Only show preview if URL looks valid (starts with http/https)
-    if (value.trim() && (value.startsWith('http://') || value.startsWith('https://'))) {
-      debounceTimerRef.current = setTimeout(() => {
-        setPreview(value.trim());
-        setImageError(false);
-      }, 500); // Wait 500ms after user stops typing
-    } else {
-      setPreview(null);
-      setImageError(false);
-    }
+    const urls = files.map((file) => URL.createObjectURL(file));
+    setPreviews(urls);
 
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      urls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [value]);
+  }, [files]);
 
-  const handleUrlChange = (url: string) => {
-    onChange(url);
-    // Don't update preview here - let useEffect handle it with debounce
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+
+    const incoming = Array.from(e.target.files);
+
+    let nextFiles = multiple ? [...files, ...incoming] : incoming.slice(0, 1);
+
+    if (maxFiles && nextFiles.length > maxFiles) {
+      nextFiles = nextFiles.slice(0, maxFiles);
+    }
+
+    onFilesChange(nextFiles);
   };
 
-  const handleRemove = () => {
-    onChange('');
-    setPreview(null);
-    setImageError(false);
+  const handleRemove = (index: number) => {
+    const nextFiles = files.filter((_, i) => i !== index);
+    onFilesChange(nextFiles);
   };
 
-  const handleImageError = () => {
-    setImageError(true);
-    setPreview(null);
-  };
+  const hasFiles = files.length > 0;
 
   return (
     <div className="space-y-3">
@@ -77,69 +69,63 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         {label}
       </label>
 
-      {/* Image Preview */}
-      {preview && !imageError && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="relative group"
-        >
-          <div className={`${aspectRatioClasses[aspectRatio]} rounded-xl overflow-hidden border-2 border-gray-200 bg-gray-100 w-full`}>
-            <img
-              src={preview}
-              alt="Preview"
-              className="w-full h-full object-cover"
-              onError={handleImageError}
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <button
-              onClick={handleRemove}
-              className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
+      {/* Image Previews */}
+      {hasFiles && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {files.map((file, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative group"
             >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </motion.div>
+              <div
+                className={`${aspectRatioClasses[aspectRatio]} rounded-xl overflow-hidden border-2 border-gray-200 bg-gray-100 w-full`}
+              >
+                {previews[index] && (
+                  <img
+                    src={previews[index]}
+                    alt={file.name}
+                    className="w-full h-full object-cover"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleRemove(index)}
+                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-gray-600 line-clamp-1">{file.name}</p>
+            </motion.div>
+          ))}
+        </div>
       )}
 
-      {/* URL Input */}
+      {/* File Input */}
       <div className="space-y-2">
-        <div className="relative">
+        <label className="inline-flex items-center gap-2 text-sm text-pink-600 font-medium cursor-pointer">
+          <Upload className="w-4 h-4" />
+          <span>{multiple ? 'Select images from your device' : 'Select an image from your device'}</span>
           <input
-            type="url"
-            value={value}
-            onChange={(e) => handleUrlChange(e.target.value)}
-            placeholder="Enter image URL (e.g., https://images.unsplash.com/...)"
-            className={`
-              w-full px-4 py-3 border rounded-xl
-              focus:ring-2 focus:ring-pink-500 focus:border-transparent
-              outline-none transition-all
-              ${error ? 'border-red-500' : 'border-gray-300'}
-              ${preview ? 'pr-12' : ''}
-            `}
+            type="file"
+            accept="image/*"
+            multiple={multiple}
+            onChange={handleFileChange}
+            className="hidden"
           />
-          {preview && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            </div>
-          )}
-        </div>
+        </label>
 
-        {error && (
-          <p className="text-sm text-red-600">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-600">{error}</p>}
         {helperText && !error && (
           <p className="text-sm text-gray-500">{helperText}</p>
         )}
 
-        {/* Upload Hint */}
-        {!preview && (
-          <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-lg p-3 border border-gray-200">
-            <Upload className="w-4 h-4 text-pink-500" />
-            <span>Paste an image URL or use a service like Unsplash</span>
-          </div>
+        {maxFiles && (
+          <p className="text-xs text-gray-400">
+            {files.length}/{maxFiles} selected
+          </p>
         )}
       </div>
     </div>

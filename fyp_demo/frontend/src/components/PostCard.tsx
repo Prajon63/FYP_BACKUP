@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Share2, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Post } from '../types';
 
 interface PostCardProps {
@@ -25,6 +25,7 @@ const PostCard: React.FC<PostCardProps> = ({
   liked = false,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const formatNumber = (num: number) => {
     if (num >= 1000) {
@@ -51,13 +52,58 @@ const PostCard: React.FC<PostCardProps> = ({
       animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow"
     >
-      {/* Post Image */}
+      {/* Post Image Carousel */}
       <div className="relative">
-        <img
-          src={post.image}
-          alt="Post"
-          className="w-full h-64 object-cover"
-        />
+        <div className="relative h-64 bg-gray-100">
+          {(() => {
+            const displayImages = post.images && post.images.length > 0 ? post.images : [];
+
+            if (displayImages.length === 0) return null;
+
+            return (
+              <>
+                <img
+                  src={displayImages[currentImageIndex]}
+                  alt={`Post ${currentImageIndex + 1}`}
+                  className="w-full h-full object-cover"
+                />
+
+                {displayImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex((prev) => (prev === 0 ? displayImages.length - 1 : prev - 1));
+                      }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex((prev) => (prev === displayImages.length - 1 ? 0 : prev + 1));
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full transition-colors"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                      {displayImages.map((_, idx) => (
+                        <div
+                          key={idx}
+                          className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                            }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })()}
+        </div>
+
         {isOwnPost && (
           <div className="absolute top-4 right-4">
             <div className="relative">
@@ -102,16 +148,14 @@ const PostCard: React.FC<PostCardProps> = ({
           <div className="flex items-center gap-4">
             <button
               onClick={() => onLike?.(post._id)}
-              className={`flex items-center gap-2 transition-colors ${
-                liked
-                  ? 'text-pink-600'
-                  : 'text-gray-600 hover:text-pink-600'
-              }`}
+              className={`flex items-center gap-2 transition-colors ${liked
+                ? 'text-pink-600'
+                : 'text-gray-600 hover:text-pink-600'
+                }`}
             >
               <Heart
-                className={`w-6 h-6 ${
-                  liked ? 'fill-pink-600' : ''
-                }`}
+                className={`w-6 h-6 ${liked ? 'fill-pink-600' : ''
+                  }`}
               />
               <span className="text-sm font-medium">
                 {formatNumber(post.likes + (liked ? 1 : 0))}

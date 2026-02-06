@@ -1,22 +1,32 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, AxiosHeaders } from 'axios';
 
 // Create axios instance with default config
 const api: AxiosInstance = axios.create({
   baseURL: '/api', // Vite proxy will handle this
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  timeout: 60000,
 });
 
 // Request interceptor (add token, etc.)
 api.interceptors.request.use(
   (config) => {
-    // You can add auth tokens here later
-    // const token = localStorage.getItem('token');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    const token = localStorage.getItem('token');
+    
+    // Ensure headers is AxiosHeaders
+    const headers =
+      config.headers instanceof AxiosHeaders
+        ? config.headers
+        : new AxiosHeaders(config.headers);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+        if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']; 
+      // let browser set multipart/form-data + boundary
+    } else {
+      config.headers['Content-Type'] = 'application/json';
+    }
+
     return config;
   },
   (error) => {
@@ -44,5 +54,6 @@ api.interceptors.response.use(
 );
 
 export default api;
+
 
 

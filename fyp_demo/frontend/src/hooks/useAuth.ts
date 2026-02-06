@@ -13,8 +13,11 @@ export const useAuth = () => {
     try {
       const response = await authService.login(credentials);
       if (response.success && response.user) {
-        // Store user data if needed
+        // Store user data and token
         localStorage.setItem('user', JSON.stringify(response.user));
+        if (response.token) {
+          localStorage.setItem('token', response.token);
+        }
         toast.success('Welcome back! Redirecting...');
         setTimeout(() => {
           navigate('/home');
@@ -38,6 +41,9 @@ export const useAuth = () => {
       const response = await authService.register(credentials);
       if (response.success && response.user) {
         localStorage.setItem('user', JSON.stringify(response.user));
+        if (response.token) {
+          localStorage.setItem('token', response.token);
+        }
         toast.success('Account created! Redirecting...');
         setTimeout(() => {
           navigate('/preferences');
@@ -68,5 +74,6 @@ export const useAuth = () => {
     isLoading,
   };
 };
+
 
 
