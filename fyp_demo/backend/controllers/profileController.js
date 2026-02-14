@@ -537,3 +537,74 @@ export async function uploadCoverImage(req, res) {
 //     });
 //   }
 // }
+
+ 
+// Delete a single photo from the carousel
+export async function deleteCarouselPhoto(req, res) {
+  try {
+    const { userId } = req.params;
+    const { photoUrl } = req.body;
+
+    if (!photoUrl) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Photo URL is required' 
+      });
+    }
+
+    const user = await findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    // Remove the photo URL from the photos array
+    if (!user.photos || !Array.isArray(user.photos)) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'No photos found' 
+      });
+    }
+
+    const photoIndex = user.photos.indexOf(photoUrl);
+    
+    if (photoIndex === -1) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Photo not found in carousel' 
+      });
+    }
+
+    // Remove the photo from the array
+    user.photos.splice(photoIndex, 1);
+    user.updatedAt = new Date();
+    await user.save();
+
+    // Optionally: Delete from Cloudinary
+    try {
+      const publicId = photoUrl.split('/').slice(-2).join('/').split('.')[0];
+      if (publicId) {
+        await cloudinary.uploader.destroy(publicId);
+      }
+    } catch (cloudinaryError) {
+      console.warn('Failed to delete from Cloudinary:', cloudinaryError);
+      // Continue anyway - the URL is removed from database
+    }
+
+    return res.status(200).json({
+      success: true,
+      photos: user.photos,
+      message: 'Photo deleted successfully',
+    });
+  } catch (err) {
+    console.error('Delete carousel photo error:', err);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to delete photo',
+      detail: err.message 
+    });
+  }
+}
