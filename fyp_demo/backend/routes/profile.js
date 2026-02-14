@@ -53,6 +53,7 @@
 import express from 'express';
 import multer from 'multer';
 import { protect } from '../middleware/auth.js';
+import { deleteCarouselPhoto } from '../controllers/profileController.js';
 
 import {
   getProfile,
@@ -84,6 +85,9 @@ router.post('/:userId/posts', protect, upload.array('images', 10), addPost);
 router.put('/:userId/posts/:postId', protect, upload.array('images', 10), updatePost);
 router.delete('/:userId/posts/:postId', deletePost);
 router.post('/:userId/photos', protect, upload.array('photos', 10), uploadMultiplePhotos); //new photo carousel
+// DELETE /profile/:userId/photos - Delete a single carousel photo
+router.delete('/:userId/photos', deleteCarouselPhoto);
+
 
 
 export default router;
