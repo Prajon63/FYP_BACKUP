@@ -1,11 +1,14 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
 import Preferences from './pages/Preferences';
+import EnhancedPreferences from './pages/EnhancedPreferences';
 import Home from './pages/Home';
 import Profile from './pages/profile';
 import About from './pages/About';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Discover from './pages/Discover';
+import Matches from './pages/Matches';
 
 function App() {
   return (
@@ -13,11 +16,14 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/preferences" element={<Preferences />} />
+        <Route path="/preferences/setup" element={<EnhancedPreferences />} />
         <Route path="/home" element={<Home />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/about" element={<About />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/discover" element={<Discover />} />
+        <Route path="/matches" element={<Matches />} />
       </Routes>
     </BrowserRouter>
   );
