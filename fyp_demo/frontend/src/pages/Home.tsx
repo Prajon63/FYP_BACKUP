@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Heart, MessageCircle, Share2, MoreVertical, MapPin, Calendar, User } from "lucide-react";
+import { Heart, MessageCircle, Share2, MoreVertical, MapPin, Calendar, User, Compass } from "lucide-react";
 
 // Random user profile data
 const userProfiles = [
@@ -140,7 +140,11 @@ const Home: React.FC = () => {
               Capella
             </h1>
             <div className="flex items-center gap-4">
-              <button className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors">
+              <button
+                onClick={() => navigate('/discover')}
+                className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors flex items-center gap-2 font-medium"
+              >
+                <Compass className="w-5 h-5" />
                 Discover
               </button>
               <button className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors">
