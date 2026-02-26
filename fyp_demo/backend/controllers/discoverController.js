@@ -16,7 +16,7 @@ export const getDiscoverUsers = async (req, res) => {
     const {
       limit = 20,
       offset = 0,
-      minScore = 30, // Minimum compatibility score
+      minScore = 0, // Minimum compatibility score (0 = show everyone)
       sortBy = 'score' // 'score', 'distance', 'recent', 'active'
     } = req.query;
 
@@ -54,12 +54,17 @@ export const getDiscoverUsers = async (req, res) => {
       .limit(parseInt(limit) + 50) // Get extra to filter and sort
       .lean();
 
+    console.log('🔍 DEBUG - Query:', JSON.stringify(query));
+    console.log('🔍 DEBUG - Potential matches from DB:', potentialMatches.length, potentialMatches.map(u => u.username));
+
     // Calculate compatibility scores and filter
-    let scoredMatches = potentialMatches
-      .filter(user => passesBasicFilters(currentUser, user))
+    const afterBasicFilter = potentialMatches.filter(user => passesBasicFilters(currentUser, user));
+    console.log('🔍 DEBUG - After passesBasicFilters:', afterBasicFilter.length, afterBasicFilter.map(u => u.username));
+
+    let scoredMatches = afterBasicFilter
       .map(user => {
         const score = calculateCompatibilityScore(currentUser, user);
-        
+
         // Calculate distance if both have location
         let distance = null;
         if (currentUser.location?.coordinates && user.location?.coordinates) {
@@ -76,12 +81,19 @@ export const getDiscoverUsers = async (req, res) => {
       })
       .filter(user => user.compatibilityScore >= parseInt(minScore));
 
-    // Apply distance filter if specified
-    if (currentUser.matchPreferences?.distanceRange) {
-      scoredMatches = scoredMatches.filter(user => 
+    console.log('🔍 DEBUG - After minScore filter (minScore=' + minScore + '):', scoredMatches.length, scoredMatches.map(u => u.username));
+
+    // Apply distance filter only if current user has a real location (not default [0,0])
+    const userCoords = currentUser.location?.coordinates;
+    const hasRealLocation = userCoords && !(userCoords[0] === 0 && userCoords[1] === 0);
+    console.log('🔍 DEBUG - hasRealLocation:', hasRealLocation, 'coords:', userCoords);
+    if (hasRealLocation && currentUser.matchPreferences?.distanceRange) {
+      scoredMatches = scoredMatches.filter(user =>
         !user.distance || user.distance <= currentUser.matchPreferences.distanceRange
       );
     }
+
+    console.log('🔍 DEBUG - Final scoredMatches:', scoredMatches.length);
 
     // Sort based on preference
     switch (sortBy) {
@@ -246,7 +258,7 @@ export const handleInteraction = async (req, res) => {
       if (reverseInteraction) {
         // It's a match!
         isMutualMatch = true;
-        
+
         // Update both interactions to matched
         await Match.createMutualMatch(userId, targetUserId, compatibilityScore);
       }
@@ -296,8 +308,8 @@ export const getMatches = async (req, res) => {
 
     // Format matches to show the other user
     const formattedMatches = matches.map(match => {
-      const otherUser = match.fromUser._id.toString() === userId 
-        ? match.toUser 
+      const otherUser = match.fromUser._id.toString() === userId
+        ? match.toUser
         : match.fromUser;
 
       return {

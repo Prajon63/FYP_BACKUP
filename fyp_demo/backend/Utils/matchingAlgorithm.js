@@ -21,12 +21,12 @@ export const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // Earth's radius in km
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
-  
-  const a = 
+
+  const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  
+
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
@@ -42,20 +42,20 @@ const toRad = (degrees) => degrees * (Math.PI / 180);
  */
 export const calculateAgeScore = (userAge, targetAge, preferences) => {
   const { min = 18, max = 100 } = preferences.ageRange || {};
-  
+
   // Check if target age is within preferred range
   if (targetAge < min || targetAge > max) {
     return 0;
   }
-  
+
   // Calculate how close the age is to the middle of the range
   const midPoint = (min + max) / 2;
   const range = max - min;
   const distance = Math.abs(targetAge - midPoint);
-  
+
   // Score decreases as age moves away from midpoint
   const score = 100 - ((distance / (range / 2)) * 30);
-  
+
   return Math.max(0, Math.min(100, score));
 };
 
@@ -70,20 +70,27 @@ export const calculateLocationScore = (userLocation, targetLocation, maxDistance
   if (!userLocation?.coordinates || !targetLocation?.coordinates) {
     return 50; // Neutral score if location not available
   }
-  
+
   const [lon1, lat1] = userLocation.coordinates;
   const [lon2, lat2] = targetLocation.coordinates;
-  
-  const distance = calculateDistance(lat1, lon1, lat2, lon2);
-  
-  // Return 0 if beyond max distance
-  if (distance > maxDistance) {
-    return 0;
+
+  // If either user has default [0,0] coordinates (no real location set), return neutral
+  const userHasRealLocation = !(lon1 === 0 && lat1 === 0);
+  const targetHasRealLocation = !(lon2 === 0 && lat2 === 0);
+  if (!userHasRealLocation || !targetHasRealLocation) {
+    return 50;
   }
-  
+
+  const distance = calculateDistance(lat1, lon1, lat2, lon2);
+
+  // Return 50 (neutral) if beyond max distance, so they still appear but ranked lower
+  if (distance > maxDistance) {
+    return 50;
+  }
+
   // Score decreases linearly with distance
   const score = 100 - ((distance / maxDistance) * 100);
-  
+
   return Math.max(0, Math.min(100, score));
 };
 
@@ -97,22 +104,22 @@ export const calculateInterestsScore = (userInterests = [], targetInterests = []
   if (!userInterests.length || !targetInterests.length) {
     return 30; // Low but not zero score
   }
-  
+
   // Find common interests (case-insensitive)
   const normalizedUserInterests = userInterests.map(i => i.toLowerCase());
   const normalizedTargetInterests = targetInterests.map(i => i.toLowerCase());
-  
+
   const commonInterests = normalizedUserInterests.filter(interest =>
     normalizedTargetInterests.includes(interest)
   );
-  
+
   // Calculate Jaccard similarity
   const union = new Set([...normalizedUserInterests, ...normalizedTargetInterests]);
   const jaccardScore = (commonInterests.length / union.size) * 100;
-  
+
   // Bonus for having many common interests
   const bonusMultiplier = 1 + (commonInterests.length * 0.05);
-  
+
   return Math.min(100, jaccardScore * bonusMultiplier);
 };
 
@@ -126,20 +133,20 @@ export const calculateLifestyleScore = (userLifestyle = {}, targetLifestyle = {}
   const factors = ['smoking', 'drinking', 'exercise', 'diet'];
   let totalScore = 0;
   let validFactors = 0;
-  
+
   factors.forEach(factor => {
     const userValue = userLifestyle[factor];
     const targetValue = targetLifestyle[factor];
-    
+
     // Skip if either value is missing or "Prefer not to say"
-    if (!userValue || !targetValue || 
-        userValue === 'Prefer not to say' || 
-        targetValue === 'Prefer not to say') {
+    if (!userValue || !targetValue ||
+      userValue === 'Prefer not to say' ||
+      targetValue === 'Prefer not to say') {
       return;
     }
-    
+
     validFactors++;
-    
+
     // Exact match
     if (userValue === targetValue) {
       totalScore += 100;
@@ -157,7 +164,7 @@ export const calculateLifestyleScore = (userLifestyle = {}, targetLifestyle = {}
       totalScore += 10;
     }
   });
-  
+
   return validFactors > 0 ? totalScore / validFactors : 50;
 };
 
@@ -178,9 +185,9 @@ const areLifestyleCompatible = (factor, value1, value2) => {
       ['Regularly', 'Very active']
     ]
   };
-  
+
   const compatiblePairs = compatible[factor] || [];
-  return compatiblePairs.some(([a, b]) => 
+  return compatiblePairs.some(([a, b]) =>
     (value1 === a && value2 === b) || (value1 === b && value2 === a)
   );
 };
@@ -201,9 +208,9 @@ const areSomewhatCompatible = (factor, value1, value2) => {
       ['Sometimes', 'Very active']
     ]
   };
-  
+
   const somewhatPairs = somewhat[factor] || [];
-  return somewhatPairs.some(([a, b]) => 
+  return somewhatPairs.some(([a, b]) =>
     (value1 === a && value2 === b) || (value1 === b && value2 === a)
   );
 };
@@ -229,9 +236,9 @@ export const calculateProfileBonus = (completeness) => {
  */
 export const calculateActivityBonus = (lastActive) => {
   if (!lastActive) return 1.0;
-  
+
   const hoursSinceActive = (Date.now() - new Date(lastActive).getTime()) / (1000 * 60 * 60);
-  
+
   // Active in last hour - boost
   if (hoursSinceActive < 1) return 1.1;
   // Active in last 24 hours - neutral
@@ -257,9 +264,9 @@ export const calculateCompatibilityScore = (currentUser, targetUser) => {
     lifestyle: 0.20,
     relationshipGoals: 0.20
   };
-  
+
   let totalScore = 0;
-  
+
   // 1. Age Score
   const ageScore = calculateAgeScore(
     currentUser.age,
@@ -267,7 +274,7 @@ export const calculateCompatibilityScore = (currentUser, targetUser) => {
     currentUser.matchPreferences || {}
   );
   totalScore += ageScore * weights.age;
-  
+
   // 2. Location Score
   const locationScore = calculateLocationScore(
     currentUser.location,
@@ -275,36 +282,36 @@ export const calculateCompatibilityScore = (currentUser, targetUser) => {
     currentUser.matchPreferences?.distanceRange || 50
   );
   totalScore += locationScore * weights.location;
-  
+
   // 3. Interests Score
   const interestsScore = calculateInterestsScore(
     currentUser.interests,
     targetUser.interests
   );
   totalScore += interestsScore * weights.interests;
-  
+
   // 4. Lifestyle Score
   const lifestyleScore = calculateLifestyleScore(
     currentUser.lifestyle,
     targetUser.lifestyle
   );
   totalScore += lifestyleScore * weights.lifestyle;
-  
+
   // 5. Relationship Goals Score
   const goalScore = calculateRelationshipGoalScore(
     currentUser.relationshipGoals,
     targetUser.relationshipGoals
   );
   totalScore += goalScore * weights.relationshipGoals;
-  
+
   // Apply profile completeness bonus
   const profileBonus = calculateProfileBonus(targetUser.profileCompleteness || 0);
   totalScore *= profileBonus;
-  
+
   // Apply activity bonus
   const activityBonus = calculateActivityBonus(targetUser.lastActive);
   totalScore *= activityBonus;
-  
+
   // Ensure score is between 0 and 100
   return Math.max(0, Math.min(100, Math.round(totalScore)));
 };
@@ -314,9 +321,9 @@ export const calculateCompatibilityScore = (currentUser, targetUser) => {
  */
 const calculateRelationshipGoalScore = (userGoal, targetGoal) => {
   if (!userGoal || !targetGoal) return 50;
-  
+
   if (userGoal === targetGoal) return 100;
-  
+
   // Compatible goals
   const compatible = {
     'Casual dating': ['Not sure yet'],
@@ -325,9 +332,9 @@ const calculateRelationshipGoalScore = (userGoal, targetGoal) => {
     'Friendship': [],
     'Not sure yet': ['Casual dating', 'Long-term relationship']
   };
-  
+
   if (compatible[userGoal]?.includes(targetGoal)) return 70;
-  
+
   return 30;
 };
 
@@ -339,7 +346,7 @@ const calculateRelationshipGoalScore = (userGoal, targetGoal) => {
  */
 export const passesBasicFilters = (currentUser, targetUser) => {
   const prefs = currentUser.matchPreferences || {};
-  
+
   // Check age range
   if (prefs.ageRange) {
     const { min = 18, max = 100 } = prefs.ageRange;
@@ -347,22 +354,22 @@ export const passesBasicFilters = (currentUser, targetUser) => {
       return false;
     }
   }
-  
+
   // Check gender preference
   if (prefs.genderPreference && prefs.genderPreference.length > 0) {
     if (!prefs.genderPreference.includes(targetUser.gender)) {
       return false;
     }
   }
-  
+
   // Check if user is active in discovery
   if (!targetUser.discoverySettings?.isActive) {
     return false;
   }
-  
+
   // Check deal breakers (if implemented)
   // This would require more complex logic based on user attributes
-  
+
   return true;
 };
 
