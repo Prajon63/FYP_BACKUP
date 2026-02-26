@@ -32,8 +32,9 @@ const Discover: React.FC = () => {
     totalMatches: 0
   });
 
-  // Get userId from localStorage (adjust based on your auth implementation)
-  const userId = localStorage.getItem('userId') || '';
+  // Get userId from localStorage with fallback to stored user object
+  const userId = localStorage.getItem('userId') ||
+    (() => { try { return JSON.parse(localStorage.getItem('user') || '{}')._id || ''; } catch { return ''; } })();
 
   // Default preferences
   const [preferences, setPreferences] = useState<MatchPreferences>({
@@ -44,10 +45,12 @@ const Discover: React.FC = () => {
 
   // Fetch initial users
   useEffect(() => {
-    if (userId) {
-      fetchUsers();
-      fetchStats();
+    if (!userId) {
+      navigate('/');
+      return;
     }
+    fetchUsers();
+    fetchStats();
   }, [userId]);
 
   const fetchUsers = async () => {

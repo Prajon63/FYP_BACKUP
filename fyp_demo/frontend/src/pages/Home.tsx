@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Heart, MessageCircle, Share2, MoreVertical, MapPin, Calendar, User, Compass } from "lucide-react";
+import { Heart, MessageCircle, Share2, MoreVertical, MapPin, Calendar, User, Compass, Sparkles } from "lucide-react";
 
 // Random user profile data
 const userProfiles = [
@@ -147,6 +147,13 @@ const Home: React.FC = () => {
                 <Compass className="w-5 h-5" />
                 Discover
               </button>
+              <button
+                onClick={() => navigate('/matches')}
+                className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors flex items-center gap-2 font-medium"
+              >
+                <Sparkles className="w-5 h-5" />
+                Matches
+              </button>
               <button className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors">
                 Messages
               </button>
@@ -228,16 +235,14 @@ const Home: React.FC = () => {
                     <div className="flex items-center gap-4">
                       <button
                         onClick={() => toggleLike(profile.id)}
-                        className={`flex items-center gap-2 transition-colors ${
-                          likedPosts.has(profile.id)
-                            ? 'text-pink-600'
-                            : 'text-gray-600 hover:text-pink-600'
-                        }`}
+                        className={`flex items-center gap-2 transition-colors ${likedPosts.has(profile.id)
+                          ? 'text-pink-600'
+                          : 'text-gray-600 hover:text-pink-600'
+                          }`}
                       >
                         <Heart
-                          className={`w-6 h-6 ${
-                            likedPosts.has(profile.id) ? 'fill-pink-600' : ''
-                          }`}
+                          className={`w-6 h-6 ${likedPosts.has(profile.id) ? 'fill-pink-600' : ''
+                            }`}
                         />
                         <span className="text-sm font-medium">
                           {formatNumber(

@@ -32,12 +32,23 @@ const EnhancedPreferences: React.FC = () => {
     genderPreference: []
   });
 
-  // Personal Info for better matching
-  const [personalInfo, setPersonalInfo] = useState({
+  // personal info for optimized match algoritm- after registration
+  const [personalInfo, setPersonalInfo] = useState<{
+    gender: string;
+    interestedIn: string[];
+    relationshipGoals: string;
+    interests: string[];
+    lifestyle: {
+      smoking?: '' | 'Never' | 'Socially' | 'Regularly' | 'Prefer not to say';
+      drinking?: '' | 'Never' | 'Socially' | 'Regularly' | 'Prefer not to say';
+      exercise?: '' | 'Never' | 'Sometimes' | 'Regularly' | 'Very active';
+      diet?: '' | 'Anything' | 'Vegetarian' | 'Vegan' | 'Halal' | 'Kosher' | 'Other';
+    };
+  }>({
     gender: '',
-    interestedIn: [] as string[],
+    interestedIn: [],
     relationshipGoals: '',
-    interests: [] as string[],
+    interests: [],
     lifestyle: {
       smoking: '',
       drinking: '',
@@ -60,7 +71,7 @@ const EnhancedPreferences: React.FC = () => {
       const response = await userService.getUserProfile(userId);
       if (response.success && response.user) {
         const user = response.user;
-        
+
         // Set match preferences
         if (user.matchPreferences) {
           setPreferences(user.matchPreferences);
@@ -72,11 +83,11 @@ const EnhancedPreferences: React.FC = () => {
           interestedIn: user.interestedIn || [],
           relationshipGoals: user.relationshipGoals || '',
           interests: user.interests || [],
-          lifestyle: user.lifestyle || {
-            smoking: '',
-            drinking: '',
-            exercise: '',
-            diet: ''
+          lifestyle: {
+            smoking: user.lifestyle?.smoking || '',
+            drinking: user.lifestyle?.drinking || '',
+            exercise: user.lifestyle?.exercise || '',
+            diet: user.lifestyle?.diet || ''
           }
         });
       }
@@ -132,7 +143,7 @@ const EnhancedPreferences: React.FC = () => {
     const updated = current.includes(gender)
       ? current.filter(g => g !== gender)
       : [...current, gender];
-    
+
     setPreferences({ ...preferences, genderPreference: updated });
   };
 
@@ -140,7 +151,7 @@ const EnhancedPreferences: React.FC = () => {
     const updated = personalInfo.interestedIn.includes(option)
       ? personalInfo.interestedIn.filter(o => o !== option)
       : [...personalInfo.interestedIn, option];
-    
+
     setPersonalInfo({ ...personalInfo, interestedIn: updated });
   };
 
@@ -160,11 +171,10 @@ const EnhancedPreferences: React.FC = () => {
                 <button
                   key={option}
                   onClick={() => setPersonalInfo({ ...personalInfo, gender: option })}
-                  className={`py-3 px-4 rounded-xl font-medium transition-all ${
-                    personalInfo.gender === option
+                  className={`py-3 px-4 rounded-xl font-medium transition-all ${personalInfo.gender === option
                       ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {option}
                 </button>
@@ -182,11 +192,10 @@ const EnhancedPreferences: React.FC = () => {
                 <button
                   key={option}
                   onClick={() => toggleInterestedIn(option)}
-                  className={`py-3 px-4 rounded-xl font-medium transition-all ${
-                    personalInfo.interestedIn.includes(option)
+                  className={`py-3 px-4 rounded-xl font-medium transition-all ${personalInfo.interestedIn.includes(option)
                       ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {option}
                 </button>
@@ -210,11 +219,10 @@ const EnhancedPreferences: React.FC = () => {
                 <button
                   key={option}
                   onClick={() => setPersonalInfo({ ...personalInfo, relationshipGoals: option })}
-                  className={`w-full py-3 px-4 rounded-xl font-medium transition-all text-left ${
-                    personalInfo.relationshipGoals === option
+                  className={`w-full py-3 px-4 rounded-xl font-medium transition-all text-left ${personalInfo.relationshipGoals === option
                       ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {option}
                 </button>
@@ -239,11 +247,10 @@ const EnhancedPreferences: React.FC = () => {
                 <button
                   key={option}
                   onClick={() => toggleGender(option)}
-                  className={`py-3 px-4 rounded-xl font-medium transition-all ${
-                    preferences.genderPreference.includes(option)
+                  className={`py-3 px-4 rounded-xl font-medium transition-all ${preferences.genderPreference.includes(option)
                       ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {option}
                 </button>
@@ -324,20 +331,19 @@ const EnhancedPreferences: React.FC = () => {
               Smoking
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {['Never', 'Socially', 'Regularly', 'Prefer not to say'].map((option) => (
+              {(['Never', 'Socially', 'Regularly', 'Prefer not to say'] as const).map((option) => (
                 <button
                   key={option}
                   onClick={() =>
                     setPersonalInfo({
                       ...personalInfo,
-                      lifestyle: { ...personalInfo.lifestyle, smoking: option as any }
+                      lifestyle: { ...personalInfo.lifestyle, smoking: option }
                     })
                   }
-                  className={`py-2 px-3 rounded-lg font-medium transition-all text-sm ${
-                    personalInfo.lifestyle.smoking === option
+                  className={`py-2 px-3 rounded-lg font-medium transition-all text-sm ${personalInfo.lifestyle.smoking === option
                       ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {option}
                 </button>
@@ -352,20 +358,19 @@ const EnhancedPreferences: React.FC = () => {
               Drinking
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {['Never', 'Socially', 'Regularly', 'Prefer not to say'].map((option) => (
+              {(['Never', 'Socially', 'Regularly', 'Prefer not to say'] as const).map((option) => (
                 <button
                   key={option}
                   onClick={() =>
                     setPersonalInfo({
                       ...personalInfo,
-                      lifestyle: { ...personalInfo.lifestyle, drinking: option as any }
+                      lifestyle: { ...personalInfo.lifestyle, drinking: option }
                     })
                   }
-                  className={`py-2 px-3 rounded-lg font-medium transition-all text-sm ${
-                    personalInfo.lifestyle.drinking === option
+                  className={`py-2 px-3 rounded-lg font-medium transition-all text-sm ${personalInfo.lifestyle.drinking === option
                       ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {option}
                 </button>
@@ -380,20 +385,19 @@ const EnhancedPreferences: React.FC = () => {
               Exercise
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {['Never', 'Sometimes', 'Regularly', 'Very active'].map((option) => (
+              {(['Never', 'Sometimes', 'Regularly', 'Very active'] as const).map((option) => (
                 <button
                   key={option}
                   onClick={() =>
                     setPersonalInfo({
                       ...personalInfo,
-                      lifestyle: { ...personalInfo.lifestyle, exercise: option as any }
+                      lifestyle: { ...personalInfo.lifestyle, exercise: option }
                     })
                   }
-                  className={`py-2 px-3 rounded-lg font-medium transition-all text-sm ${
-                    personalInfo.lifestyle.exercise === option
+                  className={`py-2 px-3 rounded-lg font-medium transition-all text-sm ${personalInfo.lifestyle.exercise === option
                       ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {option}
                 </button>
@@ -408,20 +412,19 @@ const EnhancedPreferences: React.FC = () => {
               Diet
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {['Anything', 'Vegetarian', 'Vegan', 'Halal', 'Kosher', 'Other'].map((option) => (
+              {(['Anything', 'Vegetarian', 'Vegan', 'Halal', 'Kosher', 'Other'] as const).map((option) => (
                 <button
                   key={option}
                   onClick={() =>
                     setPersonalInfo({
                       ...personalInfo,
-                      lifestyle: { ...personalInfo.lifestyle, diet: option as any }
+                      lifestyle: { ...personalInfo.lifestyle, diet: option }
                     })
                   }
-                  className={`py-2 px-3 rounded-lg font-medium transition-all text-sm ${
-                    personalInfo.lifestyle.diet === option
+                  className={`py-2 px-3 rounded-lg font-medium transition-all text-sm ${personalInfo.lifestyle.diet === option
                       ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {option}
                 </button>
@@ -526,11 +529,10 @@ const EnhancedPreferences: React.FC = () => {
                 <button
                   key={index}
                   onClick={() => setCurrentStep(index)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                    currentStep === index
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${currentStep === index
                       ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   {step.icon}
                   <span className="text-sm font-medium hidden md:inline">{step.title}</span>
