@@ -170,9 +170,44 @@ export interface Like {
 export interface DiscoveryStats {
   likesReceived: number;
   likesSent: number;
+  likedByMePending?: number;
   totalMatches: number;
   passes: number;
   recentMatches: number;
+  superLikesRemaining?: number;
+  superLikeLimit?: number;
+  nextResetAt?: string | null;
+}
+
+// Liked by me (people I liked, not matched yet)
+export interface LikedByMeItem {
+  interactionId: string;
+  user: {
+    _id: string;
+    username?: string;
+    profilePicture?: string;
+    bio?: string;
+    age?: number;
+    location?: string;
+    interests?: string[];
+  };
+  isSuperLike: boolean;
+  likedAt: string;
+}
+
+// Passed (people I passed on)
+export interface PassedItem {
+  interactionId: string;
+  user: {
+    _id: string;
+    username?: string;
+    profilePicture?: string;
+    bio?: string;
+    age?: number;
+    location?: string;
+    interests?: string[];
+  };
+  passedAt: string;
 }
 
 // Auth types
@@ -277,6 +312,7 @@ export interface InteractionResponse {
   success: boolean;
   interaction: MatchInteraction;
   isMatch: boolean;
+  alreadyInteracted?: boolean;
   match?: {
     user: {
       _id: string;
@@ -287,6 +323,9 @@ export interface InteractionResponse {
     };
     compatibilityScore: number;
   };
+  superLikesRemaining?: number;
+  superLikeLimit?: number;
+  nextResetAt?: string;
   error?: string;
 }
 
@@ -311,6 +350,26 @@ export interface StatsResponse {
 }
 
 export interface UnmatchResponse {
+  success: boolean;
+  message: string;
+  error?: string;
+}
+
+export interface LikedByMeResponse {
+  success: boolean;
+  list: LikedByMeItem[];
+  total: number;
+  error?: string;
+}
+
+export interface PassedResponse {
+  success: boolean;
+  list: PassedItem[];
+  total: number;
+  error?: string;
+}
+
+export interface RemoveInteractionResponse {
   success: boolean;
   message: string;
   error?: string;

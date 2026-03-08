@@ -54,40 +54,40 @@ const userSchema = new mongoose.Schema({
   email: { type: String, unique: true, required: true, lowercase: true, trim: true },
   password: { type: String, required: true },
   username: { type: String, unique: true, sparse: true, trim: true },
-  
+
   // Basic Profile Info
   bio: { type: String, default: '', maxlength: 500 },
   about: { type: String, default: '', maxlength: 3000, trim: true },
-  
+
   // Personal Details
   pronouns: { type: String, default: '' },
   pronounsVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
-  
+
   gender: { type: String, default: '' },
   genderVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
-  
+
   interestedIn: [{ type: String }], // ["Men", "Women", "Non-binary", "Everyone"]
   interestedInVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
-  
+
   dateOfBirth: { type: Date },
   age: { type: Number }, // Calculated field
-  
+
   workTitle: { type: String, default: '' },
   workCompany: { type: String, default: '' },
   workVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
-  
+
   educationSchool: { type: String, default: '' },
   educationDegree: { type: String, default: '' },
   educationVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
-  
+
   // Physical Attributes
   height: { type: Number }, // in cm
   heightVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
-  
+
   // Location
   location: { type: locationSchema, default: () => ({}) },
   locationVisibility: { type: String, enum: ['public', 'private'], default: 'public' },
-  
+
   // Lifestyle & Preferences
   lifestyle: {
     smoking: { type: String, enum: ['Never', 'Socially', 'Regularly', 'Prefer not to say', ''], default: '' },
@@ -95,21 +95,21 @@ const userSchema = new mongoose.Schema({
     exercise: { type: String, enum: ['Never', 'Sometimes', 'Regularly', 'Very active', ''], default: '' },
     diet: { type: String, enum: ['Anything', 'Vegetarian', 'Vegan', 'Halal', 'Kosher', 'Other', ''], default: '' },
   },
-  
+
   // Interests & Hobbies (tags)
   interests: {
     type: [String],
     default: [],
     validate: v => v.length <= 20 // max 20 interests
   },
-  
+
   // Relationship Goals
   relationshipGoals: {
     type: String,
     enum: ['Casual dating', 'Long-term relationship', 'Marriage', 'Friendship', 'Not sure yet', ''],
     default: ''
   },
-  
+
   // Profile Media
   profilePicture: { type: String, default: '' },
   coverImage: { type: String, default: '' },
@@ -118,7 +118,7 @@ const userSchema = new mongoose.Schema({
     default: [],
     validate: v => v.length <= 10 // max 10 photos
   },
-  
+
   // Matching Preferences
   matchPreferences: {
     ageRange: {
@@ -136,7 +136,7 @@ const userSchema = new mongoose.Schema({
       default: []
     }
   },
-  
+
   // Discovery Settings
   discoverySettings: {
     isActive: { type: Boolean, default: true }, // Show in discovery
@@ -144,7 +144,12 @@ const userSchema = new mongoose.Schema({
     distanceVisible: { type: Boolean, default: true },
     lastActiveVisible: { type: Boolean, default: true }
   },
-  
+
+  // Super Like allowance (daily reset; can be monetized later)
+  superLikeAllowancePerDay: { type: Number, default: 1, min: 0 },
+  superLikeDailyCount: { type: Number, default: 0, min: 0 },
+  superLikeDay: { type: String, default: '' }, // YYYY-MM-DD for reset
+
   // Profile Completion
   profileCompleteness: {
     type: Number,
@@ -152,22 +157,22 @@ const userSchema = new mongoose.Schema({
     min: 0,
     max: 100
   },
-  
+
   // Activity Tracking
   lastActive: { type: Date, default: Date.now },
   isOnline: { type: Boolean, default: false },
-  
+
   // Verification
   isVerified: { type: Boolean, default: false },
   verificationPhoto: { type: String, default: '' },
-  
+
   // Posts
   posts: [postSchema],
-  
+
   // Timestamps
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
-  
+
   // Password Reset
   passwordResetToken: { type: String },
   passwordResetExpires: { type: Date },
@@ -181,7 +186,7 @@ userSchema.index({ lastActive: -1 });
 userSchema.index({ 'discoverySettings.isActive': 1 });
 
 // Virtual for calculating age from dateOfBirth
-userSchema.virtual('calculatedAge').get(function() {
+userSchema.virtual('calculatedAge').get(function () {
   if (!this.dateOfBirth) return null;
   const today = new Date();
   const birthDate = new Date(this.dateOfBirth);
@@ -194,7 +199,7 @@ userSchema.virtual('calculatedAge').get(function() {
 });
 
 // Method to calculate profile completeness
-userSchema.methods.calculateProfileCompleteness = function() {
+userSchema.methods.calculateProfileCompleteness = function () {
   let score = 0;
   const weights = {
     basicInfo: 20,    // email, username, password (always present)
@@ -206,51 +211,51 @@ userSchema.methods.calculateProfileCompleteness = function() {
     work: 5,          // work info
     education: 5      // education info
   };
-  
+
   // Basic info (always 20 if registered)
   score += weights.basicInfo;
-  
+
   // Photos
   if (this.profilePicture) score += 10;
   if (this.photos && this.photos.length >= 2) score += 10;
-  
+
   // Bio
   if (this.bio || this.about) score += weights.bio;
-  
+
   // Personal Info
   if (this.gender) score += 5;
   if (this.age || this.dateOfBirth) score += 5;
   if (this.location?.city) score += 5;
-  
+
   // Lifestyle
   const lifestyleFields = Object.values(this.lifestyle || {}).filter(v => v && v !== '');
   if (lifestyleFields.length >= 2) score += weights.lifestyle;
-  
+
   // Interests
   if (this.interests && this.interests.length >= 3) score += weights.interests;
-  
+
   // Work
   if (this.workTitle || this.workCompany) score += weights.work;
-  
+
   // Education
   if (this.educationSchool || this.educationDegree) score += weights.education;
-  
+
   return Math.min(score, 100);
 };
 
 // Pre-save middleware
-userSchema.pre('save', function(next) {
+userSchema.pre('save', function (next) {
   // Update age if dateOfBirth exists
   if (this.dateOfBirth) {
     this.age = this.calculatedAge;
   }
-  
+
   // Update profile completeness
   this.profileCompleteness = this.calculateProfileCompleteness();
-  
+
   // Update timestamp
   this.updatedAt = new Date();
-  
+
   next();
 });
 
@@ -258,7 +263,7 @@ userSchema.pre('save', function(next) {
 // module.exports = mongoose.model('User', userSchema);
 
 //we use es moddule to export mongoose structure
-const User = mongoose.model('User',userSchema);
+const User = mongoose.model('User', userSchema);
 
 export default User;
 
@@ -271,12 +276,22 @@ export const findById = (id) => User.findById(id);
 
 export const findByIdAndUpdate = (id, data, options = {}) => {
   data.updatedAt = new Date();
+  // Compute age from dateOfBirth here because findByIdAndUpdate bypasses
+  // the pre('save') middleware where age is normally calculated.
+  if (data.dateOfBirth) {
+    const dob = new Date(data.dateOfBirth);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+    data.age = age;
+  }
   return User.findByIdAndUpdate(id, data, { new: true, ...options });
 };
 
 export const findByIdAndDelete = (id) => User.findByIdAndDelete(id);
 
 //note es module ma
-// use import 
+// use import
 //replace module.export with export default or any name given
 // add .js extension while importing files

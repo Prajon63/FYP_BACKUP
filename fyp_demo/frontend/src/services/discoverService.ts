@@ -4,6 +4,9 @@ import type {
   InteractionResponse,
   MatchesResponse,
   LikesResponse,
+  LikedByMeResponse,
+  PassedResponse,
+  RemoveInteractionResponse,
   StatsResponse,
   UnmatchResponse,
   MatchPreferences,
@@ -61,7 +64,10 @@ export const discoverService = {
       );
       return response.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Failed to process interaction');
+      const msg = error.response?.data?.error || 'Failed to process interaction';
+      const e = new Error(msg) as Error & { response?: any };
+      e.response = error.response;
+      throw e;
     }
   },
 
@@ -82,7 +88,7 @@ export const discoverService = {
   },
 
   /**
-   * Get users who liked the current user
+   * Get users who liked the current user (pending respond)
    * @param userId - User ID
    */
   async getLikes(userId: string): Promise<LikesResponse> {
@@ -91,6 +97,49 @@ export const discoverService = {
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to fetch likes');
+    }
+  },
+
+  /**
+   * Get people I liked (not matched yet)
+   * @param userId - User ID
+   */
+  async getLikedByMe(userId: string): Promise<LikedByMeResponse> {
+    try {
+      const response = await api.get<LikedByMeResponse>(`/discover/${userId}/liked-by-me`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to fetch liked list');
+    }
+  },
+
+  /**
+   * Get people I passed on
+   * @param userId - User ID
+   */
+  async getPassed(userId: string): Promise<PassedResponse> {
+    try {
+      const response = await api.get<PassedResponse>(`/discover/${userId}/passed`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to fetch passed list');
+    }
+  },
+
+  /**
+   * Remove my interaction (undo like or pass)
+   * @param userId - Current user ID
+   * @param targetUserId - User to remove interaction with
+   */
+  async removeInteraction(userId: string, targetUserId: string): Promise<RemoveInteractionResponse> {
+    try {
+      const response = await api.post<RemoveInteractionResponse>(
+        `/discover/${userId}/remove-interaction`,
+        { targetUserId }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to remove interaction');
     }
   },
 

@@ -35,6 +35,7 @@ const EnhancedPreferences: React.FC = () => {
   // personal info for optimized match algoritm- after registration
   const [personalInfo, setPersonalInfo] = useState<{
     gender: string;
+    dateOfBirth: string;
     interestedIn: string[];
     relationshipGoals: string;
     interests: string[];
@@ -46,6 +47,7 @@ const EnhancedPreferences: React.FC = () => {
     };
   }>({
     gender: '',
+    dateOfBirth: '',
     interestedIn: [],
     relationshipGoals: '',
     interests: [],
@@ -80,6 +82,9 @@ const EnhancedPreferences: React.FC = () => {
         // Set personal info
         setPersonalInfo({
           gender: user.gender || '',
+          dateOfBirth: user.dateOfBirth
+            ? new Date(user.dateOfBirth).toISOString().split('T')[0]
+            : '',
           interestedIn: user.interestedIn || [],
           relationshipGoals: user.relationshipGoals || '',
           interests: user.interests || [],
@@ -106,6 +111,7 @@ const EnhancedPreferences: React.FC = () => {
       // Update personal info
       await userService.updateProfile(userId, {
         gender: personalInfo.gender,
+        dateOfBirth: (personalInfo.dateOfBirth || undefined) as any,
         interestedIn: personalInfo.interestedIn,
         relationshipGoals: personalInfo.relationshipGoals as any,
         interests: personalInfo.interests,
@@ -161,6 +167,21 @@ const EnhancedPreferences: React.FC = () => {
       icon: <Users className="w-6 h-6" />,
       content: (
         <div className="space-y-6">
+          {/* Date of Birth */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-3">
+              Date of Birth
+            </label>
+            <input
+              type="date"
+              value={personalInfo.dateOfBirth}
+              onChange={(e) => setPersonalInfo({ ...personalInfo, dateOfBirth: e.target.value })}
+              max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">Must be 18 or older</p>
+          </div>
+
           {/* Gender */}
           <div>
             <label className="block text-gray-700 font-semibold mb-3">
@@ -172,8 +193,8 @@ const EnhancedPreferences: React.FC = () => {
                   key={option}
                   onClick={() => setPersonalInfo({ ...personalInfo, gender: option })}
                   className={`py-3 px-4 rounded-xl font-medium transition-all ${personalInfo.gender === option
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   {option}
@@ -193,8 +214,8 @@ const EnhancedPreferences: React.FC = () => {
                   key={option}
                   onClick={() => toggleInterestedIn(option)}
                   className={`py-3 px-4 rounded-xl font-medium transition-all ${personalInfo.interestedIn.includes(option)
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   {option}
@@ -220,8 +241,8 @@ const EnhancedPreferences: React.FC = () => {
                   key={option}
                   onClick={() => setPersonalInfo({ ...personalInfo, relationshipGoals: option })}
                   className={`w-full py-3 px-4 rounded-xl font-medium transition-all text-left ${personalInfo.relationshipGoals === option
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   {option}
@@ -248,8 +269,8 @@ const EnhancedPreferences: React.FC = () => {
                   key={option}
                   onClick={() => toggleGender(option)}
                   className={`py-3 px-4 rounded-xl font-medium transition-all ${preferences.genderPreference.includes(option)
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   {option}
@@ -341,8 +362,8 @@ const EnhancedPreferences: React.FC = () => {
                     })
                   }
                   className={`py-2 px-3 rounded-lg font-medium transition-all text-sm ${personalInfo.lifestyle.smoking === option
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   {option}
@@ -368,8 +389,8 @@ const EnhancedPreferences: React.FC = () => {
                     })
                   }
                   className={`py-2 px-3 rounded-lg font-medium transition-all text-sm ${personalInfo.lifestyle.drinking === option
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   {option}
@@ -395,8 +416,8 @@ const EnhancedPreferences: React.FC = () => {
                     })
                   }
                   className={`py-2 px-3 rounded-lg font-medium transition-all text-sm ${personalInfo.lifestyle.exercise === option
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   {option}
@@ -422,8 +443,8 @@ const EnhancedPreferences: React.FC = () => {
                     })
                   }
                   className={`py-2 px-3 rounded-lg font-medium transition-all text-sm ${personalInfo.lifestyle.diet === option
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   {option}
@@ -530,8 +551,8 @@ const EnhancedPreferences: React.FC = () => {
                   key={index}
                   onClick={() => setCurrentStep(index)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${currentStep === index
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
                     }`}
                 >
                   {step.icon}

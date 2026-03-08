@@ -55,6 +55,24 @@ export async function updateProfile(req, res) {
 
     if (req.body.interestedInVisibility !== undefined) updateData.interestedInVisibility = req.body.interestedInVisibility;
 
+    //new added
+    // Matchmaking fields from EnhancedPreferences
+    if (req.body.dateOfBirth !== undefined) updateData.dateOfBirth = req.body.dateOfBirth;
+    if (req.body.age !== undefined) updateData.age = req.body.age;
+    if (req.body.relationshipGoals !== undefined) updateData.relationshipGoals = req.body.relationshipGoals;
+    if (req.body.interests !== undefined) updateData.interests = req.body.interests;
+    if (req.body.lifestyle !== undefined) updateData.lifestyle = req.body.lifestyle;
+    if (req.body.matchPreferences !== undefined) updateData.matchPreferences = req.body.matchPreferences;
+
+    // Always set discoverySettings.isActive when profile is updated
+    updateData.discoverySettings = {
+      isActive: true,
+      ageRangeVisible: true,
+      distanceVisible: true,
+      lastActiveVisible: false,
+      ...(req.body.discoverySettings || {})
+    };
+
     if (req.body.workTitle !== undefined) updateData.workTitle = req.body.workTitle;
     if (req.body.workCompany !== undefined) updateData.workCompany = req.body.workCompany;
     if (req.body.workVisibility !== undefined) updateData.workVisibility = req.body.workVisibility;
@@ -94,55 +112,6 @@ export async function updateProfile(req, res) {
     });
   }
 }
-
-// Add a new post
-// export async function addPost(req, res) {
-//   try {
-//     const { userId } = req.params;
-//     // const { image, caption } = req.body;
-
-//     // if (!image) {
-//     //   return res.status(400).json({ 
-//     //     success: false, 
-//     //     error: 'Post image is required' 
-//     //   });
-//     // }
-
-//     const user = await findById(userId);
-
-//     if (!user) {
-//       return res.status(404).json({ success: false, error: 'User not found' });
-//     }
-
-//     // Add new post to user's posts array
-//     // const newPost = {
-//     //   image,
-//     //   caption: caption || '',
-//     //   likes: 0,
-//     //   comments: 0,
-//     //   createdAt: new Date()
-//     // };
-
-//     user.posts.push(newPost);
-//     user.updatedAt = new Date();
-//     await user.save();
-
-//     return res.status(201).json({ 
-//       success: true, 
-//       message: 'Post added successfully',
-//       post: newPost 
-//     });
-//   } catch (err) {
-//     console.error("Add post error:", err);
-//     return res.status(500).json({ 
-//       success: false, 
-//       error: 'Failed to add post',
-//       detail: err.message 
-//     });
-//   }
-// }
-
-//updated add post
 
 export async function addPost(req, res) {
   try {
@@ -204,44 +173,6 @@ export async function addPost(req, res) {
   }
 }
 
-
-// Update a post
-// export async function updatePost(req, res) {
-//   try {
-//     const { userId, postId } = req.params;
-//     //const { image, caption } = req.body;
-
-//     const user = await findById(userId);
-
-//     if (!user) {
-//       return res.status(404).json({ success: false, error: 'User not found' });
-//     }
-
-//     const post = user.posts.id(postId);
-//     if (!post) {
-//       return res.status(404).json({ success: false, error: 'Post not found' });
-//     }
-
-//    // if (image !== undefined) post.image = image;
-//     if (caption !== undefined) post.caption = caption;
-
-//     user.updatedAt = new Date();
-//     await user.save();
-
-//     return res.status(200).json({ 
-//       success: true, 
-//       message: 'Post updated successfully',
-//       post: post 
-//     });
-//   } catch (err) {
-//     console.error("Update post error:", err);
-//     return res.status(500).json({ 
-//       success: false, 
-//       error: 'Failed to update post',
-//       detail: err.message 
-//     });
-//   }
-// }
 
 //updated updatePost
 export async function updatePost(req, res) {
@@ -483,62 +414,6 @@ export async function uploadCoverImage(req, res) {
   }
 }
 
-//removed
-// Add a new post with file-based image upload
-// export async function addPostWithImage(req, res) {
-//   try {
-//     const { userId } = req.params;
-//     const { caption } = req.body || {};
-
-//     const user = await findById(userId);
-
-//     if (!user) {
-//       return res.status(404).json({ success: false, error: 'User not found' });
-//     }
-
-//     if (!req.file) {
-//       return res.status(400).json({ success: false, error: 'Post image file is required' });
-//     }
-
-//     const uploadResult = await new Promise((resolve, reject) => {
-//       const stream = cloudinary.uploader.upload_stream(
-//         { folder: 'capella_posts', resource_type: 'image' },
-//         (error, result) => {
-//           if (error) reject(error);
-//           else resolve(result);
-//         }
-//       );
-//       stream.end(req.file.buffer);
-//     });
-
-//     const newPost = {
-//       image: uploadResult.secure_url,
-//       caption: caption || '',
-//       likes: 0,
-//       comments: 0,
-//       createdAt: new Date(),
-//     };
-
-//     user.posts.push(newPost);
-//     user.updatedAt = new Date();
-//     await user.save();
-
-//     return res.status(201).json({
-//       success: true,
-//       message: 'Post added successfully',
-//       post: newPost,
-//     });
-//   } catch (err) {
-//     console.error('Add post with image error:', err);
-//     return res.status(500).json({
-//       success: false,
-//       error: 'Failed to add post',
-//       detail: err.message,
-//     });
-//   }
-// }
-
- 
 // Delete a single photo from the carousel
 export async function deleteCarouselPhoto(req, res) {
   try {
@@ -546,35 +421,35 @@ export async function deleteCarouselPhoto(req, res) {
     const { photoUrl } = req.body;
 
     if (!photoUrl) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Photo URL is required' 
+      return res.status(400).json({
+        success: false,
+        error: 'Photo URL is required'
       });
     }
 
     const user = await findById(userId);
 
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'User not found' 
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
       });
     }
 
     // Remove the photo URL from the photos array
     if (!user.photos || !Array.isArray(user.photos)) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'No photos found' 
+      return res.status(404).json({
+        success: false,
+        error: 'No photos found'
       });
     }
 
     const photoIndex = user.photos.indexOf(photoUrl);
-    
+
     if (photoIndex === -1) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Photo not found in carousel' 
+      return res.status(404).json({
+        success: false,
+        error: 'Photo not found in carousel'
       });
     }
 
@@ -601,10 +476,10 @@ export async function deleteCarouselPhoto(req, res) {
     });
   } catch (err) {
     console.error('Delete carousel photo error:', err);
-    return res.status(500).json({ 
-      success: false, 
+    return res.status(500).json({
+      success: false,
       error: 'Failed to delete photo',
-      detail: err.message 
+      detail: err.message
     });
   }
 }

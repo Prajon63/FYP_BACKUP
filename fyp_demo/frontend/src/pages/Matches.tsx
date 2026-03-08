@@ -21,21 +21,25 @@ const Matches: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
-  const userId = localStorage.getItem('userId') || '';
+  // FIX 14: Robust userId retrieval - same pattern as Discover.tsx
+  const userId = localStorage.getItem('userId') ||
+    (() => { try { return JSON.parse(localStorage.getItem('user') || '{}')._id || ''; } catch { return ''; } })();
 
   useEffect(() => {
-    if (userId) {
-      fetchMatches();
+    if (!userId) {
+      navigate('/');
+      return;
     }
+    fetchMatches();
   }, [userId]);
 
   const fetchMatches = async () => {
     try {
       setLoading(true);
       const response = await discoverService.getMatches(userId);
-      
+
       if (response.success) {
-        setMatches(response.matches);
+        setMatches(response.matches || []);
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to fetch matches');
@@ -46,14 +50,13 @@ const Matches: React.FC = () => {
 
   const handleUnmatch = async (matchId: string, targetUserId: string) => {
     const confirmed = window.confirm('Are you sure you want to unmatch? This cannot be undone.');
-    
     if (!confirmed) return;
 
     try {
       const response = await discoverService.unmatch(userId, targetUserId);
-      
       if (response.success) {
         toast.success('Unmatched successfully');
+        // FIX 15: Remove from local state immediately for instant UI feedback
         setMatches(prev => prev.filter(m => m.matchId !== matchId));
         setSelectedMatch(null);
       }
@@ -63,23 +66,23 @@ const Matches: React.FC = () => {
   };
 
   const handleMessage = (match: Match) => {
-    // Navigate to messages (implement when messaging is ready)
     toast.success('Messaging feature coming soon!');
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return 'Recently';
     const date = new Date(dateString);
     const now = new Date();
     const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
     if (diffInDays === 0) return 'Today';
     if (diffInDays === 1) return 'Yesterday';
     if (diffInDays < 7) return `${diffInDays} days ago`;
     return date.toLocaleDateString();
   };
 
+  // FIX 16: Safe search - guard against undefined username
   const filteredMatches = matches.filter(match =>
-    match.user.username?.toLowerCase().includes(searchQuery.toLowerCase())
+    (match.user?.username || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (loading) {
@@ -110,7 +113,10 @@ const Matches: React.FC = () => {
               Your Matches
             </h1>
 
-            <div className="w-10"></div>
+            {/* FIX 17: Show live count in header */}
+            <div className="text-sm text-gray-500 font-medium">
+              {matches.length} total
+            </div>
           </div>
 
           {/* Search Bar */}
@@ -138,12 +144,8 @@ const Matches: React.FC = () => {
             <div className="w-20 h-20 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
               <Heart className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">
-              No matches yet
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Start swiping to find your perfect match!
-            </p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">No matches yet</h2>
+            <p className="text-gray-600 mb-6">Start swiping to find your perfect match!</p>
             <button
               onClick={() => navigate('/discover')}
               className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold py-3 px-8 rounded-xl transition-all shadow-lg"
@@ -158,42 +160,36 @@ const Matches: React.FC = () => {
                 key={match.matchId}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ delay: index * 0.05 }}
                 className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all cursor-pointer group"
                 onClick={() => setSelectedMatch(match)}
               >
-                {/* User Image */}
                 <div className="relative h-64">
                   <img
-                    src={match.user.profilePicture || 'https://via.placeholder.com/400'}
-                    alt={match.user.username || 'Match'}
+                    src={match.user?.profilePicture || 'https://via.placeholder.com/400'}
+                    alt={match.user?.username || 'Match'}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                  
-                  {/* Compatibility Badge */}
+
                   <div className="absolute top-4 right-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
                     {match.compatibilityScore}% Match
                   </div>
 
-                  {/* User Info Overlay */}
                   <div className="absolute bottom-4 left-4 right-4">
                     <h3 className="text-white text-xl font-bold mb-1">
-                      {match.user.username || 'Anonymous'}
-                      {match.user.age && <span className="text-white/90">, {match.user.age}</span>}
+                      {match.user?.username || 'Anonymous'}
+                      {match.user?.age && <span className="text-white/90">, {match.user.age}</span>}
                     </h3>
-                    {match.user.location && (
+                    {match.user?.location && (
                       <p className="text-white/80 text-sm">{match.user.location}</p>
                     )}
                   </div>
                 </div>
 
-                {/* Match Info */}
                 <div className="p-4">
-                  {match.user.bio && (
-                    <p className="text-gray-600 text-sm line-clamp-2 mb-3">
-                      {match.user.bio}
-                    </p>
+                  {match.user?.bio && (
+                    <p className="text-gray-600 text-sm line-clamp-2 mb-3">{match.user.bio}</p>
                   )}
 
                   <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
@@ -202,29 +198,20 @@ const Matches: React.FC = () => {
                       <span>Matched {formatDate(match.matchedAt)}</span>
                     </div>
                     {match.lastMessageAt && (
-                      <span className="text-purple-600 font-medium">
-                        Active conversation
-                      </span>
+                      <span className="text-purple-600 font-medium">Active conversation</span>
                     )}
                   </div>
 
-                  {/* Action Buttons */}
                   <div className="flex gap-2">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMessage(match);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); handleMessage(match); }}
                       className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
                     >
                       <MessageCircle className="w-4 h-4" />
                       Message
                     </button>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUnmatch(match.matchId, match.user._id);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); handleUnmatch(match.matchId, match.user._id); }}
                       className="bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 p-2 rounded-xl transition-colors"
                     >
                       <UserX className="w-5 h-5" />
@@ -236,16 +223,11 @@ const Matches: React.FC = () => {
           </div>
         )}
 
-        {/* No Search Results */}
         {filteredMatches.length === 0 && matches.length > 0 && (
           <div className="bg-white rounded-2xl p-12 text-center shadow-lg">
             <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              No matches found
-            </h3>
-            <p className="text-gray-600">
-              Try searching with a different name
-            </p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No matches found</h3>
+            <p className="text-gray-600">Try searching with a different name</p>
           </div>
         )}
       </div>
@@ -264,8 +246,8 @@ const Matches: React.FC = () => {
           >
             <div className="relative h-80">
               <img
-                src={selectedMatch.user.profilePicture || 'https://via.placeholder.com/400'}
-                alt={selectedMatch.user.username || 'Match'}
+                src={selectedMatch.user?.profilePicture || 'https://via.placeholder.com/400'}
+                alt={selectedMatch.user?.username || 'Match'}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
@@ -277,22 +259,19 @@ const Matches: React.FC = () => {
               </button>
               <div className="absolute bottom-4 left-4 right-4">
                 <h2 className="text-white text-3xl font-bold mb-2">
-                  {selectedMatch.user.username || 'Anonymous'}
-                  {selectedMatch.user.age && <span className="text-white/90">, {selectedMatch.user.age}</span>}
+                  {selectedMatch.user?.username || 'Anonymous'}
+                  {selectedMatch.user?.age && <span className="text-white/90">, {selectedMatch.user.age}</span>}
                 </h2>
-                <div className="flex items-center gap-2">
-                  <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-                    {selectedMatch.compatibilityScore}% Compatible
-                  </div>
+                <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-3 py-1 rounded-full text-sm font-bold inline-block">
+                  {selectedMatch.compatibilityScore}% Compatible
                 </div>
               </div>
             </div>
 
             <div className="p-6">
-              {selectedMatch.user.bio && (
+              {selectedMatch.user?.bio && (
                 <p className="text-gray-700 mb-4">{selectedMatch.user.bio}</p>
               )}
-              
               <div className="flex gap-3">
                 <button
                   onClick={() => handleMessage(selectedMatch)}
