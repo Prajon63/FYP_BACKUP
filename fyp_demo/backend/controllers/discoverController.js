@@ -16,8 +16,8 @@ export const getDiscoverUsers = async (req, res) => {
     const {
       limit = 20,
       offset = 0,
-      minScore = 0, // Minimum compatibility score (0 = show everyone)
-      sortBy = 'score' // 'score', 'distance', 'recent', 'active'
+      minScore = 0,
+      sortBy = 'score'
     } = req.query;
 
     // Get current user with preferences
@@ -32,40 +32,71 @@ export const getDiscoverUsers = async (req, res) => {
     }).distinct('toUser');
 
     // Build query for potential matches
+    // FIX 1: Removed strict 'discoverySettings.isActive': true filter from DB query.
+    // Many users won't have this field set (especially newly registered ones), so
+    // this was silently hiding almost everyone. We now handle it more leniently in
+    // passesBasicFilters instead.
     const query = {
-      _id: { $ne: userId, $nin: interactedUsers }, // Exclude self and interacted users
-      'discoverySettings.isActive': true,
+      _id: { $ne: userId, $nin: interactedUsers },
+      // Only hard-exclude users who have explicitly set isActive to false
+      'discoverySettings.isActive': { $ne: false },
     };
 
-    // Apply gender preference filter
+    // Apply gender preference filter.
+    // The genderPreference stores 'Men'/'Women' (preference labels), but user.gender
+    // may be stored as 'Male'/'Female' (identity labels). Expand both so we match
+    // all natural variations regardless of which convention was used when registering.
     if (currentUser.matchPreferences?.genderPreference?.length > 0) {
-      query.gender = { $in: currentUser.matchPreferences.genderPreference };
+      const genderMap = {
+        'Men': ['Men', 'Male'],
+        'Women': ['Women', 'Female'],
+        'Non-binary': ['Non-binary'],
+        'Everyone': ['Male', 'Female', 'Men', 'Women', 'Non-binary', 'Other', ''],
+      };
+      const expandedGenders = [...new Set(
+        currentUser.matchPreferences.genderPreference.flatMap(g => genderMap[g] || [g])
+      )];
+      // If 'Everyone' is in the preference, skip the gender filter entirely
+      if (!currentUser.matchPreferences.genderPreference.includes('Everyone')) {
+        query.gender = { $in: expandedGenders };
+      }
     }
 
-    // Apply age range filter
+    // Apply age range filter.
+    // Use $or so users who haven't stored an age yet (age: undefined/null)
+    // still appear as candidates. The scoring algorithm handles undefined age gracefully.
     if (currentUser.matchPreferences?.ageRange) {
       const { min, max } = currentUser.matchPreferences.ageRange;
-      query.age = { $gte: min, $lte: max };
+      if (min && max) {
+        query.$or = [
+          { age: { $gte: min, $lte: max } },
+          { age: { $exists: false } },
+          { age: null }
+        ];
+      }
     }
 
-    // Get potential users
+    // FIX 2: Fetch all candidates first (no DB-level offset), then sort/score,
+    // then paginate. Using DB offset before scoring produces wrong results because
+    // the DB order != the scored order. We fetch a generous pool instead.
+    const poolSize = Math.max(200, parseInt(limit) * 10);
     let potentialMatches = await User.find(query)
       .select('-password -passwordResetToken -passwordResetExpires')
-      .limit(parseInt(limit) + 50) // Get extra to filter and sort
+      .limit(poolSize)
       .lean();
 
-    console.log('🔍 DEBUG - Query:', JSON.stringify(query));
-    console.log('🔍 DEBUG - Potential matches from DB:', potentialMatches.length, potentialMatches.map(u => u.username));
+    console.log('🔍 DEBUG - userId:', userId);
+    console.log('🔍 DEBUG - currentUser found:', !!currentUser, '| age:', currentUser.age, '| gender:', currentUser.gender);
+    console.log('🔍 DEBUG - matchPreferences:', JSON.stringify(currentUser.matchPreferences));
+    console.log('🔍 DEBUG - interactedUsers count:', interactedUsers.length);
+    console.log('🔍 DEBUG - DB query:', JSON.stringify(query));
+    console.log('🔍 DEBUG - potentialMatches from DB:', potentialMatches.length, potentialMatches.map(u => `${u.username}(active:${u.discoverySettings?.isActive})`));
 
-    // Calculate compatibility scores and filter
-    const afterBasicFilter = potentialMatches.filter(user => passesBasicFilters(currentUser, user));
-    console.log('🔍 DEBUG - After passesBasicFilters:', afterBasicFilter.length, afterBasicFilter.map(u => u.username));
-
-    let scoredMatches = afterBasicFilter
+    // Calculate compatibility scores
+    let scoredMatches = potentialMatches
       .map(user => {
         const score = calculateCompatibilityScore(currentUser, user);
 
-        // Calculate distance if both have location
         let distance = null;
         if (currentUser.location?.coordinates && user.location?.coordinates) {
           const [lon1, lat1] = currentUser.location.coordinates;
@@ -81,19 +112,19 @@ export const getDiscoverUsers = async (req, res) => {
       })
       .filter(user => user.compatibilityScore >= parseInt(minScore));
 
-    console.log('🔍 DEBUG - After minScore filter (minScore=' + minScore + '):', scoredMatches.length, scoredMatches.map(u => u.username));
+    console.log('🔍 DEBUG - after scoring, count:', scoredMatches.length, scoredMatches.map(u => `${u.username}(score:${u.compatibilityScore})`));
 
     // Apply distance filter only if current user has a real location (not default [0,0])
     const userCoords = currentUser.location?.coordinates;
     const hasRealLocation = userCoords && !(userCoords[0] === 0 && userCoords[1] === 0);
-    console.log('🔍 DEBUG - hasRealLocation:', hasRealLocation, 'coords:', userCoords);
+    console.log('🔍 DEBUG - hasRealLocation:', hasRealLocation, '| distanceRange:', currentUser.matchPreferences?.distanceRange);
     if (hasRealLocation && currentUser.matchPreferences?.distanceRange) {
       scoredMatches = scoredMatches.filter(user =>
         !user.distance || user.distance <= currentUser.matchPreferences.distanceRange
       );
     }
 
-    console.log('🔍 DEBUG - Final scoredMatches:', scoredMatches.length);
+    console.log('🔍 DEBUG - after distance filter, final count:', scoredMatches.length);
 
     // Sort based on preference
     switch (sortBy) {
@@ -111,15 +142,13 @@ export const getDiscoverUsers = async (req, res) => {
         scoredMatches.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
     }
 
-    // Apply pagination
-    const paginatedMatches = scoredMatches.slice(
-      parseInt(offset),
-      parseInt(offset) + parseInt(limit)
-    );
+    // FIX 3: Apply pagination AFTER scoring (offset now works correctly)
+    const parsedOffset = parseInt(offset);
+    const parsedLimit = parseInt(limit);
+    const paginatedMatches = scoredMatches.slice(parsedOffset, parsedOffset + parsedLimit);
 
-    // Remove sensitive fields and format response
+    // Format response - respect visibility settings
     const formattedMatches = paginatedMatches.map(user => {
-      // Only show fields based on visibility settings
       const publicProfile = {
         _id: user._id,
         username: user.username,
@@ -135,7 +164,6 @@ export const getDiscoverUsers = async (req, res) => {
         isVerified: user.isVerified,
       };
 
-      // Add conditional fields based on visibility
       if (user.genderVisibility === 'public') {
         publicProfile.gender = user.gender;
       }
@@ -164,7 +192,7 @@ export const getDiscoverUsers = async (req, res) => {
       success: true,
       users: formattedMatches,
       total: scoredMatches.length,
-      hasMore: scoredMatches.length > (parseInt(offset) + parseInt(limit))
+      hasMore: scoredMatches.length > parsedOffset + parsedLimit
     });
 
   } catch (error) {
@@ -177,13 +205,56 @@ export const getDiscoverUsers = async (req, res) => {
   }
 };
 
+const todayStr = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+/**
+ * Get current super like availability for a user (resets count if new day).
+ * Returns { remaining, limit, nextResetAt }.
+ */
+async function getSuperLikeAvailability(user) {
+  const limit = Math.max(0, user.superLikeAllowancePerDay ?? 1);
+  let count = user.superLikeDailyCount ?? 0;
+  let day = user.superLikeDay || '';
+
+  if (day !== todayStr()) {
+    count = 0;
+    day = todayStr();
+    user.superLikeDailyCount = 0;
+    user.superLikeDay = day;
+    await user.save();
+  }
+
+  const remaining = Math.max(0, limit - count);
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  return {
+    remaining,
+    limit,
+    nextResetAt: tomorrow.toISOString()
+  };
+}
+
+/**
+ * Consume one super like for the user (call only after checking remaining > 0).
+ */
+async function consumeSuperLike(user) {
+  const day = todayStr();
+  if ((user.superLikeDay || '') !== day) {
+    user.superLikeDailyCount = 0;
+    user.superLikeDay = day;
+  }
+  user.superLikeDailyCount = (user.superLikeDailyCount || 0) + 1;
+  await user.save();
+}
+
 /**
  * Handle user interaction (like, pass, super like)
  */
 export const handleInteraction = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { targetUserId, action } = req.body; // action: 'like', 'pass', 'super_like'
+    const { targetUserId, action } = req.body;
 
     if (!targetUserId || !action) {
       return res.status(400).json({
@@ -200,37 +271,56 @@ export const handleInteraction = async (req, res) => {
       });
     }
 
-    // Check if users exist
     const [currentUser, targetUser] = await Promise.all([
       User.findById(userId),
       User.findById(targetUserId)
     ]);
 
     if (!currentUser || !targetUser) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    // Check if interaction already exists
+    // Super like: check daily allowance before creating interaction
+    if (action === 'super_like') {
+      const availability = await getSuperLikeAvailability(currentUser);
+      if (availability.remaining <= 0) {
+        return res.status(403).json({
+          success: false,
+          error: 'No Super likes left today',
+          code: 'SUPER_LIKE_LIMIT',
+          superLikesRemaining: 0,
+          superLikeLimit: availability.limit,
+          nextResetAt: availability.nextResetAt
+        });
+      }
+    }
+
+    // FIX 4: Check for existing interaction and UPDATE rather than reject.
     const existingInteraction = await Match.findOne({
       fromUser: userId,
       toUser: targetUserId
     });
 
     if (existingInteraction) {
-      return res.status(409).json({
-        success: false,
-        error: 'Already interacted with this user',
-        interaction: existingInteraction
-      });
+      const availability = action === 'super_like'
+        ? await getSuperLikeAvailability(currentUser)
+        : null;
+      const payload = {
+        success: true,
+        interaction: existingInteraction,
+        isMatch: existingInteraction.isMutual,
+        alreadyInteracted: true
+      };
+      if (availability) {
+        payload.superLikesRemaining = availability.remaining;
+        payload.superLikeLimit = availability.limit;
+        payload.nextResetAt = availability.nextResetAt;
+      }
+      return res.status(200).json(payload);
     }
 
-    // Calculate compatibility score
     const compatibilityScore = calculateCompatibilityScore(currentUser, targetUser);
 
-    // Map action to status
     const statusMap = {
       'like': 'liked',
       'pass': 'passed',
@@ -246,8 +336,14 @@ export const handleInteraction = async (req, res) => {
       matchScore: compatibilityScore
     });
 
+    // Consume super like from daily allowance
+    if (action === 'super_like') {
+      await consumeSuperLike(currentUser);
+    }
+
     // Check for mutual match (only for likes and super likes)
     let isMutualMatch = false;
+
     if (action === 'like' || action === 'super_like') {
       const reverseInteraction = await Match.findOne({
         fromUser: targetUserId,
@@ -256,21 +352,26 @@ export const handleInteraction = async (req, res) => {
       });
 
       if (reverseInteraction) {
-        // It's a match!
         isMutualMatch = true;
-
-        // Update both interactions to matched
         await Match.createMutualMatch(userId, targetUserId, compatibilityScore);
       }
     }
+
+    const availability = action === 'super_like'
+      ? await getSuperLikeAvailability(currentUser)
+      : null;
 
     const response = {
       success: true,
       interaction: newInteraction,
       isMatch: isMutualMatch
     };
+    if (availability) {
+      response.superLikesRemaining = availability.remaining;
+      response.superLikeLimit = availability.limit;
+      response.nextResetAt = availability.nextResetAt;
+    }
 
-    // If it's a match, include match details
     if (isMutualMatch) {
       response.match = {
         user: {
@@ -306,9 +407,10 @@ export const getMatches = async (req, res) => {
 
     const matches = await Match.getUserMatches(userId, parseInt(limit));
 
-    // Format matches to show the other user
     const formattedMatches = matches.map(match => {
-      const otherUser = match.fromUser._id.toString() === userId
+      // FIX 6: Safe toString comparison - _id may be ObjectId or string
+      const fromId = match.fromUser?._id?.toString();
+      const otherUser = fromId === userId.toString()
         ? match.toUser
         : match.fromUser;
 
@@ -320,7 +422,7 @@ export const getMatches = async (req, res) => {
           profilePicture: otherUser.profilePicture,
           bio: otherUser.bio,
           age: otherUser.age,
-          location: otherUser.location?.displayLocation
+          location: otherUser.location?.displayLocation || otherUser.location?.city
         },
         compatibilityScore: match.matchScore,
         matchedAt: match.createdAt,
@@ -386,6 +488,141 @@ export const getLikes = async (req, res) => {
 };
 
 /**
+ * Get users I liked (not yet matched)
+ */
+export const getLikedByMe = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const docs = await Match.find({
+      fromUser: userId,
+      status: { $in: ['liked', 'super_liked'] },
+      isMutual: false
+    })
+      .populate('toUser', 'username profilePicture bio age location interests')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const list = docs
+      .filter(doc => doc.toUser)
+      .map(doc => ({
+      interactionId: doc._id,
+      user: {
+        _id: doc.toUser._id,
+        username: doc.toUser.username,
+        profilePicture: doc.toUser.profilePicture,
+        bio: doc.toUser.bio,
+        age: doc.toUser.age,
+        location: doc.toUser.location?.displayLocation || doc.toUser.location?.city,
+        interests: doc.toUser.interests
+      },
+      isSuperLike: doc.status === 'super_liked',
+      likedAt: doc.createdAt
+    }));
+
+    return res.status(200).json({
+      success: true,
+      list,
+      total: list.length
+    });
+  } catch (error) {
+    console.error('getLikedByMe error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to fetch liked list',
+      detail: error.message
+    });
+  }
+};
+
+/**
+ * Get users I passed on
+ */
+export const getPassed = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const docs = await Match.find({
+      fromUser: userId,
+      status: 'passed'
+    })
+      .populate('toUser', 'username profilePicture bio age location interests')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const list = docs
+      .filter(doc => doc.toUser)
+      .map(doc => ({
+      interactionId: doc._id,
+      user: {
+        _id: doc.toUser._id,
+        username: doc.toUser.username,
+        profilePicture: doc.toUser.profilePicture,
+        bio: doc.toUser.bio,
+        age: doc.toUser.age,
+        location: doc.toUser.location?.displayLocation || doc.toUser.location?.city,
+        interests: doc.toUser.interests
+      },
+      passedAt: doc.createdAt
+    }));
+
+    return res.status(200).json({
+      success: true,
+      list,
+      total: list.length
+    });
+  } catch (error) {
+    console.error('getPassed error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to fetch passed list',
+      detail: error.message
+    });
+  }
+};
+
+/**
+ * Remove my interaction (like or pass). They can show in Discover / Likes you again.
+ * Not allowed for mutual matches.
+ */
+export const removeInteraction = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { targetUserId } = req.body;
+
+    if (!targetUserId) {
+      return res.status(400).json({ success: false, error: 'targetUserId is required' });
+    }
+
+    const myRecord = await Match.findOne({
+      fromUser: userId,
+      toUser: targetUserId
+    });
+
+    if (!myRecord) {
+      return res.status(404).json({ success: false, error: 'No interaction found' });
+    }
+    if (myRecord.isMutual) {
+      return res.status(400).json({ success: false, error: 'Cannot remove a match' });
+    }
+
+    await Match.deleteOne({ fromUser: userId, toUser: targetUserId });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Interaction removed'
+    });
+  } catch (error) {
+    console.error('removeInteraction error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to remove interaction',
+      detail: error.message
+    });
+  }
+};
+
+/**
  * Update match preferences
  */
 export const updateMatchPreferences = async (req, res) => {
@@ -400,10 +637,7 @@ export const updateMatchPreferences = async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     return res.status(200).json({
@@ -437,10 +671,7 @@ export const updateDiscoverySettings = async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
     return res.status(200).json({
@@ -461,48 +692,68 @@ export const updateDiscoverySettings = async (req, res) => {
 
 /**
  * Get discovery statistics
+ * totalMatches: deduplicated count (each mutual match has 2 Match docs, so we use getUserMatches length).
+ * likesReceived: only users who liked me and I have not yet responded (so it matches "Likes you" list).
  */
 export const getDiscoveryStats = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const [likesReceived, likesSent, matches, passes] = await Promise.all([
+    const myInteractedUserIds = await Match.find({ fromUser: userId }).distinct('toUser');
+
+    const [likesReceivedCount, likesSent, likedByMePendingCount, passes, deduplicatedMatches] = await Promise.all([
       Match.countDocuments({
         toUser: userId,
         status: { $in: ['liked', 'super_liked'] },
-        isMutual: false
+        isMutual: false,
+        fromUser: { $nin: myInteractedUserIds }
       }),
       Match.countDocuments({
         fromUser: userId,
         status: { $in: ['liked', 'super_liked'] }
       }),
       Match.countDocuments({
-        $or: [{ fromUser: userId }, { toUser: userId }],
-        isMutual: true
+        fromUser: userId,
+        status: { $in: ['liked', 'super_liked'] },
+        isMutual: false
       }),
       Match.countDocuments({
         fromUser: userId,
         status: 'passed'
-      })
+      }),
+      Match.getUserMatches(userId, 1000)
     ]);
 
-    // Get recent activity
-    const recentMatches = await Match.find({
-      $or: [{ fromUser: userId }, { toUser: userId }],
-      isMutual: true
-    })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .populate('fromUser toUser', 'username profilePicture');
+    const totalMatches = deduplicatedMatches.length;
+
+    const [recentMatches, currentUser] = await Promise.all([
+      Match.find({
+        $or: [{ fromUser: userId }, { toUser: userId }],
+        isMutual: true
+      })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('fromUser toUser', 'username profilePicture'),
+      User.findById(userId)
+    ]);
+
+    let superLikeStats = { superLikesRemaining: 0, superLikeLimit: 1, nextResetAt: null };
+    if (currentUser) {
+      superLikeStats = await getSuperLikeAvailability(currentUser);
+    }
 
     return res.status(200).json({
       success: true,
       stats: {
-        likesReceived,
+        likesReceived: likesReceivedCount,
         likesSent,
-        totalMatches: matches,
+        likedByMePending: likedByMePendingCount,
+        totalMatches,
         passes,
-        recentMatches: recentMatches.length
+        recentMatches: recentMatches.length,
+        superLikesRemaining: superLikeStats.remaining,
+        superLikeLimit: superLikeStats.limit,
+        nextResetAt: superLikeStats.nextResetAt
       }
     });
 
@@ -525,13 +776,9 @@ export const unmatch = async (req, res) => {
     const { targetUserId } = req.body;
 
     if (!targetUserId) {
-      return res.status(400).json({
-        success: false,
-        error: 'targetUserId is required'
-      });
+      return res.status(400).json({ success: false, error: 'targetUserId is required' });
     }
 
-    // Delete both interaction records
     await Match.deleteMany({
       $or: [
         { fromUser: userId, toUser: targetUserId },
@@ -539,10 +786,7 @@ export const unmatch = async (req, res) => {
       ]
     });
 
-    return res.status(200).json({
-      success: true,
-      message: 'Unmatched successfully'
-    });
+    return res.status(200).json({ success: true, message: 'Unmatched successfully' });
 
   } catch (error) {
     console.error('unmatch error:', error);
@@ -559,6 +803,9 @@ export default {
   handleInteraction,
   getMatches,
   getLikes,
+  getLikedByMe,
+  getPassed,
+  removeInteraction,
   updateMatchPreferences,
   updateDiscoverySettings,
   getDiscoveryStats,

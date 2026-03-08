@@ -41,6 +41,11 @@ const toRad = (degrees) => degrees * (Math.PI / 180);
  * @returns {number} Score from 0-100
  */
 export const calculateAgeScore = (userAge, targetAge, preferences) => {
+  // If the target user has no age stored, return a neutral score rather than NaN.
+  // NaN propagates into the total score and makes score >= 0 return false, which
+  // silently filters out users with incomplete profiles.
+  if (targetAge === undefined || targetAge === null) return 50;
+
   const { min = 18, max = 100 } = preferences.ageRange || {};
 
   // Check if target age is within preferred range
@@ -363,7 +368,8 @@ export const passesBasicFilters = (currentUser, targetUser) => {
   }
 
   // Check if user is active in discovery
-  if (!targetUser.discoverySettings?.isActive) {
+  // Only exclude if explicitly set to false — undefined/null means user is discoverable
+  if (targetUser.discoverySettings?.isActive === false) {
     return false;
   }
 

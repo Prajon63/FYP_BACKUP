@@ -21,6 +21,11 @@ interface UserCardProps {
   onSuperLike: () => void;
   onCardClick?: () => void;
   style?: React.CSSProperties;
+  /** When true, show "Super Liked you" badge (e.g. in Likes you stack) */
+  isSuperLikedByThem?: boolean;
+  /** When 0, Super Like button is disabled and shows limit message */
+  superLikesRemaining?: number;
+  superLikeLimit?: number;
 }
 
 const UserCard: React.FC<UserCardProps> = ({
@@ -29,8 +34,12 @@ const UserCard: React.FC<UserCardProps> = ({
   onPass,
   onSuperLike,
   onCardClick,
-  style
+  style,
+  isSuperLikedByThem = false,
+  superLikesRemaining = 1,
+  superLikeLimit = 1
 }) => {
+  const canSuperLike = superLikesRemaining > 0;
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
 
@@ -94,7 +103,16 @@ const UserCard: React.FC<UserCardProps> = ({
       onDragEnd={handleDragEnd}
       className="absolute w-full h-full cursor-grab active:cursor-grabbing"
     >
-      <div className="relative w-full h-full bg-white rounded-3xl shadow-2xl overflow-hidden">
+      <div className={`relative w-full h-full bg-white rounded-3xl shadow-2xl overflow-hidden ${isSuperLikedByThem ? 'ring-2 ring-amber-400 ring-offset-2' : ''}`}>
+        {/* Super Liked you badge */}
+        {isSuperLikedByThem && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-gradient-to-r from-amber-400 via-blue-500 to-amber-400 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg flex items-center gap-2">
+            <Star className="w-4 h-4 fill-white" />
+            Super Liked you
+            <Star className="w-4 h-4 fill-white" />
+          </div>
+        )}
+
         {/* Photo Section */}
         <div className="relative h-3/5">
           {photos.length > 0 ? (
@@ -264,15 +282,26 @@ const UserCard: React.FC<UserCardProps> = ({
           </button>
 
           {/* Super Like Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onSuperLike();
-            }}
-            className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center group hover:scale-110"
-          >
-            <Star className="w-6 h-6 text-white fill-white group-hover:scale-110 transition-transform" />
-          </button>
+          <div className="flex flex-col items-center gap-0.5">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (canSuperLike) onSuperLike();
+              }}
+              disabled={!canSuperLike}
+              title={canSuperLike ? `${superLikesRemaining} Super like${superLikesRemaining !== 1 ? 's' : ''} left today` : 'No Super likes left today'}
+              className={`w-12 h-12 rounded-full shadow-lg transition-all flex items-center justify-center group ${
+                canSuperLike
+                  ? 'bg-gradient-to-r from-blue-400 to-blue-600 hover:shadow-xl hover:scale-110 cursor-pointer'
+                  : 'bg-gray-300 cursor-not-allowed opacity-80'
+              }`}
+            >
+              <Star className={`w-6 h-6 ${canSuperLike ? 'text-white fill-white' : 'text-gray-500'} group-hover:scale-110 transition-transform`} />
+            </button>
+            <span className="text-[10px] text-gray-500 font-medium">
+              {canSuperLike ? `${superLikesRemaining}/${superLikeLimit}` : '0 left'}
+            </span>
+          </div>
 
           {/* Like Button */}
           <button
