@@ -1,5 +1,6 @@
 import api from './api';
 import type { LoginCredentials, RegisterCredentials, AuthResponse, UserPreferences, PreferencesResponse } from '../types';
+import { connectSocket, disconnectSocket } from './socketService';
 
 export const authService = {
   /**
@@ -20,6 +21,12 @@ export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
       const response = await api.post<AuthResponse>('/auth/login', credentials);
+
+      if (response.data?.token) {
+        // Ensure socket connects immediately after successful login
+        connectSocket();
+      }
+
       return response.data;
     } catch (error: any) {
       throw new Error(error.message || 'Login failed');
@@ -45,6 +52,8 @@ export const authService = {
    * Logout user (clear token, etc.)
    */
   logout(): void {
+    // Disconnect socket before clearing auth data
+    disconnectSocket();
     // Clear any stored auth data
     localStorage.removeItem('token');
     localStorage.removeItem('user');

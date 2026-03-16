@@ -382,3 +382,36 @@ export interface DiscoveryFilters {
   limit?: number;
   offset?: number;
 }
+
+// ─── Chat Types ───────────────────────────────────────────────────
+
+export interface ChatMessage {
+  _id: string;
+  matchId: string;
+  sender: {
+    _id: string;
+    name: string;
+    profilePicture?: string;
+  };
+  receiver: {
+    _id: string;
+    name: string;
+    profilePicture?: string;
+  };
+  content: string;
+  read: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SendMessagePayload {
+  matchId: string;
+  receiverId: string;
+  content: string;
+}
+
+export interface NewMessageNotification {
+  matchId: string;
+  senderId: string;
+  preview: string;
+}
