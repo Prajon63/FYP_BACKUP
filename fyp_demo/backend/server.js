@@ -4,11 +4,15 @@ import express, { json } from 'express';
 import { connect } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import cors from 'cors';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import connectDB from './config/db_connection.js';
 import dotenv from 'dotenv';
 import authRoute from './routes/auth.js';
 import profileRoute from './routes/profile.js';
 import discoverRoute from './routes/discover.js';
+import chatRoutes from './routes/chat.js';
+import { registerChatSocket } from './sockets/chatSocket.js';
 import cloudinary from './config/cloudinary.js';  //  import to initialize config for cloudinary
 
 // require('dotenv').config();  //commonjs structure
@@ -27,6 +31,7 @@ connectDB();
 app.use('/api/auth', authRoute);
 app.use('/api/profile', profileRoute);
 app.use('/api/discover', discoverRoute);
+app.use('/api/chat', chatRoutes);
 // app.use('/api/auth', require('./routes/auth'));
 
 // Health check endpoint
@@ -61,8 +66,22 @@ app.use((err, req, res, next) => {
 // app.listen(PORT, () => console.log(`Backend → http://localhost:${PORT}`));
 
 const PORT = process.env.PORT || 5000;
-// const PORT = 8080;
-app.listen(PORT, () => {
+
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
+
+app.set('io', io);
+
+registerChatSocket(io);
+
+httpServer.listen(PORT, () => {
   console.log(`Backend server running → http://localhost:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

@@ -154,7 +154,10 @@ const Home: React.FC = () => {
                 <Sparkles className="w-5 h-5" />
                 Matches
               </button>
-              <button className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors">
+              <button
+                onClick={() => navigate('/messages')}
+                className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors"
+              >
                 Messages
               </button>
               <button

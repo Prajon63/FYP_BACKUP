@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { discoverService } from '../services/discoverService';
+import ChatWindow from '../components/ChatWindow';
 import type { Match } from '../types';
 
 const Matches: React.FC = () => {
@@ -20,6 +21,12 @@ const Matches: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [activeChat, setActiveChat] = useState<{
+    matchId: string;
+    receiverId: string;
+    receiverName: string;
+    receiverPhoto?: string;
+  } | null>(null);
 
   // FIX 14: Robust userId retrieval - same pattern as Discover.tsx
   const userId = localStorage.getItem('userId') ||
@@ -66,7 +73,25 @@ const Matches: React.FC = () => {
   };
 
   const handleMessage = (match: Match) => {
-    toast.success('Messaging feature coming soon!');
+    if (!match.user?._id) return;
+    setActiveChat({
+      matchId: match.matchId,
+      receiverId: match.user._id,
+      receiverName: match.user.username || 'Match',
+      receiverPhoto: match.user.profilePicture
+    });
+  };
+
+  const handleOpenMessagesPage = (match: Match) => {
+    if (!match.user?._id) {
+      navigate('/messages');
+      return;
+    }
+    navigate(
+      `/messages?matchId=${encodeURIComponent(
+        match.matchId
+      )}&receiverId=${encodeURIComponent(match.user._id)}`
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -211,6 +236,12 @@ const Matches: React.FC = () => {
                       Message
                     </button>
                     <button
+                      onClick={(e) => { e.stopPropagation(); handleOpenMessagesPage(match); }}
+                      className="px-3 py-2 text-xs rounded-xl border border-purple-200 text-purple-600 hover:bg-purple-50 transition-colors"
+                    >
+                      Open page
+                    </button>
+                    <button
                       onClick={(e) => { e.stopPropagation(); handleUnmatch(match.matchId, match.user._id); }}
                       className="bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 p-2 rounded-xl transition-colors"
                     >
@@ -281,6 +312,12 @@ const Matches: React.FC = () => {
                   Send Message
                 </button>
                 <button
+                  onClick={() => handleOpenMessagesPage(selectedMatch)}
+                  className="px-4 py-3 text-sm rounded-xl border border-purple-200 text-purple-600 hover:bg-purple-50 transition-colors"
+                >
+                  Open full chat page
+                </button>
+                <button
                   onClick={() => handleUnmatch(selectedMatch.matchId, selectedMatch.user._id)}
                   className="bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 p-3 rounded-xl transition-colors"
                 >
@@ -289,6 +326,18 @@ const Matches: React.FC = () => {
               </div>
             </div>
           </motion.div>
+        </div>
+      )}
+      {/* Chat Panel */}
+      {activeChat && (
+        <div className="fixed inset-y-0 right-0 w-full sm:w-96 z-50 p-4 flex flex-col">
+          <ChatWindow
+            matchId={activeChat.matchId}
+            receiverId={activeChat.receiverId}
+            receiverName={activeChat.receiverName}
+            receiverPhoto={activeChat.receiverPhoto}
+            onClose={() => setActiveChat(null)}
+          />
         </div>
       )}
     </div>

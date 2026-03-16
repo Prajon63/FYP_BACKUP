@@ -9,6 +9,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Discover from './pages/Discover';
 import Matches from './pages/Matches';
+import Messages from './pages/Messages';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/discover" element={<Discover />} />
         <Route path="/matches" element={<Matches />} />
+        <Route path="/messages" element={<Messages />} />
       </Routes>
     </BrowserRouter>
   );
