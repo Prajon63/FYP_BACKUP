@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { discoverService } from '../services/discoverService';
 import ChatWindow from '../components/ChatWindow';
 import type { Match } from '../types';
+import { getStoredUserId } from '../utils/auth';
 
 const Matches: React.FC = () => {
   const navigate = useNavigate();
@@ -29,8 +30,7 @@ const Matches: React.FC = () => {
   } | null>(null);
 
   // FIX 14: Robust userId retrieval - same pattern as Discover.tsx
-  const userId = localStorage.getItem('userId') ||
-    (() => { try { return JSON.parse(localStorage.getItem('user') || '{}')._id || ''; } catch { return ''; } })();
+  const userId = getStoredUserId();
 
   useEffect(() => {
     if (!userId) {

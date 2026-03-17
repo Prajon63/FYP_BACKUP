@@ -41,6 +41,19 @@ export const getChatHistory = async (req, res) => {
       { read: true }
     );
 
+    const io = req.app.get('io');
+    if (io && messages.length > 0) {
+      const senderIds = [...new Set(
+        messages
+          .filter(m => m.receiver._id.toString() === userId.toString())
+          .map(m => m.sender._id.toString())
+      )];
+
+      senderIds.forEach(senderId => {
+        io.to(`user:${senderId}`).emit('messages_read', { matchId });
+      });
+    }
+
     res.json({ messages });
   } catch (err) {
     console.error('getChatHistory error:', err);

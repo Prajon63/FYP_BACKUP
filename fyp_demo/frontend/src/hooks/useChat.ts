@@ -31,7 +31,7 @@ export const useChat = ({ matchId, receiverId }: UseChatOptions): UseChatReturn 
   useEffect(() => {
     if (!matchId) return;
 
-    const socket = connectSocket();
+    const socket = getSocket() ?? connectSocket();
 
     const loadHistory = async () => {
       try {
@@ -72,16 +72,23 @@ export const useChat = ({ matchId, receiverId }: UseChatOptions): UseChatReturn 
       setError(message);
     };
 
+    const handleMessagesRead = ({ matchId: readMatchId }: { matchId: string }) => {
+      if (readMatchId !== matchId) return;
+      setMessages(prev => prev.map(m => ({ ...m, read: true })));
+    };
+
     socket.on('receive_message', handleReceiveMessage);
     socket.on('user_typing', handleUserTyping);
     socket.on('user_stopped_typing', handleUserStoppedTyping);
     socket.on('error', handleError);
+    socket.on('messages_read', handleMessagesRead);
 
     return () => {
       socket.off('receive_message', handleReceiveMessage);
       socket.off('user_typing', handleUserTyping);
       socket.off('user_stopped_typing', handleUserStoppedTyping);
       socket.off('error', handleError);
+      socket.off('messages_read', handleMessagesRead);
     };
   }, [matchId]);
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
 import { useChat } from '../hooks/useChat';
 import { useAuth } from '../hooks/useAuth';
 import type { ChatMessage } from '../types';
@@ -65,6 +66,13 @@ const ChatWindow = ({
             <p className="text-xs text-white/80 mt-0.5 animate-pulse">typing…</p>
           )}
         </div>
+        <button
+          onClick={onClose}
+          className="ml-auto p-1.5 hover:bg-white/20 rounded-full transition"
+          aria-label="Close chat"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Messages */}
@@ -87,10 +95,7 @@ const ChatWindow = ({
 
         {messages.map((msg: ChatMessage) => {
           const isMine = msg.sender._id === user?._id;
-          const initial =
-            (msg.sender as any).name?.charAt(0) ??
-            (msg.sender as any).username?.charAt(0) ??
-            receiverName.charAt(0);
+          const initial = msg.sender.username?.charAt(0) ?? receiverName.charAt(0);
 
           return (
             <div
