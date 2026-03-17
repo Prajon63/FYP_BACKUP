@@ -12,6 +12,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { discoverService } from '../services/discoverService';
 import ChatWindow from '../components/ChatWindow';
 import type { Match } from '../types';
+import { getStoredUserId } from '../utils/auth';
 
 const Messages: React.FC = () => {
   const navigate = useNavigate();
@@ -27,15 +28,7 @@ const Messages: React.FC = () => {
     receiverPhoto?: string;
   } | null>(null);
 
-  const userId =
-    localStorage.getItem('userId') ||
-    (() => {
-      try {
-        return JSON.parse(localStorage.getItem('user') || '{}')._id || '';
-      } catch {
-        return '';
-      }
-    })();
+  const userId = getStoredUserId();
 
   useEffect(() => {
     if (!userId) {
@@ -118,11 +111,6 @@ const Messages: React.FC = () => {
     return date.toLocaleDateString();
   };
 
-  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
-
-  const showListOnly = !isDesktop && !activeChat;
-  const showChatOnly = !isDesktop && !!activeChat;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-50 flex flex-col">
       {/* Mobile top bar */}
@@ -176,11 +164,7 @@ const Messages: React.FC = () => {
       {/* Main content */}
       <div className="flex-1 flex flex-col lg:flex-row max-w-6xl mx-auto w-full px-0 lg:px-6 py-0 lg:py-6 gap-0 lg:gap-6">
         {/* Conversation list */}
-        <aside
-          className={`bg-white lg:rounded-3xl lg:shadow-xl lg:w-80 border-slate-100 border-r lg:border flex flex-col ${
-            showChatOnly ? 'hidden' : 'flex'
-          }`}
-        >
+        <aside className="bg-white lg:rounded-3xl lg:shadow-xl lg:w-80 border-slate-100 border-r lg:border flex flex-col">
           {/* Mobile search and filters */}
           <div className="lg:hidden px-4 pt-3 pb-1 border-b border-slate-100">
             <div className="relative mb-3">
@@ -276,11 +260,7 @@ const Messages: React.FC = () => {
 
         {/* Chat panel */}
         {activeChat && (
-          <section
-            className={`flex-1 bg-white lg:rounded-3xl lg:shadow-xl flex flex-col ${
-              showListOnly ? 'hidden' : 'flex'
-            }`}
-          >
+          <section className="flex-1 bg-white lg:rounded-3xl lg:shadow-xl flex flex-col">
             <ChatWindow
               matchId={activeChat.matchId}
               receiverId={activeChat.receiverId}

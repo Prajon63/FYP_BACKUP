@@ -390,12 +390,12 @@ export interface ChatMessage {
   matchId: string;
   sender: {
     _id: string;
-    name: string;
+    username: string;
     profilePicture?: string;
   };
   receiver: {
     _id: string;
-    name: string;
+    username: string;
     profilePicture?: string;
   };
   content: string;
@@ -414,4 +414,8 @@ export interface NewMessageNotification {
   matchId: string;
   senderId: string;
   preview: string;
+}
+
+export interface MessagesReadPayload {
+  matchId: string;
 }
