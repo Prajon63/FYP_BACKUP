@@ -330,7 +330,7 @@ const Matches: React.FC = () => {
       )}
       {/* Chat Panel */}
       {activeChat && (
-        <div className="fixed inset-y-0 right-0 w-full sm:w-96 z-50 p-4 flex flex-col">
+        <div className="fixed inset-y-0 right-0 w-full sm:w-96 z-50 p-4 flex flex-col h-screen">
           <ChatWindow
             matchId={activeChat.matchId}
             receiverId={activeChat.receiverId}

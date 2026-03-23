@@ -48,7 +48,7 @@ const ChatWindow = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div className="flex flex-col h-full max-h-screen bg-white rounded-2xl shadow-xl overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white">
         <div className="w-9 h-9 rounded-full bg-white/30 overflow-hidden flex-shrink-0">
@@ -76,7 +76,7 @@ const ChatWindow = ({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-gray-50">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2 bg-gray-50">
         {loading && (
           <div className="flex justify-center py-8">
             <div className="w-6 h-6 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" />
@@ -178,4 +178,3 @@ const ChatWindow = ({
 };
 
 export default ChatWindow;
-
