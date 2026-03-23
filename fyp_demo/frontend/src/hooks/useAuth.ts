@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
+import { connectSocket } from '../services/socketService';
 import type { LoginCredentials, RegisterCredentials, User } from '../types';
 import toast from 'react-hot-toast';
 
@@ -27,6 +28,8 @@ export const useAuth = () => {
         localStorage.setItem('userId', response.user._id);
         if (response.token) {
           localStorage.setItem('token', response.token);
+          // Connect socket only after new token is persisted
+          connectSocket();
         }
         toast.success('Welcome back! Redirecting...');
         setTimeout(() => {
@@ -55,6 +58,8 @@ export const useAuth = () => {
         localStorage.setItem('userId', response.user._id);
         if (response.token) {
           localStorage.setItem('token', response.token);
+          // Connect socket only after new token is persisted
+          connectSocket();
         }
         toast.success('Account created! Setting up your profile...');
         setTimeout(() => {
