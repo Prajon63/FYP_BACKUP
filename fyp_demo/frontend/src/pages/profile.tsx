@@ -1,813 +1,15 @@
-
-// import React, { useState, useEffect } from 'react';
-// import { motion, AnimatePresence } from 'framer-motion';
-// import { useNavigate } from 'react-router-dom';
-// import { Edit2, X, Save, Plus, Image as ImageIcon, Settings, LogOut } from 'lucide-react';
-// import toast, { Toaster } from 'react-hot-toast';
-// import { userService } from '../services/userService';
-// import api from '../services/api';
-// import type { User, Post, ProfileUpdateData, PostData } from '../types';
-// import PostCard from '../components/PostCard';
-// import Button from '../components/Button';
-// import Input from '../components/Input';
-// import ProfileCompletion from '../components/ProfileCompletion';
-// import ImageUpload from '../components/ImageUpload';
-// import { ProfileSkeleton, PostSkeleton } from '../components/SkeletonLoader';
-// import PhotoCarousel from '../components/PhotoCarousel';
-
-// const Profile: React.FC = () => {
-//   const navigate = useNavigate();
-//   const [user, setUser] = useState<User | null>(null);
-//   const [loading, setLoading] = useState(true);
-//   const [isEditingProfile, setIsEditingProfile] = useState(false);
-//   const [isAddingPost, setIsAddingPost] = useState(false);
-//   const [editingPost, setEditingPost] = useState<Post | null>(null);
-//   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
-//   const [showSettings, setShowSettings] = useState(false);
-//   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
-//   const [isUploadingCover, setIsUploadingCover] = useState(false);
-//   const [isUploadingPost, setIsUploadingPost] = useState(false);
-//   const [galleryPhotoFiles, setGalleryPhotoFiles] = useState<File[]>([]);  //a new state for carousel
-
-//   // Form states
-//   const [username, setUsername] = useState('');
-//   const [bio, setBio] = useState('');
-
-//   // File states for uploads
-//   const [profilePictureFiles, setProfilePictureFiles] = useState<File[]>([]);
-//   const [coverImageFiles, setCoverImageFiles] = useState<File[]>([]);
-//   const [postImageFiles, setPostImageFiles] = useState<File[]>([]);
-
-//   // Post form states
-//   const [postCaption, setPostCaption] = useState('');
-
-//   const getCurrentUserId = () => {
-//     const userStr = localStorage.getItem('user');
-//     if (userStr) {
-//       try {
-//         const userData = JSON.parse(userStr);
-//         return userData._id || userData.id;
-//       } catch (error) {
-//         return null;
-//       }
-//     }
-//     return null;
-//   };
-
-//   useEffect(() => {
-//     loadProfile();
-//   }, []);
-
-//   const loadProfile = async () => {
-//     const userId = getCurrentUserId();
-//     if (!userId) {
-//       toast.error('Please login to view profile');
-//       setLoading(false);
-//       setTimeout(() => navigate('/'), 2000);
-//       return;
-//     }
-
-//     try {
-//       setLoading(true);
-//       const response = await userService.getUserProfile(userId);
-//       if (response.success && response.user) {
-//         setUser(response.user);
-//         setUsername(response.user.username || '');
-//         setBio(response.user.bio || '');
-//       } else {
-//         toast.error(response.error || 'Failed to load profile');
-//       }
-//     } catch (error: any) {
-//       toast.error(error.message || 'Failed to load profile');
-//       setUser(null);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Upload profile picture to Cloudinary
-//   const uploadProfilePicture = async (file: File): Promise<string | null> => {
-//     const userId = getCurrentUserId();
-//     if (!userId) return null;
-
-//     const formData = new FormData();
-//     formData.append('image', file);
-
-//     try {
-//       setIsUploadingProfile(true);
-//       const response = await api.post(`/profile/${userId}/profile-picture`, formData, {
-//         headers: { 'Content-Type': 'multipart/form-data' },
-//       });
-
-//       if (response.data.success) {
-//         return response.data.profilePicture;
-//       }
-//       return null;
-//     } catch (error: any) {
-//       toast.error('Failed to upload profile picture');
-//       return null;
-//     } finally {
-//       setIsUploadingProfile(false);
-//     }
-//   };
-
-//   // Upload cover image to Cloudinary
-//   const uploadCoverImage = async (file: File): Promise<string | null> => {
-//     const userId = getCurrentUserId();
-//     if (!userId) return null;
-
-//     const formData = new FormData();
-//     formData.append('image', file);
-
-//     try {
-//       setIsUploadingCover(true);
-//       const response = await api.post(`/profile/${userId}/cover-image`, formData, {
-//         headers: { 'Content-Type': 'multipart/form-data' },
-//       });
-
-//       if (response.data.success) {
-//         return response.data.coverImage;
-//       }
-//       return null;
-//     } catch (error: any) {
-//       toast.error('Failed to upload cover image');
-//       return null;
-//     } finally {
-//       setIsUploadingCover(false);
-//     }
-//   };
-
-//   //for photo carousel
-//   // Upload gallery photos
-//   const uploadGalleryPhotos = async (files: File[]): Promise<string[] | null> => {
-//     const userId = getCurrentUserId();
-//     if (!userId) return null;
-
-//     const formData = new FormData();
-//     files.forEach(file => {
-//       formData.append('photos', file);
-//     });
-
-//     try {
-//       const response = await api.post(`/profile/${userId}/photos`, formData, {
-//         headers: { 'Content-Type': 'multipart/form-data' },
-//       });
-
-//       if (response.data.success) {
-//         return response.data.photos;
-//       }
-//       return null;
-//     } catch (error: any) {
-//       toast.error('Failed to upload gallery photos');
-//       return null;
-//     }
-//   };
-
-
-//   const handleUpdateProfile = async () => {
-//     const userId = getCurrentUserId();
-//     if (!userId) return;
-
-//     try {
-//       let profilePictureUrl = user?.profilePicture;
-//       let coverImageUrl = user?.coverImage;
-
-//       // Upload profile picture if new file selected
-//       if (profilePictureFiles.length > 0) {
-//         const url = await uploadProfilePicture(profilePictureFiles[0]);
-//         if (url) profilePictureUrl = url;
-//       }
-
-//       // Upload cover image if new file selected
-//       if (coverImageFiles.length > 0) {
-//         const url = await uploadCoverImage(coverImageFiles[0]);
-//         if (url) coverImageUrl = url;
-//       }
-
-//       // Upload gallery photos if new files selected
-//       if (galleryPhotoFiles.length > 0) {
-//         const urls = await uploadGalleryPhotos(galleryPhotoFiles);
-//         if (urls) {
-//           // Photos will be saved by the backend endpoint
-//           setGalleryPhotoFiles([]);
-//         }
-//       }
-
-//       const updateData: ProfileUpdateData = {
-//         username: username.trim() || undefined,
-//         bio: bio.trim() || undefined,
-//         profilePicture: profilePictureUrl,
-//         coverImage: coverImageUrl,
-//       };
-
-//       const response = await userService.updateProfile(userId, updateData);
-//       if (response.success && response.user) {
-//         setUser(response.user);
-//         setIsEditingProfile(false);
-//         setProfilePictureFiles([]);
-//         setCoverImageFiles([]);
-//         toast.success('✨ Profile updated successfully!', {
-//           icon: '🎉',
-//           duration: 3000,
-//         });
-//       }
-//     } catch (error: any) {
-//       toast.error(error.message || 'Failed to update profile');
-//     }
-//   };
-
-//   const handleAddPost = async () => {
-//     const userId = getCurrentUserId();
-//     if (!userId) return;
-
-//     if (postImageFiles.length === 0) {
-//       toast.error('Please select an image');
-//       return;
-//     }
-
-//     try {
-
-
-//       setIsUploadingPost(true);
-
-//       const formData = new FormData();
-
-//       postImageFiles.forEach((file) => {
-//         formData.append('images', file);
-//       });
-//       formData.append('caption', postCaption.trim() || '');        // send caption in same request
-
-
-//       const token = localStorage.getItem('token'); // Add this 
-//       const res = await api.post(`/profile/${userId}/posts`, formData, {
-//         headers: {
-//           Authorization: `Bearer ${token}`, //  Add this
-//         },
-//       });
-
-//       if (res.data?.success) {
-//         toast.success('📸 Post added successfully!');
-//         setIsAddingPost(false);
-//         setPostImageFiles([]);
-//         setPostCaption('');
-//         loadProfile();
-//       } else {
-//         toast.error(res.data?.error || 'Failed to add post');
-//       }
-//     } catch (error: any) {
-//       console.error('Add post error:', error); //  Add detailed logging
-//       toast.error(error?.response?.data?.error || error.message || 'Failed to add post');
-//     } finally {
-//       setIsUploadingPost(false);
-//     }
-
-//   };
-
-//   const handleUpdatePost = async () => {
-//     if (!editingPost) return;
-//     const userId = getCurrentUserId();
-//     if (!userId) return;
-
-//     try {
-//       setIsUploadingPost(true);
-
-//       const formData = new FormData();
-
-//       // Add new images if selected
-//       if (postImageFiles.length > 0) {
-//         postImageFiles.forEach(file => {
-//           formData.append('images', file);
-//         });
-//       }
-
-//       formData.append('caption', postCaption.trim() || editingPost.caption);
-
-//       const response = await api.put(`/profile/${userId}/posts/${editingPost._id}`, formData);
-
-//       if (response.data.success) {
-//         toast.success('🎉 Post updated successfully!');
-//         setEditingPost(null);
-//         setPostImageFiles([]);
-//         setPostCaption('');
-//         loadProfile();
-//       }
-//     } catch (error: any) {
-//       toast.error(error.message || 'Failed to update post');
-//     } finally {
-//       setIsUploadingPost(false);
-//     }
-//   };
-
-
-//   const handleDeletePost = async (postId: string) => {
-//     if (!confirm('Are you sure you want to delete this post?')) return;
-
-//     const userId = getCurrentUserId();
-//     if (!userId) return;
-
-//     try {
-//       const response = await userService.deletePost(userId, postId);
-//       if (response.success) {
-//         toast.success('🗑️ Post deleted successfully!');
-//         loadProfile();
-//       }
-//     } catch (error: any) {
-//       toast.error(error.message || 'Failed to delete post');
-//     }
-//   };
-
-//   const handleEditPost = (post: Post) => {
-//     setEditingPost(post);
-//     setPostCaption(post.caption);
-//     setPostImageFiles([]);
-//     setIsAddingPost(false);
-//   };
-
-//   const handleToggleLike = (postId: string) => {
-//     const newLiked = new Set(likedPosts);
-//     if (newLiked.has(postId)) {
-//       newLiked.delete(postId);
-//     } else {
-//       newLiked.add(postId);
-//     }
-//     setLikedPosts(newLiked);
-//   };
-
-//   const handleLogout = () => {
-//     localStorage.removeItem('user');
-//     localStorage.removeItem('token');
-//     toast.success('👋 Logged out successfully!');
-//     navigate('/');
-//   };
-
-//   const openEditProfile = () => {
-//     if (user) {
-//       setUsername(user.username || '');
-//       setBio(user.bio || '');
-//       setProfilePictureFiles([]);
-//       setCoverImageFiles([]);
-//     }
-//     setIsEditingProfile(true);
-//   };
-
-//   const cancelEdit = () => {
-//     setIsEditingProfile(false);
-//     setIsAddingPost(false);
-//     setEditingPost(null);
-//     setPostImageFiles([]);
-//     setPostCaption('');
-//     setProfilePictureFiles([]);
-//     setCoverImageFiles([]);
-//   };
-
-//   if (loading) {
-//     return (
-//       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-//         <nav className="bg-white shadow-md sticky top-0 z-50">
-//           <div className="max-w-6xl mx-auto px-4 py-4">
-//             <div className="h-8 bg-gray-200 rounded-lg w-32"></div>
-//           </div>
-//         </nav>
-//         <div className="max-w-6xl mx-auto px-4 py-8">
-//           <ProfileSkeleton />
-//           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-//             <PostSkeleton />
-//             <PostSkeleton />
-//             <PostSkeleton />
-//           </div>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   if (!user) {
-//     return (
-//       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
-//         <div className="text-center">
-//           <p className="text-gray-600">User not found</p>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   const defaultAvatar = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop';
-
-//   return (
-//     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-//       <Toaster position="top-center" />
-
-//       {/* Enhanced Navigation Bar */}
-//       <nav className="bg-white shadow-md sticky top-0 z-50 backdrop-blur-lg bg-white/95">
-//         <div className="max-w-6xl mx-auto px-4 py-4">
-//           <div className="flex items-center justify-between">
-//             <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-//               Capella
-//             </h1>
-//             <div className="flex items-center gap-4">
-//               <a href="/home" className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors font-medium">
-//                 Home
-//               </a>
-//               <button
-//                 onClick={() => setShowSettings(!showSettings)}
-//                 className="p-2 text-gray-600 hover:text-pink-600 transition-colors"
-//               >
-//                 <Settings className="w-5 h-5" />
-//               </button>
-//               <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 cursor-pointer ring-2 ring-pink-200 hover:ring-4 transition-all"></div>
-//             </div>
-//           </div>
-//         </div>
-//       </nav>
-
-//       {/* Settings Dropdown */}
-//       <AnimatePresence>
-//         {showSettings && (
-//           <motion.div
-//             initial={{ opacity: 0, y: -10 }}
-//             animate={{ opacity: 1, y: 0 }}
-//             exit={{ opacity: 0, y: -10 }}
-//             className="fixed top-20 right-4 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 min-w-[200px] z-50"
-//           >
-//             <button
-//               onClick={handleLogout}
-//               className="w-full px-4 py-3 text-left hover:bg-red-50 flex items-center gap-3 text-red-600 transition-colors"
-//             >
-//               <LogOut className="w-4 h-4" />
-//               Logout
-//             </button>
-//           </motion.div>
-//         )}
-//       </AnimatePresence>
-
-//       <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-//         {/* Profile Header */}
-//         <motion.div
-//           initial={{ opacity: 0, y: 20 }}
-//           animate={{ opacity: 1, y: 0 }}
-//           className="bg-white rounded-3xl shadow-xl overflow-hidden"
-//         >
-//           <div className="relative">
-//             <div className="relative h-72 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600">
-//               {user.coverImage && (
-//                 <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
-//               )}
-//               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-
-//               <div className="absolute bottom-6 left-6 right-6">
-//                 <div className="flex items-end gap-6">
-//                   <motion.div
-//                     whileHover={{ scale: 1.05 }}
-//                     className="relative"
-//                   >
-//                     <img
-//                       src={user.profilePicture || defaultAvatar}
-//                       alt={user.username || user.email}
-//                       className="w-32 h-32 rounded-2xl border-4 border-white object-cover shadow-2xl"
-//                     />
-//                     <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 rounded-full border-4 border-white"></div>
-//                   </motion.div>
-
-//                   <div className="flex-1 text-white pb-2">
-//                     <h2 className="font-bold text-3xl mb-1">
-//                       {user.username || user.email.split('@')[0]}
-//                     </h2>
-//                     <p className="text-sm opacity-90 mb-2">{user.email}</p>
-//                     {user.bio && (
-//                       <p className="text-sm opacity-95 max-w-2xl">{user.bio}</p>
-//                     )}
-//                   </div>
-
-//                   {!isEditingProfile && (
-//                     <Button onClick={openEditProfile} className="mb-2">
-//                       <Edit2 className="w-4 h-4 mr-2" />
-//                       Edit Profile
-//                     </Button>
-//                   )}
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-//         </motion.div>
-
-//         {/* Profile Completion Card */}
-//         <ProfileCompletion
-//           user={user}
-//           onNavigateToAbout={() => navigate('/about')}
-//         />
-
-//         {/* About Me Preview */}
-//         <motion.div
-//           initial={{ opacity: 0, y: 20 }}
-//           animate={{ opacity: 1, y: 0 }}
-//           transition={{ delay: 0.1 }}
-//           className="bg-white rounded-2xl shadow-lg p-6"
-//         >
-//           <div className="flex items-center justify-between mb-3">
-//             <h3 className="text-xl font-semibold text-gray-800">About Me</h3>
-//             <button
-//               onClick={() => navigate('/about')}
-//               className="text-sm text-pink-600 hover:text-purple-600 font-semibold flex items-center gap-1"
-//             >
-//               {user.about ? 'View Full Profile' : 'Complete About'}...
-//             </button>
-//           </div>
-//           <p className="text-gray-700 text-sm line-clamp-3 leading-relaxed">
-//             {user.about || "Tell your story, share your passions, what you're looking for..."}
-//           </p>
-//         </motion.div>
-
-//         {/* Photo Gallery Carousel/gallery concept */}
-//         {user.photos && user.photos.length > 0 && (
-//           <motion.div
-//             initial={{ opacity: 0, y: 20 }}
-//             animate={{ opacity: 1, y: 0 }}
-//             transition={{ delay: 0.2 }}
-//             className="bg-white rounded-2xl shadow-lg p-6"
-//           >
-//             <PhotoCarousel photos={user.photos} />
-//           </motion.div>
-//         )}
-
-//         {/* Edit Profile Modal */}
-//         <AnimatePresence>
-//           {isEditingProfile && (
-//             <motion.div
-//               initial={{ opacity: 0 }}
-//               animate={{ opacity: 1 }}
-//               exit={{ opacity: 0 }}
-//               className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-//               onClick={cancelEdit}
-//             >
-//               <motion.div
-//                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
-//                 animate={{ scale: 1, opacity: 1, y: 0 }}
-//                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-//                 onClick={(e) => e.stopPropagation()}
-//                 className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-//               >
-//                 <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-3xl z-10">
-//                   <div className="flex items-center justify-between">
-//                     <h3 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-//                       Edit Profile
-//                     </h3>
-//                     <button onClick={cancelEdit} className="text-gray-500 hover:text-gray-700">
-//                       <X className="w-6 h-6" />
-//                     </button>
-//                   </div>
-//                 </div>
-
-//                 <div className="p-6 space-y-6">
-//                   <Input
-//                     label="Username"
-//                     value={username}
-//                     onChange={(e) => setUsername(e.target.value)}
-//                     placeholder="Enter username"
-//                   />
-
-//                   <div>
-//                     <label className="text-sm font-medium text-gray-700 mb-2 block">Bio</label>
-//                     <textarea
-//                       value={bio}
-//                       onChange={(e) => setBio(e.target.value)}
-//                       placeholder="Share something about yourself..."
-//                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all resize-none"
-//                       rows={4}
-//                       maxLength={500}
-//                     />
-//                     <p className="text-xs text-gray-500 mt-1">{bio.length}/500</p>
-//                   </div>
-
-//                   <ImageUpload
-//                     label="Profile Picture"
-//                     files={profilePictureFiles}     //newly added
-//                     onFilesChange={setProfilePictureFiles}
-//                     maxFiles={1}
-//                     aspectRatio="square"
-//                     helperText="Upload your profile picture"
-//                   />
-
-//                   <ImageUpload
-//                     label="Cover Image"
-//                     files={coverImageFiles}
-//                     onFilesChange={setCoverImageFiles}
-//                     maxFiles={1}
-//                     aspectRatio="cover"
-//                     helperText="Upload your cover image"
-//                   />
-
-//                   {/* a new concept for carousel */}
-//                   <ImageUpload
-//                     label="Gallery Photos"
-//                     files={galleryPhotoFiles}
-//                     onFilesChange={setGalleryPhotoFiles}
-//                     multiple={true}
-//                     maxFiles={10}
-//                     aspectRatio="square"
-//                     helperText="Upload photos for your gallery carousel (up to 10)"
-//                   />
-
-//                   <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
-//                     <p className="text-sm text-purple-700">
-//                       💡 <strong>Complete your About Me</strong> section for better matches!{' '}
-//                       <button
-//                         onClick={() => navigate('/about')}
-//                         className="text-purple-600 hover:text-purple-800 font-semibold underline"
-//                       >
-//                         Go to About...’
-//                       </button>
-//                     </p>
-//                   </div>
-//                 </div>
-
-//                 <div className="sticky bottom-0 bg-gray-50 px-6 py-4 rounded-b-3xl flex gap-4">
-//                   <Button onClick={cancelEdit} variant="outline" fullWidth>
-//                     Cancel
-//                   </Button>
-//                   <Button
-//                     onClick={handleUpdateProfile}
-//                     fullWidth
-//                     isLoading={isUploadingProfile || isUploadingCover}
-//                   >
-//                     <Save className="w-4 h-4 mr-2" />
-//                     Save Changes
-//                   </Button>
-//                 </div>
-//               </motion.div>
-//             </motion.div>
-//           )}
-//         </AnimatePresence>
-
-//         {/* Add/Edit Post Modal */}
-//         <AnimatePresence>
-//           {(isAddingPost || editingPost) && (
-//             <motion.div
-//               initial={{ opacity: 0 }}
-//               animate={{ opacity: 1 }}
-//               exit={{ opacity: 0 }}
-//               className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-//               onClick={cancelEdit}
-//             >
-//               <motion.div
-//                 initial={{ scale: 0.9, opacity: 0 }}
-//                 animate={{ scale: 1, opacity: 1 }}
-//                 exit={{ scale: 0.9, opacity: 0 }}
-//                 onClick={(e) => e.stopPropagation()}
-//                 className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col"
-//               >
-//                 <div className="px-6 py-4 border-b border-gray-200 rounded-t-3xl">
-//                   <div className="flex items-center justify-between">
-//                     <h3 className="text-2xl font-bold">
-//                       {editingPost ? 'Edit Post' : 'Create Post'}
-//                     </h3>
-//                     <button onClick={cancelEdit} className="text-gray-500 hover:text-gray-700">
-//                       <X className="w-6 h-6" />
-//                     </button>
-//                   </div>
-//                 </div>
-
-//                 <div className="p-6 space-y-4 overflow-y-auto flex-1">
-//                   {editingPost && editingPost.images && editingPost.images.length > 0 && postImageFiles.length === 0 && (
-//                     <div className="mb-4">
-//                       <label className="text-sm font-medium text-gray-700 mb-2 block">
-//                         Current Images
-//                       </label>
-//                       <div className="grid grid-cols-2 gap-2">
-//                         {editingPost.images.map((img, idx) => (
-//                           <img
-//                             key={idx}
-//                             src={img}
-//                             alt={`Current post ${idx + 1}`}
-//                             className="w-full h-32 object-cover rounded-xl"
-//                           />
-//                         ))}
-//                       </div>
-//                       <p className="text-xs text-gray-500 mt-2">
-//                         Upload new images to replace these
-//                       </p>
-//                     </div>
-//                   )}
-
-//                   <ImageUpload
-//                     label={editingPost ? "Replace Post Image (optional)" : "Post Image"}
-//                     files={postImageFiles}
-//                     onFilesChange={setPostImageFiles}
-//                     maxFiles={5}
-//                     aspectRatio="square"
-//                     helperText="Select pictures for your post"
-//                   />
-
-//                   <div>
-//                     <label className="text-sm font-medium text-gray-700 mb-2 block">Caption</label>
-//                     <textarea
-//                       value={postCaption}
-//                       onChange={(e) => setPostCaption(e.target.value)}
-//                       placeholder="What's on your mind?"
-//                       className="w-full px-4 py-3 border border-gray-250 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all resize-none"
-//                       rows={3}
-//                     />
-//                   </div>
-//                 </div>
-
-//                 <div className="px-6 py-4 bg-gray-50 rounded-b-3xl flex gap-4 border-t border-gray-100">
-//                   <Button onClick={cancelEdit} variant="outline" fullWidth>
-//                     Cancel
-//                   </Button>
-//                   <Button
-//                     onClick={editingPost ? handleUpdatePost : handleAddPost}
-//                     fullWidth
-//                     isLoading={isUploadingPost}
-//                   >
-//                     <Save className="w-3 h-3 mr-2" />
-//                     {editingPost ? 'Update Post' : 'POST'}
-//                   </Button>
-//                 </div>
-//               </motion.div>
-//             </motion.div>
-//           )}
-//         </AnimatePresence>
-
-//         {/* Posts Section */}
-//         <div className="space-y-6">
-//           <div className="flex items-center justify-between">
-//             <h3 className="text-2xl font-bold text-gray-800">My Posts</h3>
-//             <Button
-//               onClick={() => {
-//                 setIsAddingPost(true);
-//                 setEditingPost(null);
-//                 setPostImageFiles([]);
-//                 setPostCaption('');
-//               }}
-//             >
-//               <Plus className="w-4 h-4 mr-2" />
-//               New Post
-//             </Button>
-//           </div>
-
-//           {user.posts && user.posts.length > 0 ? (
-//             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-//               {user.posts.map((post, index) => (
-//                 <motion.div
-//                   key={post._id}
-//                   initial={{ opacity: 0, y: 20 }}
-//                   animate={{ opacity: 1, y: 0 }}
-//                   transition={{ delay: index * 0.1 }}
-//                 >
-//                   <PostCard
-//                     post={post}
-//                     username={user.username || user.email.split('@')[0]}
-//                     profilePicture={user.profilePicture}
-//                     onLike={handleToggleLike}
-//                     onEdit={handleEditPost}
-//                     onDelete={handleDeletePost}
-//                     isOwnPost={true}
-//                     liked={likedPosts.has(post._id)}
-//                   />
-//                 </motion.div>
-//               ))}
-//             </div>
-//           ) : (
-//             <motion.div
-//               initial={{ opacity: 0, scale: 0.95 }}
-//               animate={{ opacity: 1, scale: 1 }}
-//               className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-3xl shadow-lg p-12 text-center border-2 border-dashed border-pink-200"
-//             >
-//               <ImageIcon className="w-20 h-20 text-pink-400 mx-auto mb-4" />
-//               <h4 className="text-2xl font-bold text-gray-800 mb-2">No posts yet</h4>
-//               <p className="text-gray-600 mb-6 max-w-md mx-auto">
-//                 Start sharing your moments with the world and connect with others!
-//               </p>
-//               <Button
-//                 onClick={() => {
-//                   setIsAddingPost(true);
-//                   setEditingPost(null);
-//                   setPostImageFiles([]);
-//                   setPostCaption('');
-//                 }}
-//               >
-//                 <Plus className="w-4 h-4 mr-2" />
-//                 Create Your First Post
-//               </Button>
-//             </motion.div>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default Profile;
-
-
-
-//enhanced
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Edit2, X, Save, Plus, Image as ImageIcon, Settings, LogOut, Camera } from 'lucide-react';
+import {
+  Edit2, X, Save, Plus, Image as ImageIcon,
+  Settings, LogOut, Camera, MapPin, Heart,
+  Grid3X3, BookOpen, ChevronRight, Loader2
+} from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { userService } from '../services/userService';
 import api from '../services/api';
-import type { User, Post, ProfileUpdateData, PostData } from '../types';
+import type { User, Post, ProfileUpdateData } from '../types';
 import PostCard from '../components/PostCard';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -816,8 +18,13 @@ import ImageUpload from '../components/ImageUpload';
 import { ProfileSkeleton, PostSkeleton } from '../components/SkeletonLoader';
 import PhotoCarousel from '../components/PhotoCarousel';
 
+// ─── Design tokens ───────────────────────────────────────────────────────────
+const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
+
 const Profile: React.FC = () => {
   const navigate = useNavigate();
+
+  // ── State (unchanged from original) ──────────────────────────────────────
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -832,35 +39,29 @@ const Profile: React.FC = () => {
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
   const [galleryPhotoFiles, setGalleryPhotoFiles] = useState<File[]>([]);
   const [existingGalleryUrls, setExistingGalleryUrls] = useState<string[]>([]);
-
-  // Form states
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
-
-  // File states for uploads
   const [profilePictureFiles, setProfilePictureFiles] = useState<File[]>([]);
   const [coverImageFiles, setCoverImageFiles] = useState<File[]>([]);
   const [postImageFiles, setPostImageFiles] = useState<File[]>([]);
-
-  // Post form states
   const [postCaption, setPostCaption] = useState('');
 
+  // ── Auth helper (unchanged) ───────────────────────────────────────────────
   const getCurrentUserId = () => {
     const userStr = localStorage.getItem('user');
     if (userStr) {
       try {
         const userData = JSON.parse(userStr);
         return userData._id || userData.id;
-      } catch (error) {
+      } catch {
         return null;
       }
     }
     return null;
   };
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
+  // ── Data fetching (unchanged) ─────────────────────────────────────────────
+  useEffect(() => { loadProfile(); }, []);
 
   const loadProfile = async () => {
     const userId = getCurrentUserId();
@@ -870,7 +71,6 @@ const Profile: React.FC = () => {
       setTimeout(() => navigate('/'), 2000);
       return;
     }
-
     try {
       setLoading(true);
       const response = await userService.getUserProfile(userId);
@@ -890,25 +90,20 @@ const Profile: React.FC = () => {
     }
   };
 
-  // Upload profile picture to Cloudinary
+  // ── Upload helpers (all unchanged) ───────────────────────────────────────
   const uploadProfilePicture = async (file: File): Promise<string | null> => {
     const userId = getCurrentUserId();
     if (!userId) return null;
-
     const formData = new FormData();
     formData.append('image', file);
-
     try {
       setIsUploadingProfile(true);
       const response = await api.post(`/profile/${userId}/profile-picture`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-
-      if (response.data.success) {
-        return response.data.profilePicture;
-      }
+      if (response.data.success) return response.data.profilePicture;
       return null;
-    } catch (error: any) {
+    } catch {
       toast.error('Failed to upload profile picture');
       return null;
     } finally {
@@ -916,25 +111,19 @@ const Profile: React.FC = () => {
     }
   };
 
-  // Upload cover image to Cloudinary
   const uploadCoverImage = async (file: File): Promise<string | null> => {
     const userId = getCurrentUserId();
     if (!userId) return null;
-
     const formData = new FormData();
     formData.append('image', file);
-
     try {
       setIsUploadingCover(true);
       const response = await api.post(`/profile/${userId}/cover-image`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-
-      if (response.data.success) {
-        return response.data.coverImage;
-      }
+      if (response.data.success) return response.data.coverImage;
       return null;
-    } catch (error: any) {
+    } catch {
       toast.error('Failed to upload cover image');
       return null;
     } finally {
@@ -942,87 +131,65 @@ const Profile: React.FC = () => {
     }
   };
 
-  // Upload gallery photos
   const uploadGalleryPhotos = async (files: File[]): Promise<string[] | null> => {
     const userId = getCurrentUserId();
     if (!userId) return null;
-
     const formData = new FormData();
-    files.forEach(file => {
-      formData.append('photos', file);
-    });
-
+    files.forEach(file => formData.append('photos', file));
     try {
       const response = await api.post(`/profile/${userId}/photos`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-
-      if (response.data.success) {
-        return response.data.photos;
-      }
+      if (response.data.success) return response.data.photos;
       return null;
-    } catch (error: any) {
+    } catch {
       toast.error('Failed to upload gallery photos');
       return null;
     }
   };
 
-  // Delete a single carousel photo
   const deleteCarouselPhoto = async (photoUrl: string) => {
     const userId = getCurrentUserId();
     if (!userId) return;
-
     try {
-      const response = await api.delete(`/profile/${userId}/photos`, {
-        data: { photoUrl }
-      });
-
+      const response = await api.delete(`/profile/${userId}/photos`, { data: { photoUrl } });
       if (response.data.success) {
         setExistingGalleryUrls(response.data.photos);
         toast.success('Photo removed successfully');
       }
-    } catch (error: any) {
+    } catch {
       toast.error('Failed to delete photo');
     }
   };
 
+  // ── Business logic handlers (all unchanged) ───────────────────────────────
   const handleUpdateProfile = async () => {
     const userId = getCurrentUserId();
     if (!userId) return;
-
     try {
       let profilePictureUrl = user?.profilePicture;
       let coverImageUrl = user?.coverImage;
-
-      // Upload profile picture if new file selected
       if (profilePictureFiles.length > 0) {
         const url = await uploadProfilePicture(profilePictureFiles[0]);
         if (url) profilePictureUrl = url;
       }
-
-      // Upload cover image if new file selected
       if (coverImageFiles.length > 0) {
         const url = await uploadCoverImage(coverImageFiles[0]);
         if (url) coverImageUrl = url;
       }
-
       const updateData: ProfileUpdateData = {
         username: username.trim() || undefined,
         bio: bio.trim() || undefined,
         profilePicture: profilePictureUrl,
         coverImage: coverImageUrl,
       };
-
       const response = await userService.updateProfile(userId, updateData);
       if (response.success && response.user) {
         setUser(response.user);
         setIsEditingProfile(false);
         setProfilePictureFiles([]);
         setCoverImageFiles([]);
-        toast.success('✨ Profile updated successfully!', {
-          icon: '🎉',
-          duration: 3000,
-        });
+        toast.success('✨ Profile updated successfully!', { icon: '🎉', duration: 3000 });
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to update profile');
@@ -1032,21 +199,17 @@ const Profile: React.FC = () => {
   const handleUpdateGallery = async () => {
     const userId = getCurrentUserId();
     if (!userId) return;
-
     try {
       setIsUploadingGallery(true);
-
-      // Upload new photos if any
       if (galleryPhotoFiles.length > 0) {
         const urls = await uploadGalleryPhotos(galleryPhotoFiles);
         if (urls) {
           setExistingGalleryUrls(urls);
           setGalleryPhotoFiles([]);
           toast.success('📸 Gallery updated successfully!');
-          await loadProfile(); // Reload to get fresh data
+          await loadProfile();
         }
       }
-
       setIsEditingGallery(false);
     } catch (error: any) {
       toast.error(error.message || 'Failed to update gallery');
@@ -1058,28 +221,16 @@ const Profile: React.FC = () => {
   const handleAddPost = async () => {
     const userId = getCurrentUserId();
     if (!userId) return;
-
-    if (postImageFiles.length === 0) {
-      toast.error('Please select an image');
-      return;
-    }
-
+    if (postImageFiles.length === 0) { toast.error('Please select an image'); return; }
     try {
       setIsUploadingPost(true);
-
       const formData = new FormData();
-      postImageFiles.forEach((file) => {
-        formData.append('images', file);
-      });
+      postImageFiles.forEach(file => formData.append('images', file));
       formData.append('caption', postCaption.trim() || '');
-
       const token = localStorage.getItem('token');
       const res = await api.post(`/profile/${userId}/posts`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       if (res.data?.success) {
         toast.success('📸 Post added successfully!');
         setIsAddingPost(false);
@@ -1090,7 +241,6 @@ const Profile: React.FC = () => {
         toast.error(res.data?.error || 'Failed to add post');
       }
     } catch (error: any) {
-      console.error('Add post error:', error);
       toast.error(error?.response?.data?.error || error.message || 'Failed to add post');
     } finally {
       setIsUploadingPost(false);
@@ -1101,22 +251,14 @@ const Profile: React.FC = () => {
     if (!editingPost) return;
     const userId = getCurrentUserId();
     if (!userId) return;
-
     try {
       setIsUploadingPost(true);
-
       const formData = new FormData();
-
       if (postImageFiles.length > 0) {
-        postImageFiles.forEach(file => {
-          formData.append('images', file);
-        });
+        postImageFiles.forEach(file => formData.append('images', file));
       }
-
       formData.append('caption', postCaption.trim() || editingPost.caption);
-
       const response = await api.put(`/profile/${userId}/posts/${editingPost._id}`, formData);
-
       if (response.data.success) {
         toast.success('🎉 Post updated successfully!');
         setEditingPost(null);
@@ -1133,10 +275,8 @@ const Profile: React.FC = () => {
 
   const handleDeletePost = async (postId: string) => {
     if (!confirm('Are you sure you want to delete this post?')) return;
-
     const userId = getCurrentUserId();
     if (!userId) return;
-
     try {
       const response = await userService.deletePost(userId, postId);
       if (response.success) {
@@ -1157,11 +297,7 @@ const Profile: React.FC = () => {
 
   const handleToggleLike = (postId: string) => {
     const newLiked = new Set(likedPosts);
-    if (newLiked.has(postId)) {
-      newLiked.delete(postId);
-    } else {
-      newLiked.add(postId);
-    }
+    if (newLiked.has(postId)) { newLiked.delete(postId); } else { newLiked.add(postId); }
     setLikedPosts(newLiked);
   };
 
@@ -1202,21 +338,18 @@ const Profile: React.FC = () => {
     setGalleryPhotoFiles([]);
   };
 
+  // ── Loading state ─────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-        <nav className="bg-white shadow-md sticky top-0 z-50">
-          <div className="max-w-6xl mx-auto px-4 py-4">
-            <div className="h-8 bg-gray-200 rounded-lg w-32"></div>
+      <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center">
+        <style>{FONTS}</style>
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <Loader2 className="w-8 h-8 text-white animate-spin" />
           </div>
-        </nav>
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <ProfileSkeleton />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-            <PostSkeleton />
-            <PostSkeleton />
-            <PostSkeleton />
-          </div>
+          <p className="text-slate-500 text-sm font-medium" style={{ fontFamily: "'DM Sans', system-ui" }}>
+            Loading your profile…
+          </p>
         </div>
       </div>
     );
@@ -1224,451 +357,273 @@ const Profile: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center">
+        <style>{FONTS}</style>
         <div className="text-center">
-          <p className="text-gray-600">User not found</p>
+          <p className="text-slate-500" style={{ fontFamily: "'DM Sans', system-ui" }}>User not found</p>
         </div>
       </div>
     );
   }
 
-  const defaultAvatar = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop';
+  const displayName = user.username || user.email.split('@')[0];
+  const avatarFallback = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`;
+
+  // ── Shared modal wrapper styles ───────────────────────────────────────────
+  const modalBackdrop = "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+  const modalPanel = "bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+    <div
+      className="min-h-screen bg-[#faf9f7]"
+      style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}
+    >
+      <style>{FONTS}</style>
       <Toaster position="top-center" />
 
-      {/* Enhanced Navigation Bar */}
-      <nav className="bg-white shadow-md sticky top-0 z-50 backdrop-blur-lg bg-white/95">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-              Capella
-            </h1>
-            <div className="flex items-center gap-4">
-              <a href="/home" className="px-4 py-2 text-gray-600 hover:text-pink-600 transition-colors font-medium">
-                Home
-              </a>
+      {/* ── Nav ──────────────────────────────────────────────────────────── */}
+      <nav className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-100">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+          <h1
+            className="text-xl font-bold bg-gradient-to-r from-rose-500 to-pink-500 bg-clip-text text-transparent"
+            style={{ fontFamily: "'Playfair Display', serif" }}
+          >
+            Capella
+          </h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/home')}
+              className="text-sm font-medium text-slate-500 hover:text-rose-500 transition-colors px-3 py-1.5 rounded-xl hover:bg-rose-50"
+            >
+              Home
+            </button>
+            <div className="relative">
               <button
                 onClick={() => setShowSettings(!showSettings)}
-                className="p-2 text-gray-600 hover:text-pink-600 transition-colors"
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
               >
-                <Settings className="w-5 h-5" />
+                <Settings className="w-4.5 h-4.5" />
               </button>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 cursor-pointer ring-2 ring-pink-200 hover:ring-4 transition-all"></div>
+
+              <AnimatePresence>
+                {showSettings && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 min-w-[180px] z-50"
+                  >
+                    <button
+                      onClick={handleLogout}
+                      className="w-full px-4 py-3 text-left text-sm font-medium flex items-center gap-3 text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Avatar dot */}
+            <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-rose-200">
+              <img
+                src={user.profilePicture || avatarFallback}
+                alt={displayName}
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Settings Dropdown */}
-      <AnimatePresence>
-        {showSettings && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="fixed top-20 right-4 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 min-w-[200px] z-50"
-          >
-            <button
-              onClick={handleLogout}
-              className="w-full px-4 py-3 text-left hover:bg-red-50 flex items-center gap-3 text-red-600 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
 
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-        {/* Profile Header */}
+        {/* ── Hero Card ──────────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-3xl shadow-xl overflow-hidden"
         >
-          <div className="relative">
-            <div className="relative h-72 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600">
-              {user.coverImage && (
-                <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+          {/* Cover */}
+          <div className="relative h-56 sm:h-72 bg-gradient-to-br from-rose-400 via-pink-400 to-purple-500">
+            {user.coverImage && (
+              <img src={user.coverImage} alt="Cover" className="w-full h-full object-cover" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
-              <div className="absolute bottom-6 left-6 right-6">
-                <div className="flex items-end gap-6">
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    className="relative"
-                  >
-                    <img
-                      src={user.profilePicture || defaultAvatar}
-                      alt={user.username || user.email}
-                      className="w-32 h-32 rounded-2xl border-1 border-white object-cover shadow-2xl"
-                    />
-                    {/* <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 rounded-full border-4 border-white"></div> */}
-                  </motion.div>
+            {/* Edit Profile button — top-right on cover */}
+            <button
+              onClick={openEditProfile}
+              className="absolute top-4 right-4 flex items-center gap-2 bg-white/20 backdrop-blur-md text-white text-sm font-semibold px-4 py-2 rounded-2xl border border-white/30 hover:bg-white/30 transition-all"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+              Edit Profile
+            </button>
+          </div>
 
-                  <div className="flex-1 text-white pb-2">
-                    <h2 className="font-bold text-3xl mb-1">
-                      {user.username || user.email.split('@')[0]}
-                    </h2>
-                    <p className="text-sm opacity-90 mb-2">{user.email}</p>
-                    {user.bio && (
-                      <p className="text-sm opacity-95 max-w-2xl">{user.bio}</p>
-                    )}
-                  </div>
+          {/* Avatar + name row */}
+          <div className="px-6 pb-6 relative">
+            {/* Avatar overlaps cover */}
+            <div className="flex items-end justify-between -mt-12 mb-4">
+              <motion.div whileHover={{ scale: 1.03 }} className="relative">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden ring-4 ring-white shadow-xl">
+                  <img
+                    src={user.profilePicture || avatarFallback}
+                    alt={displayName}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </motion.div>
 
-                  {!isEditingProfile && (
-                    <Button onClick={openEditProfile} className="mb-2">
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      Edit Profile
-                    </Button>
-                  )}
+              {/* Stats row */}
+              <div className="flex gap-4 text-center pb-1">
+                <div>
+                  <p className="text-xl font-bold text-slate-900 leading-none">{user.posts?.length ?? 0}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Posts</p>
+                </div>
+                <div className="w-px bg-slate-100" />
+                <div>
+                  <p className="text-xl font-bold text-slate-900 leading-none">{user.photos?.length ?? 0}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Photos</p>
                 </div>
               </div>
             </div>
+
+            {/* Name / bio */}
+            <h2
+              className="text-2xl font-bold text-slate-900 mb-0.5"
+              style={{ fontFamily: "'Playfair Display', serif" }}
+            >
+              {displayName}
+            </h2>
+            <p className="text-xs text-slate-400 mb-3">{user.email}</p>
+
+            {user.bio ? (
+              <p className="text-sm text-slate-600 leading-relaxed max-w-xl">{user.bio}</p>
+            ) : (
+              <p className="text-sm text-slate-400 italic">No bio yet — tap Edit Profile to add one</p>
+            )}
           </div>
         </motion.div>
 
-        {/* Profile Completion Card */}
+        {/* ── Profile Completion ──────────────────────────────────────────── */}
         <ProfileCompletion
           user={user}
           onNavigateToAbout={() => navigate('/about')}
         />
 
-        {/* About Me Preview */}
+        {/* ── About Me preview ───────────────────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl shadow-lg p-6"
+          transition={{ delay: 0.08 }}
+          className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5"
         >
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xl font-semibold text-gray-800">About Me</h3>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-rose-50 flex items-center justify-center">
+                <BookOpen className="w-4 h-4 text-rose-500" />
+              </div>
+              <h3 className="text-base font-bold text-slate-800">About Me</h3>
+            </div>
             <button
               onClick={() => navigate('/about')}
-              className="text-sm text-pink-600 hover:text-purple-600 font-semibold flex items-center gap-1"
+              className="flex items-center gap-1 text-xs font-semibold text-rose-500 hover:text-pink-600 transition-colors"
             >
-              {user.about ? 'View Full Profile' : 'Complete About'}
+              {user.about ? 'View Full' : 'Complete'}
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
-          <p className="text-gray-700 text-sm line-clamp-3 leading-relaxed">
-            {user.about || "Tell your story, share your passions, what you're looking for..."}
+          <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
+            {user.about || "Tell your story, share your passions, what you're looking for…"}
           </p>
         </motion.div>
 
-        {/* Photo Gallery Carousel with Edit Button */}
+        {/* ── Photo Gallery Carousel ─────────────────────────────────────── */}
         {(user.photos && user.photos.length > 0) || isEditingGallery ? (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl shadow-lg p-6"
+            transition={{ delay: 0.12 }}
+            className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-center flex-1"></h3>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center">
+                  <Grid3X3 className="w-4 h-4 text-purple-500" />
+                </div>
+                <h3 className="text-base font-bold text-slate-800">Photo Gallery</h3>
+              </div>
               {!isEditingGallery && (
-                <Button onClick={openEditGallery} className="text-sm px-4 py-2">
-                  <Camera className="w-4 h-4 mr-2" />
-                  Add Carousel
-                </Button>
+                <button
+                  onClick={openEditGallery}
+                  className="flex items-center gap-1.5 text-xs font-semibold bg-purple-50 text-purple-600 hover:bg-purple-100 px-3 py-1.5 rounded-xl transition-colors"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  Manage
+                </button>
               )}
             </div>
             {user.photos && user.photos.length > 0 && (
               <PhotoCarousel photos={user.photos} />
             )}
           </motion.div>
-        ) : null}
+        ) : (
+          /* Teaser card when no gallery yet */
+          <motion.button
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+            onClick={openEditGallery}
+            className="w-full bg-white rounded-2xl shadow-sm border-2 border-dashed border-slate-200 p-6 flex flex-col items-center gap-3 hover:border-purple-300 hover:bg-purple-50/40 transition-all group"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
+              <Camera className="w-6 h-6 text-purple-400" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-slate-700">Add Photo Gallery</p>
+              <p className="text-xs text-slate-400 mt-0.5">Share up to 10 photos in a carousel</p>
+            </div>
+          </motion.button>
+        )}
 
-        {/* Edit Profile Modal */}
-        <AnimatePresence>
-          {isEditingProfile && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-              onClick={cancelEdit}
-            >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-              >
-                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-3xl z-10">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-                      Edit Profile
-                    </h3>
-                    <button onClick={cancelEdit} className="text-gray-500 hover:text-gray-700">
-                      <X className="w-6 h-6" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-6 space-y-6">
-                  <Input
-                    label="Username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter username"
-                  />
-
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">Bio</label>
-                    <textarea
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      placeholder="Share something about yourself..."
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all resize-none"
-                      rows={4}
-                      maxLength={500}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">{bio.length}/500</p>
-                  </div>
-
-                  <ImageUpload
-                    label="Profile Picture"
-                    files={profilePictureFiles}
-                    onFilesChange={setProfilePictureFiles}
-                    multiple={false}
-                    maxFiles={1}
-                    aspectRatio="square"
-                    helperText="Upload your profile picture"
-                  />
-
-                  <ImageUpload
-                    label="Cover Image"
-                    files={coverImageFiles}
-                    onFilesChange={setCoverImageFiles}
-                    multiple={false}
-                    maxFiles={1}
-                    aspectRatio="cover"
-                    helperText="Upload your cover image"
-                  />
-
-                  <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
-                    <p className="text-sm text-purple-700">
-                      💡 <strong>Complete your About Me</strong> section for better matches!{' '}
-                      <button
-                        onClick={() => navigate('/about')}
-                        className="text-purple-600 hover:text-purple-800 font-semibold underline"
-                      >
-                        Go to About
-                      </button>
-                    </p>
-                  </div>
-
-                  <div className="bg-pink-50 border border-pink-100 rounded-xl p-4">
-                    <p className="text-sm text-pink-700">
-                      📸 <strong>Manage your photo gallery</strong> separately using the "Manage Photos" button above the carousel
-                    </p>
-                  </div>
-                </div>
-
-                <div className="sticky bottom-0 bg-gray-50 px-6 py-4 rounded-b-3xl flex gap-4">
-                  <Button onClick={cancelEdit} variant="outline" fullWidth>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleUpdateProfile}
-                    fullWidth
-                    isLoading={isUploadingProfile || isUploadingCover}
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Changes
-                  </Button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Edit Gallery Modal */}
-        <AnimatePresence>
-          {isEditingGallery && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-              onClick={cancelEdit}
-            >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
-              >
-                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-3xl z-10">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-                      {/* Manage Photo Gallery Header Removed */}
-                    </h3>
-                    <button onClick={cancelEdit} className="text-gray-500 hover:text-gray-700">
-                      <X className="w-6 h-6" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-6 space-y-6">
-
-
-                  <ImageUpload
-                    label="Gallery Photos"
-                    files={galleryPhotoFiles}
-                    onFilesChange={setGalleryPhotoFiles}
-                    existingUrls={existingGalleryUrls}
-                    onUrlRemove={deleteCarouselPhoto}
-                    multiple={true}
-                    maxFiles={10}
-                    aspectRatio="square"
-                    helperText="Your carousel gallery (Max 10 photos)"
-                  />
-                </div>
-
-                <div className="sticky bottom-0 bg-gray-50 px-4 py-4 rounded-b-3xl flex gap-4 border-t border-gray-100">
-                  <Button onClick={cancelEdit} variant="outline" fullWidth>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleUpdateGallery}
-                    fullWidth
-                    isLoading={isUploadingGallery}
-                    disabled={galleryPhotoFiles.length === 0}
-                  >
-                    <Save className="w-2 h-2 mr-2" />
-                    Save Changes
-                  </Button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Add/Edit Post Modal */}
-        <AnimatePresence>
-          {(isAddingPost || editingPost) && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-              onClick={cancelEdit}
-            >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col"
-              >
-                <div className="px-6 py-4 border-b border-gray-200 rounded-t-3xl">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-2xl font-bold">
-                      {editingPost ? 'Edit Post' : 'Create Post'}
-                    </h3>
-                    <button onClick={cancelEdit} className="text-gray-500 hover:text-gray-700">
-                      <X className="w-6 h-6" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-6 space-y-4 overflow-y-auto flex-1">
-                  {editingPost && editingPost.images && editingPost.images.length > 0 && postImageFiles.length === 0 && (
-                    <div className="mb-4">
-                      <label className="text-sm font-medium text-gray-700 mb-2 block">
-                        Current Images
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {editingPost.images.map((img, idx) => (
-                          <img
-                            key={idx}
-                            src={img}
-                            alt={`Current post ${idx + 1}`}
-                            className="w-full h-32 object-cover rounded-xl"
-                          />
-                        ))}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">
-                        Upload new images to replace these
-                      </p>
-                    </div>
-                  )}
-
-                  <ImageUpload
-                    label={editingPost ? "Replace Post Images (optional)" : "Post Images"}
-                    files={postImageFiles}
-                    onFilesChange={setPostImageFiles}
-                    multiple={true}
-                    maxFiles={5}
-                    aspectRatio="square"
-                    helperText="Select pictures for your post (Max 5)"
-                  />
-
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">Caption</label>
-                    <textarea
-                      value={postCaption}
-                      onChange={(e) => setPostCaption(e.target.value)}
-                      placeholder="What's on your mind?"
-                      className="w-full px-4 py-3 border border-gray-250 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all resize-none"
-                      rows={3}
-                    />
-                  </div>
-                </div>
-
-                <div className="px-6 py-4 bg-gray-50 rounded-b-3xl flex gap-4 border-t border-gray-100">
-                  <Button onClick={cancelEdit} variant="outline" fullWidth>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={editingPost ? handleUpdatePost : handleAddPost}
-                    fullWidth
-                    isLoading={isUploadingPost}
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {editingPost ? 'Update Post' : 'POST'}
-                  </Button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Posts Section */}
-        <div className="space-y-6">
+        {/* ── Posts Section ─────────────────────────────────────────────── */}
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-bold text-gray-800">My Posts</h3>
-            <Button
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-pink-50 flex items-center justify-center">
+                <Heart className="w-4 h-4 text-pink-500" />
+              </div>
+              <h3 className="text-base font-bold text-slate-800">My Posts</h3>
+            </div>
+            <button
               onClick={() => {
                 setIsAddingPost(true);
                 setEditingPost(null);
                 setPostImageFiles([]);
                 setPostCaption('');
               }}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-md shadow-rose-300/40 hover:from-rose-600 hover:to-pink-600 transition-all"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-3.5 h-3.5" />
               New Post
-            </Button>
+            </button>
           </div>
 
           {user.posts && user.posts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {user.posts.map((post, index) => (
                 <motion.div
                   key={post._id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: index * 0.08 }}
                 >
                   <PostCard
                     post={post}
-                    username={user.username || user.email.split('@')[0]}
+                    username={displayName}
                     profilePicture={user.profilePicture}
                     onLike={handleToggleLike}
                     onEdit={handleEditPost}
@@ -1681,30 +636,277 @@ const Profile: React.FC = () => {
             </div>
           ) : (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-3xl shadow-lg p-12 text-center border-2 border-dashed border-pink-200"
+              className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center hover:border-rose-200 hover:bg-rose-50/30 transition-all cursor-pointer group"
+              onClick={() => {
+                setIsAddingPost(true);
+                setEditingPost(null);
+                setPostImageFiles([]);
+                setPostCaption('');
+              }}
             >
-              <ImageIcon className="w-20 h-20 text-pink-400 mx-auto mb-4" />
-              <h4 className="text-2xl font-bold text-gray-800 mb-2">No posts yet</h4>
-              <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                Start sharing your moments with the world and connect with others!
-              </p>
-              <Button
-                onClick={() => {
-                  setIsAddingPost(true);
-                  setEditingPost(null);
-                  setPostImageFiles([]);
-                  setPostCaption('');
-                }}
-              >
-                <Plus className="w-4 h-4 mr-2" />
+              <div className="w-16 h-16 rounded-2xl bg-rose-50 flex items-center justify-center mx-auto mb-4 group-hover:bg-rose-100 transition-colors">
+                <ImageIcon className="w-8 h-8 text-rose-400" />
+              </div>
+              <h4 className="text-lg font-bold text-slate-800 mb-1">No posts yet</h4>
+              <p className="text-sm text-slate-400 mb-5">Share your moments with your matches</p>
+              <span className="inline-flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-md shadow-rose-300/40">
+                <Plus className="w-4 h-4" />
                 Create Your First Post
-              </Button>
+              </span>
             </motion.div>
           )}
         </div>
       </div>
+
+      {/* ════════════════════════════════════════════════════════════════════ */}
+      {/* MODALS — logic and props identical to original, styling upgraded    */}
+      {/* ════════════════════════════════════════════════════════════════════ */}
+
+      {/* Edit Profile Modal */}
+      <AnimatePresence>
+        {isEditingProfile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={modalBackdrop}
+            onClick={cancelEdit}
+          >
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0, y: 24 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.94, opacity: 0, y: 24 }}
+              onClick={(e) => e.stopPropagation()}
+              className={modalPanel}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10 rounded-t-3xl">
+                <h3
+                  className="text-xl font-bold bg-gradient-to-r from-rose-500 to-pink-500 bg-clip-text text-transparent"
+                  style={{ fontFamily: "'Playfair Display', serif" }}
+                >
+                  Edit Profile
+                </h3>
+                <button onClick={cancelEdit} className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                <Input
+                  label="Username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter username"
+                />
+
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-2 block">Bio</label>
+                  <textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Share something about yourself…"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-300 focus:border-transparent outline-none transition-all resize-none text-sm text-slate-700"
+                    rows={4}
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-slate-400 mt-1 text-right">{bio.length}/500</p>
+                </div>
+
+                <ImageUpload
+                  label="Profile Picture"
+                  files={profilePictureFiles}
+                  onFilesChange={setProfilePictureFiles}
+                  multiple={false}
+                  maxFiles={1}
+                  aspectRatio="square"
+                  helperText="Upload your profile picture"
+                />
+
+                <ImageUpload
+                  label="Cover Image"
+                  files={coverImageFiles}
+                  onFilesChange={setCoverImageFiles}
+                  multiple={false}
+                  maxFiles={1}
+                  aspectRatio="cover"
+                  helperText="Upload your cover image"
+                />
+
+                <div className="bg-rose-50 border border-rose-100 rounded-xl p-4">
+                  <p className="text-sm text-rose-700">
+                    💡 <strong>Complete your About Me</strong> section for better matches!{' '}
+                    <button
+                      onClick={() => navigate('/about')}
+                      className="text-rose-600 font-semibold underline hover:text-rose-800"
+                    >
+                      Go to About
+                    </button>
+                  </p>
+                </div>
+
+                <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
+                  <p className="text-sm text-purple-700">
+                    📸 <strong>Manage your photo gallery</strong> separately using the Manage button in the gallery section
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex gap-3 rounded-b-3xl">
+                <Button onClick={cancelEdit} variant="outline" fullWidth>Cancel</Button>
+                <Button onClick={handleUpdateProfile} fullWidth isLoading={isUploadingProfile || isUploadingCover}>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Changes
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Gallery Modal */}
+      <AnimatePresence>
+        {isEditingGallery && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={modalBackdrop}
+            onClick={cancelEdit}
+          >
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0, y: 24 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.94, opacity: 0, y: 24 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden"
+            >
+              <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10 rounded-t-3xl">
+                <h3
+                  className="text-xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent"
+                  style={{ fontFamily: "'Playfair Display', serif" }}
+                >
+                  Manage Gallery
+                </h3>
+                <button onClick={cancelEdit} className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto flex-1">
+                <ImageUpload
+                  label="Gallery Photos"
+                  files={galleryPhotoFiles}
+                  onFilesChange={setGalleryPhotoFiles}
+                  existingUrls={existingGalleryUrls}
+                  onUrlRemove={deleteCarouselPhoto}
+                  multiple={true}
+                  maxFiles={10}
+                  aspectRatio="square"
+                  helperText="Your carousel gallery (Max 10 photos)"
+                />
+              </div>
+
+              <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex gap-3 rounded-b-3xl">
+                <Button onClick={cancelEdit} variant="outline" fullWidth>Cancel</Button>
+                <Button
+                  onClick={handleUpdateGallery}
+                  fullWidth
+                  isLoading={isUploadingGallery}
+                  disabled={galleryPhotoFiles.length === 0}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Gallery
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add / Edit Post Modal */}
+      <AnimatePresence>
+        {(isAddingPost || editingPost) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={modalBackdrop}
+            onClick={cancelEdit}
+          >
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0, y: 24 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.94, opacity: 0, y: 24 }}
+              onClick={(e) => e.stopPropagation()}
+              className={modalPanel}
+            >
+              <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10 rounded-t-3xl">
+                <h3
+                  className="text-xl font-bold text-slate-900"
+                  style={{ fontFamily: "'Playfair Display', serif" }}
+                >
+                  {editingPost ? 'Edit Post' : 'New Post'}
+                </h3>
+                <button onClick={cancelEdit} className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                {editingPost && editingPost.images && editingPost.images.length > 0 && postImageFiles.length === 0 && (
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700 mb-2 block">Current Images</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {editingPost.images.map((img, idx) => (
+                        <img key={idx} src={img} alt={`Post ${idx + 1}`} className="w-full h-32 object-cover rounded-xl" />
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2">Upload new images to replace these</p>
+                  </div>
+                )}
+
+                <ImageUpload
+                  label={editingPost ? 'Replace Post Images (optional)' : 'Post Images'}
+                  files={postImageFiles}
+                  onFilesChange={setPostImageFiles}
+                  multiple={true}
+                  maxFiles={5}
+                  aspectRatio="square"
+                  helperText="Select pictures for your post (Max 5)"
+                />
+
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-2 block">Caption</label>
+                  <textarea
+                    value={postCaption}
+                    onChange={(e) => setPostCaption(e.target.value)}
+                    placeholder="What's on your mind?"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-300 focus:border-transparent outline-none transition-all resize-none text-sm text-slate-700"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex gap-3 rounded-b-3xl">
+                <Button onClick={cancelEdit} variant="outline" fullWidth>Cancel</Button>
+                <Button
+                  onClick={editingPost ? handleUpdatePost : handleAddPost}
+                  fullWidth
+                  isLoading={isUploadingPost}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {editingPost ? 'Update Post' : 'Post'}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
