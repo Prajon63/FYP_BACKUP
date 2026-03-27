@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
+  ChevronLeft,
   Settings,
   Heart,
   Users,
@@ -18,6 +18,81 @@ import MatchModal from '../components/MatchModal';
 import FilterModal from '../components/FilterModal';
 import { discoverService } from '../services/discoverService';
 import type { DiscoveryUser, MatchPreferences, Like, LikedByMeItem, PassedItem } from '../types';
+
+const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
+
+function EmptyCard({
+  icon,
+  title,
+  description,
+  ctaLabel,
+  onCta,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  ctaLabel: string;
+  onCta: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center"
+    >
+      <div className="w-16 h-16 rounded-2xl bg-rose-50 flex items-center justify-center mx-auto mb-4 text-rose-400">
+        {icon}
+      </div>
+      <h2
+        className="text-2xl font-bold text-slate-800 mb-2"
+        style={{ fontFamily: "'Playfair Display', serif" }}
+      >
+        {title}
+      </h2>
+      <p className="text-slate-500 mb-6">{description}</p>
+      <button
+        type="button"
+        onClick={onCta}
+        className="bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-rose-300/40 hover:from-rose-600 hover:to-pink-600 transition-all"
+      >
+        {ctaLabel}
+      </button>
+    </motion.div>
+  );
+}
+
+function PersonRow({
+  name,
+  bio,
+  image,
+  rightAction,
+  subLabel,
+  delay = 0,
+}: {
+  name: string;
+  bio?: string;
+  image: string;
+  rightAction: React.ReactNode;
+  subLabel?: React.ReactNode;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.3 }}
+      className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4"
+    >
+      <img src={image} alt="" className="w-14 h-14 rounded-2xl object-cover" />
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-slate-800 truncate">{name}</p>
+        {bio && <p className="text-sm text-slate-500 truncate">{bio}</p>}
+        {subLabel}
+      </div>
+      {rightAction}
+    </motion.div>
+  );
+}
 
 const Discover: React.FC = () => {
   const navigate = useNavigate();
@@ -405,98 +480,126 @@ const Discover: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center">
+        <style>{FONTS}</style>
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-purple-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Finding perfect matches for you...</p>
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-rose-200">
+            <Loader2 className="w-8 h-8 text-white animate-spin" />
+          </div>
+          <p className="text-slate-500 text-sm font-medium">Finding your people…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
+    <div className="min-h-screen bg-[#faf9f7]" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <style>{FONTS}</style>
       {/* Header */}
-      <div className="bg-white shadow-sm sticky top-0 z-40">
+      <div className="bg-white/80 backdrop-blur-lg border-b border-slate-100 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <button
               onClick={() => navigate('/home')}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
             >
-              <ArrowLeft className="w-6 h-6 text-gray-700" />
+              <ChevronLeft className="w-5 h-5 text-slate-600" />
             </button>
 
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+            <h1
+              className="text-2xl font-bold bg-gradient-to-r from-rose-500 to-pink-500 bg-clip-text text-transparent"
+              style={{ fontFamily: "'Playfair Display', serif" }}
+            >
               Discover
             </h1>
 
             <button
               onClick={() => setShowFilterModal(true)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors relative"
+              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors relative"
             >
-              <Settings className="w-6 h-6 text-gray-700" />
+              <Settings className="w-5 h-5 text-slate-600" />
               {preferences.genderPreference.length > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-purple-600 rounded-full"></span>
+                <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
               )}
             </button>
           </div>
 
           {/* Stats: likes you, matches */}
-          <div className="flex items-center gap-4 mt-4 text-sm flex-wrap">
+          <div className="flex items-center gap-3 mt-4 text-sm flex-wrap">
             <button
               type="button"
               onClick={() => { setActiveSection('likes'); fetchLikes(); fetchStats(); }}
-              className={`flex items-center gap-2 transition-colors ${activeSection === 'likes' ? 'text-pink-600 font-semibold' : 'text-gray-600 hover:text-pink-600'}`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
+                activeSection === 'likes'
+                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white border-transparent shadow-lg shadow-rose-300/40'
+                  : 'bg-white text-slate-600 border-slate-200 hover:text-rose-600'
+              }`}
             >
-              <Heart className="w-4 h-4 text-pink-500" />
+              <Heart className="w-4 h-4" />
               <span>{stats.likesReceived} like{stats.likesReceived !== 1 ? 's' : ''} you</span>
               {stats.likesReceived > 0 && (
-                <span className="text-xs bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded-full">Respond?</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeSection === 'likes' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-700'}`}>Respond?</span>
               )}
             </button>
-            <div
-              className="flex items-center gap-2 text-gray-600 cursor-pointer hover:text-purple-600 transition-colors"
+            <button
+              type="button"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-white text-slate-600 border-slate-200 hover:text-rose-600 transition-all"
               onClick={() => navigate('/matches')}
             >
-              <Users className="w-4 h-4 text-purple-500" />
+              <Users className="w-4 h-4" />
               <span>{stats.totalMatches} matches</span>
-            </div>
+            </button>
             <button
               onClick={() => navigate('/matches')}
-              className="ml-auto text-purple-600 hover:text-purple-700 font-medium text-sm"
+              className="ml-auto text-rose-600 hover:text-rose-700 font-semibold text-sm"
             >
               See Matches →
             </button>
           </div>
 
           {/* Tabs: Likes you | Liked by you | Passed | Discover */}
-          <div className="flex gap-1 mt-3 p-1 bg-gray-100 rounded-xl overflow-x-auto">
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
             <button
               type="button"
               onClick={() => { setActiveSection('likes'); fetchLikes(); fetchStats(); }}
-              className={`flex-shrink-0 py-2 px-3 rounded-lg text-xs font-medium transition-all ${activeSection === 'likes' ? 'bg-white shadow text-pink-600' : 'text-gray-600 hover:text-gray-900'}`}
+              className={`flex-shrink-0 py-2 px-3 rounded-full text-xs font-semibold transition-all border ${
+                activeSection === 'likes'
+                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white border-transparent shadow-md shadow-rose-300/30'
+                  : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
+              }`}
             >
-              Likes you ({activeSection === 'likes' && likesList.length > 0 ? likesList.length : stats.likesReceived})
+              Likes you <span className={`ml-1 px-1.5 py-0.5 rounded-full ${activeSection === 'likes' ? 'bg-white/20' : 'bg-slate-100'}`}>{activeSection === 'likes' && likesList.length > 0 ? likesList.length : stats.likesReceived}</span>
             </button>
             <button
               type="button"
               onClick={() => { setActiveSection('likedByMe'); fetchLikedByMe(); fetchStats(); }}
-              className={`flex-shrink-0 py-2 px-3 rounded-lg text-xs font-medium transition-all ${activeSection === 'likedByMe' ? 'bg-white shadow text-purple-600' : 'text-gray-600 hover:text-gray-900'}`}
+              className={`flex-shrink-0 py-2 px-3 rounded-full text-xs font-semibold transition-all border ${
+                activeSection === 'likedByMe'
+                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white border-transparent shadow-md shadow-rose-300/30'
+                  : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
+              }`}
             >
-              You liked ({stats.likedByMePending})
+              You liked <span className={`ml-1 px-1.5 py-0.5 rounded-full ${activeSection === 'likedByMe' ? 'bg-white/20' : 'bg-slate-100'}`}>{stats.likedByMePending}</span>
             </button>
             <button
               type="button"
               onClick={() => { setActiveSection('passed'); fetchPassed(); fetchStats(); }}
-              className={`flex-shrink-0 py-2 px-3 rounded-lg text-xs font-medium transition-all ${activeSection === 'passed' ? 'bg-white shadow text-gray-700' : 'text-gray-600 hover:text-gray-900'}`}
+              className={`flex-shrink-0 py-2 px-3 rounded-full text-xs font-semibold transition-all border ${
+                activeSection === 'passed'
+                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white border-transparent shadow-md shadow-rose-300/30'
+                  : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
+              }`}
             >
-              Passed ({stats.passes})
+              Passed <span className={`ml-1 px-1.5 py-0.5 rounded-full ${activeSection === 'passed' ? 'bg-white/20' : 'bg-slate-100'}`}>{stats.passes}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveSection('discover')}
-              className={`flex-shrink-0 py-2 px-3 rounded-lg text-xs font-medium transition-all ${activeSection === 'discover' ? 'bg-white shadow text-purple-600' : 'text-gray-600 hover:text-gray-900'}`}
+              className={`flex-shrink-0 py-2 px-3 rounded-full text-xs font-semibold transition-all border ${
+                activeSection === 'discover'
+                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white border-transparent shadow-md shadow-rose-300/30'
+                  : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
+              }`}
             >
               Discover
             </button>
@@ -509,26 +612,16 @@ const Discover: React.FC = () => {
         {activeSection === 'likes' ? (
           loadingLikes ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-pink-500 animate-spin" />
+              <Loader2 className="w-10 h-10 text-rose-500 animate-spin" />
             </div>
           ) : noMoreLikes ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl shadow-xl p-12 text-center"
-            >
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Heart className="w-10 h-10 text-gray-400" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">No likes yet</h2>
-              <p className="text-gray-600 mb-6">When someone likes you, they’ll show up here. Respond when you're ready 💕</p>
-              <button
-                onClick={() => setActiveSection('discover')}
-                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold py-3 px-6 rounded-xl"
-              >
-                Go to Discover
-              </button>
-            </motion.div>
+            <EmptyCard
+              icon={<Heart className="w-8 h-8" />}
+              title="No likes yet"
+              description="When someone likes you, they will show up here. Respond when you're ready."
+              ctaLabel="Go to Discover"
+              onCta={() => setActiveSection('discover')}
+            />
           ) : currentLike ? (
             <div className="relative" style={{ height: '70vh', maxHeight: '700px' }}>
               <AnimatePresence>
@@ -544,7 +637,7 @@ const Discover: React.FC = () => {
                 />
               </AnimatePresence>
               <div className="text-center mt-4">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-slate-500">
                   Like them back to match • {likesTabIndex + 1} / {likesList.length}
                 </p>
               </div>
@@ -556,56 +649,39 @@ const Discover: React.FC = () => {
               <Loader2 className="w-10 h-10 text-purple-500 animate-spin" />
             </div>
           ) : likedByMeList.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl shadow-xl p-12 text-center"
-            >
-              <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Heart className="w-10 h-10 text-purple-400" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">No one here yet</h2>
-              <p className="text-gray-600 mb-6">People you like will show up here until they like you back – then they move to Matches!</p>
-              <button
-                onClick={() => setActiveSection('discover')}
-                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold py-3 px-6 rounded-xl"
-              >
-                Go to Discover
-              </button>
-            </motion.div>
+            <EmptyCard
+              icon={<Sparkles className="w-8 h-8" />}
+              title="No one here yet"
+              description="People you like will appear here until they like you back."
+              ctaLabel="Go to Discover"
+              onCta={() => setActiveSection('discover')}
+            />
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-gray-500 flex items-center gap-1">
-                <Sparkles className="w-4 h-4 text-purple-500" />
+              <p className="text-sm text-slate-500 flex items-center gap-1">
+                <Sparkles className="w-4 h-4 text-rose-500" />
                 Waiting for them to like you back – or remove to see them in Discover again
               </p>
-              {likedByMeList.map((item) => (
-                <motion.div
+              {likedByMeList.map((item, index) => (
+                <PersonRow
                   key={item.interactionId}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-2xl shadow-md p-4 flex items-center gap-4"
-                >
-                  <img
-                    src={item.user.profilePicture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + item.user._id}
-                    alt=""
-                    className="w-14 h-14 rounded-full object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 truncate">{item.user.username || 'Someone'}</p>
-                    {item.user.bio && <p className="text-sm text-gray-500 truncate">{item.user.bio}</p>}
-                    {item.isSuperLike && <span className="text-xs text-amber-600">⭐ Super like</span>}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveFromLikedByMe(item)}
-                    className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                    title="Remove – they'll show in Discover again"
-                  >
-                    <UserX className="w-4 h-4" />
-                    Remove
-                  </button>
-                </motion.div>
+                  delay={index * 0.07}
+                  image={item.user.profilePicture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + item.user._id}
+                  name={item.user.username || 'Someone'}
+                  bio={item.user.bio}
+                  subLabel={item.isSuperLike ? <span className="text-xs text-amber-600">⭐ Super like</span> : undefined}
+                  rightAction={
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFromLikedByMe(item)}
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                      title="Remove – they'll show in Discover again"
+                    >
+                      <UserX className="w-4 h-4" />
+                      Remove
+                    </button>
+                  }
+                />
               ))}
             </div>
           )
@@ -615,91 +691,68 @@ const Discover: React.FC = () => {
               <Loader2 className="w-10 h-10 text-gray-500 animate-spin" />
             </div>
           ) : passedList.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl shadow-xl p-12 text-center"
-            >
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <UserX className="w-10 h-10 text-gray-400" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">No passed profiles</h2>
-              <p className="text-gray-600 mb-6">Anyone you pass on will show here. Remove to see them in Likes you or Discover again.</p>
-              <button
-                onClick={() => setActiveSection('discover')}
-                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold py-3 px-6 rounded-xl"
-              >
-                Go to Discover
-              </button>
-            </motion.div>
+            <EmptyCard
+              icon={<UserX className="w-8 h-8" />}
+              title="No passed profiles"
+              description="Anyone you pass on will show here. Remove to see them again."
+              ctaLabel="Go to Discover"
+              onCta={() => setActiveSection('discover')}
+            />
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-gray-500 flex items-center gap-1">
-                <UserX className="w-4 h-4 text-gray-500" />
+              <p className="text-sm text-slate-500 flex items-center gap-1">
+                <UserX className="w-4 h-4 text-slate-500" />
                 Remove to see them in Likes you or Discover again
               </p>
-              {passedList.map((item) => (
-                <motion.div
+              {passedList.map((item, index) => (
+                <PersonRow
                   key={item.interactionId}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-2xl shadow-md p-4 flex items-center gap-4"
-                >
-                  <img
-                    src={item.user.profilePicture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + item.user._id}
-                    alt=""
-                    className="w-14 h-14 rounded-full object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 truncate">{item.user.username || 'Someone'}</p>
-                    {item.user.bio && <p className="text-sm text-gray-500 truncate">{item.user.bio}</p>}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveFromPassed(item)}
-                    className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-colors"
-                    title="Remove – they'll show in Likes you again"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Remove
-                  </button>
-                </motion.div>
+                  delay={index * 0.07}
+                  image={item.user.profilePicture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + item.user._id}
+                  name={item.user.username || 'Someone'}
+                  bio={item.user.bio}
+                  rightAction={
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFromPassed(item)}
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                      title="Remove – they'll show in Likes you again"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Remove
+                    </button>
+                  }
+                />
               ))}
             </div>
           )
         ) : noMoreUsers ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-3xl shadow-xl p-12 text-center"
-          >
-            <div className="w-20 h-20 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <TrendingUp className="w-10 h-10 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">
-              You're all caught up!
-            </h2>
-            <p className="text-gray-600 mb-6">
-              No more users to show right now. Check back later for new matches!
-            </p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={fetchUsers}
-                className="flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl transition-all"
-              >
-                <RefreshCw className="w-5 h-5" />
-                Refresh
-              </button>
-              <button
-                onClick={() => navigate('/matches')}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-xl transition-colors"
-              >
-                View Your Matches
-              </button>
-            </div>
-          </motion.div>
+          <div className="space-y-3">
+            <EmptyCard
+              icon={<TrendingUp className="w-8 h-8" />}
+              title="You're all caught up!"
+              description="No more users to show right now. Check back later for new matches."
+              ctaLabel="Refresh"
+              onCta={fetchUsers}
+            />
+            <button
+              onClick={() => navigate('/matches')}
+              className="w-full bg-white rounded-2xl border border-slate-200 text-slate-700 font-semibold py-3 px-6 hover:bg-slate-50 transition-colors"
+            >
+              View Your Matches
+            </button>
+          </div>
         ) : (
           <div className="relative" style={{ height: '70vh', maxHeight: '700px' }}>
+            <div className="mb-3 flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                <Sparkles className="w-3.5 h-3.5" />
+                Super likes: {stats.superLikesRemaining}/{stats.superLikeLimit}
+              </span>
+              <span className="text-xs text-slate-500">
+                {Math.min(currentIndex + 1, Math.max(users.length, 1))}/{Math.max(users.length, 1)}
+              </span>
+            </div>
             <AnimatePresence>
               {currentUser && (
                 <UserCard
@@ -716,18 +769,28 @@ const Discover: React.FC = () => {
 
             {loadingMore && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded-full shadow-lg">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Loading more...</span>
                 </div>
               </div>
             )}
+            <div className="mt-4 h-2 bg-slate-100 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-rose-500 to-pink-500"
+                initial={false}
+                animate={{
+                  width: `${users.length > 0 ? Math.min(((currentIndex + 1) / users.length) * 100, 100) : 0}%`,
+                }}
+                transition={{ duration: 0.35 }}
+              />
+            </div>
           </div>
         )}
 
         {activeSection === 'discover' && !noMoreUsers && (
           <div className="text-center mt-6">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-500">
               {currentIndex + 1} / {users.length}
               {loadingMore && ' (loading more...)'}
             </p>
