@@ -1,4 +1,4 @@
-import { ReactNode, InputHTMLAttributes, forwardRef } from 'react';
+import { ReactNode, InputHTMLAttributes, forwardRef, useId } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -8,8 +8,10 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, icon, error, helperText, className = '', ...props }, ref) => {
-    const inputId = props.id || props.name;
+  ({ label, icon, error, helperText, className = '', id, name, ...props }, ref) => {
+    const gen = useId().replace(/:/g, '');
+    const inputId = id ?? name ?? `input-${gen}`;
+    const inputName = name ?? id ?? inputId;
 
     return (
       <div className="space-y-2">
@@ -25,6 +27,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={inputId}
+          name={inputName}
           className={`
             w-full px-4 py-3 border rounded-xl
             focus:ring-2 focus:ring-pink-500 focus:border-transparent

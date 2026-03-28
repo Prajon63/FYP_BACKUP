@@ -743,39 +743,47 @@ const Discover: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="relative" style={{ height: '70vh', maxHeight: '700px' }}>
-            <div className="mb-3 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                <Sparkles className="w-3.5 h-3.5" />
+          <div className="flex flex-col gap-3 w-full">
+            {/* Keep above the absolutely positioned card — UserCard is position:absolute; h-full and was covering this row */}
+            <div className="flex items-center justify-between shrink-0 z-10 px-0.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
                 Super likes: {stats.superLikesRemaining}/{stats.superLikeLimit}
               </span>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs font-medium text-slate-600 tabular-nums">
                 {Math.min(currentIndex + 1, Math.max(users.length, 1))}/{Math.max(users.length, 1)}
               </span>
             </div>
-            <AnimatePresence>
-              {currentUser && (
-                <UserCard
-                  key={currentUser._id}
-                  user={currentUser}
-                  onLike={handleLike}
-                  onPass={handlePass}
-                  onSuperLike={handleSuperLike}
-                  superLikesRemaining={stats.superLikesRemaining}
-                  superLikeLimit={stats.superLikeLimit}
-                />
-              )}
-            </AnimatePresence>
 
-            {loadingMore && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded-full shadow-lg">
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Loading more...</span>
+            <div
+              className="relative w-full mx-auto rounded-2xl"
+              style={{ height: 'min(70vh, 700px)', minHeight: '420px' }}
+            >
+              <AnimatePresence>
+                {currentUser && (
+                  <UserCard
+                    key={currentUser._id}
+                    user={currentUser}
+                    onLike={handleLike}
+                    onPass={handlePass}
+                    onSuperLike={handleSuperLike}
+                    superLikesRemaining={stats.superLikesRemaining}
+                    superLikeLimit={stats.superLikeLimit}
+                  />
+                )}
+              </AnimatePresence>
+
+              {loadingMore && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-white px-4 py-2 rounded-full shadow-lg">
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Loading more...</span>
+                  </div>
                 </div>
-              </div>
-            )}
-            <div className="mt-4 h-2 bg-slate-100 rounded-full overflow-hidden">
+              )}
+            </div>
+
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden shrink-0">
               <motion.div
                 className="h-full bg-gradient-to-r from-rose-500 to-pink-500"
                 initial={false}

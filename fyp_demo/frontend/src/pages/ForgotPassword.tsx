@@ -102,15 +102,18 @@ const ForgotPassword = () => {
                 Enter your email address and we'll send you a link to reset your password.
               </p>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-5" method="post" noValidate>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   label="Email"
                   icon={<Mail className="w-4 h-4" />}
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  inputMode="email"
                   required
                 />
 

@@ -136,27 +136,31 @@ const ResetPassword = () => {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" method="post" noValidate>
             <Input
-              id="password"
+              id="new-password"
+              name="new-password"
               type="password"
               label="New Password"
               icon={<Lock className="w-4 h-4" />}
               placeholder="Enter new password (min 6 characters)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
               required
               minLength={6}
             />
 
             <Input
-              id="confirmPassword"
+              id="confirm-new-password"
+              name="confirm-new-password"
               type="password"
               label="Confirm Password"
               icon={<Lock className="w-4 h-4" />}
               placeholder="Confirm your new password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
               required
               minLength={6}
             />
