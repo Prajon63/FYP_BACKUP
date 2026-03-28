@@ -96,27 +96,32 @@ const Login = () => {
           </AnimatePresence>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" method="post" noValidate>
             <Input
               id="email"
+              name="email"
               type="email"
               label="Email"
               icon={<Mail className="w-4 h-4" />}
               placeholder="Enter your email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+              autoComplete="email"
+              inputMode="email"
               required
               className="border-slate-200 focus:ring-rose-300"
             />
 
             <Input
               id="password"
+              name="password"
               type="password"
               label="Password"
               icon={<Lock className="w-4 h-4" />}
               placeholder="Enter your password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
+              autoComplete={isLogin ? 'current-password' : 'new-password'}
               required
               className="border-slate-200 focus:ring-rose-300"
             />
