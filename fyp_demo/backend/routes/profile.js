@@ -57,6 +57,7 @@ import { deleteCarouselPhoto } from '../controllers/profileController.js';
 
 import {
   getProfile,
+  getPublicProfile,
   updateProfile,
   addPost,
   updatePost,
@@ -70,6 +71,9 @@ import {
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Public profile view (must be before /:userId or Express matches :userId as "public")
+router.get('/:userId/public', protect, getPublicProfile);
 
 // Profile
 router.get('/:userId', getProfile);

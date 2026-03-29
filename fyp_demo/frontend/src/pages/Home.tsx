@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Heart,
@@ -14,6 +14,9 @@ import {
   RefreshCw,
   Calendar,
   MoreHorizontal,
+  Bookmark,
+  Ban,
+  EyeOff,
 } from 'lucide-react';
 import { discoverService } from '../services/discoverService';
 import type { DiscoveryUser } from '../types';
@@ -73,13 +76,18 @@ function ProfileCard({
   index,
   liked,
   onToggleLike,
+  currentUserId,
 }: {
   user: DiscoveryUser;
   index: number;
   liked: boolean;
   onToggleLike: () => void;
+  currentUserId: string;
 }) {
+  const navigate = useNavigate();
   const [localLikes, setLocalLikes] = useState(Math.floor(Math.random() * 900) + 100);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const displayPicture =
     user.profilePicture ||
@@ -89,6 +97,38 @@ function ProfileCard({
     setLocalLikes(prev => (liked ? prev - 1 : prev + 1));
     onToggleLike();
   };
+
+  const goToProfile = () => {
+    if (user._id === currentUserId) navigate('/profile');
+    else navigate(`/profile/${user._id}`);
+  };
+
+  const handleMenuAction = async (action: 'pass' | 'like' | 'block') => {
+    setMenuOpen(false);
+    if (!currentUserId || !user._id) {
+      toast.error('Please log in');
+      return;
+    }
+    try {
+      await discoverService.handleInteraction(currentUserId, user._id, action);
+      if (action === 'pass') toast.success('Marked as not interested');
+      if (action === 'like') toast.success('Profile saved');
+      if (action === 'block') toast.success('User blocked');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Something went wrong');
+    }
+  };
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (ev: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(ev.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [menuOpen]);
 
   return (
     <motion.article
@@ -112,8 +152,14 @@ function ProfileCard({
           </div>
         )}
 
-        <div className="absolute bottom-4 left-4 right-4 flex items-end gap-3">
-          <div className="relative shrink-0">
+        {/* Clickable author: avatar + name */}
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.98 }}
+          onClick={goToProfile}
+          className="absolute bottom-4 left-4 right-4 flex items-end gap-3 text-left rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+        >
+          <div className="relative shrink-0 pointer-events-none">
             <div className="w-14 h-14 rounded-2xl p-0.5 bg-gradient-to-br from-rose-400 to-pink-500 shadow-lg">
               <img
                 src={displayPicture}
@@ -122,7 +168,7 @@ function ProfileCard({
               />
             </div>
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pointer-events-none">
             <h3
               className="text-white font-bold text-lg leading-tight truncate"
               style={{ fontFamily: "'Playfair Display', serif" }}
@@ -139,7 +185,7 @@ function ProfileCard({
               </div>
             )}
           </div>
-        </div>
+        </motion.button>
       </div>
 
       <div className="p-5 space-y-4">
@@ -202,9 +248,53 @@ function ProfileCard({
             </button>
           </div>
 
-          <button type="button" className="text-slate-400 hover:text-slate-600 transition-colors" aria-label="More">
-            <MoreHorizontal className="w-5 h-5" />
-          </button>
+          <div className="relative" ref={menuRef}>
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setMenuOpen(o => !o)}
+              className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-50"
+              aria-label="More options"
+              aria-expanded={menuOpen}
+            >
+              <MoreHorizontal className="w-5 h-5" />
+            </motion.button>
+            <AnimatePresence>
+              {menuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-2xl border border-slate-100 bg-white shadow-xl py-1 overflow-hidden"
+                >
+                  <button
+                    type="button"
+                    onClick={() => void handleMenuAction('pass')}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                  >
+                    <EyeOff className="w-4 h-4 text-slate-500" />
+                    Not interested
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleMenuAction('like')}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                  >
+                    <Bookmark className="w-4 h-4 text-rose-500" />
+                    Save profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleMenuAction('block')}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 text-left"
+                  >
+                    <Ban className="w-4 h-4" />
+                    Block
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         {user.age && (
@@ -365,7 +455,7 @@ const Home: React.FC = () => {
             <NavLink
               icon={<UserIcon className="w-4 h-4" />}
               label="Profile"
-              active={location.pathname === '/profile'}
+              active={location.pathname === '/profile' || location.pathname.startsWith('/profile/')}
               onClick={() => navigate('/profile')}
             />
           </nav>
@@ -510,6 +600,7 @@ const Home: React.FC = () => {
                   index={index}
                   liked={likedPosts.has(user._id)}
                   onToggleLike={() => toggleLike(user._id)}
+                  currentUserId={userId}
                 />
               ))}
             </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   Heart,
   X,
@@ -10,7 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  Info
+  Info,
+  ExternalLink,
 } from 'lucide-react';
 import type { DiscoveryUser } from '../types';
 
@@ -21,11 +23,11 @@ interface UserCardProps {
   onSuperLike: () => void;
   onCardClick?: () => void;
   style?: React.CSSProperties;
-  /** When true, show "Super Liked you" badge (e.g. in Likes you stack) */
   isSuperLikedByThem?: boolean;
-  /** When 0, Super Like button is disabled and shows limit message */
   superLikesRemaining?: number;
   superLikeLimit?: number;
+  /** Current logged-in user — used to route /profile vs /profile/:id */
+  currentUserId?: string;
 }
 
 const UserCard: React.FC<UserCardProps> = ({
@@ -37,34 +39,39 @@ const UserCard: React.FC<UserCardProps> = ({
   style,
   isSuperLikedByThem = false,
   superLikesRemaining = 1,
-  superLikeLimit = 1
+  superLikeLimit = 1,
+  currentUserId = '',
 }) => {
+  const navigate = useNavigate();
   const canSuperLike = superLikesRemaining > 0;
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
 
-  // Get all available photos
-  const photos = user.photos && user.photos.length > 0 
-    ? user.photos 
-    : user.profilePicture 
-    ? [user.profilePicture] 
-    : [];
+  const goProfile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user._id) return;
+    if (user._id === currentUserId) navigate('/profile');
+    else navigate(`/profile/${user._id}`);
+  };
 
-  // Motion values for drag
+  const photos = user.photos && user.photos.length > 0
+    ? user.photos
+    : user.profilePicture
+      ? [user.profilePicture]
+      : [];
+
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
+  const handleDragEnd = (event: unknown, info: PanInfo) => {
     const offset = info.offset.x;
     const velocity = info.velocity.x;
 
     if (Math.abs(offset) > 100 || Math.abs(velocity) > 500) {
       if (offset > 0) {
-        // Swiped right - like
         onLike();
       } else {
-        // Swiped left - pass
         onPass();
       }
     }
@@ -103,8 +110,10 @@ const UserCard: React.FC<UserCardProps> = ({
       onDragEnd={handleDragEnd}
       className="absolute w-full h-full cursor-grab active:cursor-grabbing"
     >
-      <div className={`relative w-full h-full bg-white rounded-3xl shadow-2xl overflow-hidden ${isSuperLikedByThem ? 'ring-2 ring-amber-400 ring-offset-2' : ''}`}>
-        {/* Super Liked you badge */}
+      <div
+        className={`relative w-full h-full bg-white rounded-3xl shadow-2xl overflow-hidden ${isSuperLikedByThem ? 'ring-2 ring-amber-400 ring-offset-2' : ''}`}
+        onClick={onCardClick}
+      >
         {isSuperLikedByThem && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-gradient-to-r from-amber-400 via-blue-500 to-amber-400 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg flex items-center gap-2">
             <Star className="w-4 h-4 fill-white" />
@@ -113,7 +122,6 @@ const UserCard: React.FC<UserCardProps> = ({
           </div>
         )}
 
-        {/* Photo Section */}
         <div className="relative h-3/5">
           {photos.length > 0 ? (
             <>
@@ -122,24 +130,46 @@ const UserCard: React.FC<UserCardProps> = ({
                 alt={user.username || 'User'}
                 className="w-full h-full object-cover"
               />
-              
-              {/* Photo Navigation */}
+
+              <div className="hidden md:flex absolute top-3 right-3 z-20">
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={goProfile}
+                  className="flex items-center gap-1.5 text-xs font-bold text-white bg-black/40 hover:bg-black/55 backdrop-blur-sm px-3 py-2 rounded-full border border-white/20 shadow-lg"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  View profile
+                </motion.button>
+              </div>
+
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.95 }}
+                onClick={goProfile}
+                className="md:hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 text-xs font-bold text-white bg-black/45 hover:bg-black/60 backdrop-blur-sm px-4 py-2 rounded-full border border-white/25 shadow-lg"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                View profile
+              </motion.button>
+
               {photos.length > 1 && (
                 <>
                   <button
+                    type="button"
                     onClick={prevPhoto}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-all backdrop-blur-sm"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-all backdrop-blur-sm z-10"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <button
+                    type="button"
                     onClick={nextPhoto}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-all backdrop-blur-sm"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-all backdrop-blur-sm z-10"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
 
-                  {/* Photo Indicators */}
                   <div className="absolute top-4 left-0 right-0 flex justify-center gap-1 px-4">
                     {photos.map((_, idx) => (
                       <div
@@ -155,43 +185,66 @@ const UserCard: React.FC<UserCardProps> = ({
                 </>
               )}
 
-              {/* Verified Badge */}
               {user.isVerified && (
-                <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow-lg">
+                <div className="absolute top-4 right-4 md:right-[9.5rem] bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow-lg z-10">
                   <Sparkles className="w-3 h-3" />
                   Verified
                 </div>
               )}
 
-              {/* Compatibility Score */}
-              <div className="absolute top-4 left-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-4 py-2 rounded-full font-bold shadow-lg">
+              <div className="absolute top-4 left-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-4 py-2 rounded-full font-bold shadow-lg z-10">
                 {user.compatibilityScore}% Match
               </div>
 
-              {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
             </>
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+            <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex flex-col items-center justify-center relative">
               <span className="text-gray-400 text-lg">No photo</span>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.95 }}
+                onClick={goProfile}
+                className="mt-3 md:hidden flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white/90 px-3 py-1.5 rounded-full shadow"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                View profile
+              </motion.button>
+              <div className="hidden md:flex absolute top-3 right-3 z-20">
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={goProfile}
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-800 bg-white/90 px-3 py-2 rounded-full shadow-lg"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  View profile
+                </motion.button>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Info Section */}
-        <div className="relative h-2/5 p-6 overflow-y-auto">
-          {/* Name and Age */}
+        <div className="relative h-2/5 p-6 overflow-y-auto z-10">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                {user.username || 'Anonymous'}
-                {user.age && <span className="text-gray-600">, {user.age}</span>}
-              </h2>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.95 }}
+                onClick={goProfile}
+                className="text-left"
+              >
+                <h2 className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  {user.username || 'Anonymous'}
+                  {user.age && <span className="text-gray-600">, {user.age}</span>}
+                </h2>
+              </motion.button>
               {user.pronouns && (
                 <p className="text-sm text-gray-500">{user.pronouns}</p>
               )}
             </div>
             <button
+              type="button"
               onClick={() => setShowInfo(!showInfo)}
               className="p-2 rounded-full hover:bg-gray-100 transition-colors"
             >
@@ -199,7 +252,6 @@ const UserCard: React.FC<UserCardProps> = ({
             </button>
           </div>
 
-          {/* Quick Info */}
           <div className="space-y-2 mb-4">
             {user.location && (
               <div className="flex items-center gap-2 text-gray-600 text-sm">
@@ -210,7 +262,7 @@ const UserCard: React.FC<UserCardProps> = ({
                 </span>
               </div>
             )}
-            
+
             {user.workTitle && (
               <div className="flex items-center gap-2 text-gray-600 text-sm">
                 <Briefcase className="w-4 h-4 flex-shrink-0" />
@@ -220,7 +272,7 @@ const UserCard: React.FC<UserCardProps> = ({
                 </span>
               </div>
             )}
-            
+
             {user.educationSchool && (
               <div className="flex items-center gap-2 text-gray-600 text-sm">
                 <GraduationCap className="w-4 h-4 flex-shrink-0" />
@@ -232,14 +284,12 @@ const UserCard: React.FC<UserCardProps> = ({
             )}
           </div>
 
-          {/* Bio */}
           {user.bio && (
             <p className="text-gray-700 text-sm leading-relaxed mb-4">
               {user.bio}
             </p>
           )}
 
-          {/* Relationship Goals */}
           {user.relationshipGoals && (
             <div className="mb-4">
               <div className="inline-block bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">
@@ -248,7 +298,6 @@ const UserCard: React.FC<UserCardProps> = ({
             </div>
           )}
 
-          {/* Interests */}
           {user.interests && user.interests.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {user.interests.slice(0, showInfo ? undefined : 5).map((interest, idx) => (
@@ -268,10 +317,10 @@ const UserCard: React.FC<UserCardProps> = ({
           )}
         </div>
 
-        {/* Action Buttons */}
         <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center gap-4 px-6">
-          {/* Pass Button */}
-          <button
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.95 }}
             onClick={(e) => {
               e.stopPropagation();
               onPass();
@@ -279,11 +328,12 @@ const UserCard: React.FC<UserCardProps> = ({
             className="w-14 h-14 bg-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center group hover:scale-110"
           >
             <X className="w-7 h-7 text-red-500 group-hover:scale-110 transition-transform" />
-          </button>
+          </motion.button>
 
-          {/* Super Like Button */}
           <div className="flex flex-col items-center gap-0.5">
-            <button
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.95 }}
               onClick={(e) => {
                 e.stopPropagation();
                 if (canSuperLike) onSuperLike();
@@ -297,14 +347,15 @@ const UserCard: React.FC<UserCardProps> = ({
               }`}
             >
               <Star className={`w-6 h-6 ${canSuperLike ? 'text-white fill-white' : 'text-gray-500'} group-hover:scale-110 transition-transform`} />
-            </button>
+            </motion.button>
             <span className="text-[10px] text-gray-500 font-medium">
               {canSuperLike ? `${superLikesRemaining}/${superLikeLimit}` : '0 left'}
             </span>
           </div>
 
-          {/* Like Button */}
-          <button
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.95 }}
             onClick={(e) => {
               e.stopPropagation();
               onLike();
@@ -312,7 +363,7 @@ const UserCard: React.FC<UserCardProps> = ({
             className="w-14 h-14 bg-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center group hover:scale-110"
           >
             <Heart className="w-7 h-7 text-pink-500 group-hover:scale-110 group-hover:fill-pink-500 transition-all" />
-          </button>
+          </motion.button>
         </div>
       </div>
     </motion.div>

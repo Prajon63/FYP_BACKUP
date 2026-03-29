@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useChat } from '../hooks/useChat';
 import { useAuth } from '../hooks/useAuth';
 import type { ChatMessage } from '../types';
@@ -19,6 +21,7 @@ const ChatWindow = ({
   receiverPhoto,
   onClose
 }: ChatWindowProps) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { messages, sendMessage, isTyping, onTyping, onStopTyping, loading, error } =
     useChat({ matchId, receiverId });
@@ -47,29 +50,43 @@ const ChatWindow = ({
     return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const goToProfile = () => {
+    if (!receiverId) return;
+    if (receiverId === user?._id) navigate('/profile');
+    else navigate(`/profile/${receiverId}`);
+  };
+
   return (
     <div className="flex flex-col h-full max-h-screen bg-white rounded-2xl shadow-xl overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white">
-        <div className="w-9 h-9 rounded-full bg-white/30 overflow-hidden flex-shrink-0">
-          {receiverPhoto ? (
-            <img src={receiverPhoto} alt={receiverName} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-white font-semibold text-sm">
-              {receiverName.charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
-        <div>
-          <p className="font-semibold text-sm leading-none">{receiverName}</p>
-          {isTyping && (
-            <p className="text-xs text-white/80 mt-0.5 animate-pulse">typing…</p>
-          )}
-        </div>
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.95 }}
+          onClick={goToProfile}
+          className="flex items-center gap-3 min-w-0 flex-1 text-left rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+        >
+          <div className="w-9 h-9 rounded-full bg-white/30 overflow-hidden flex-shrink-0">
+            {receiverPhoto ? (
+              <img src={receiverPhoto} alt={receiverName} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-white font-semibold text-sm">
+                {receiverName.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-sm leading-none truncate">{receiverName}</p>
+            {isTyping && (
+              <p className="text-xs text-white/80 mt-0.5 animate-pulse">typing…</p>
+            )}
+          </div>
+        </motion.button>
         <button
           onClick={onClose}
           className="ml-auto p-1.5 hover:bg-white/20 rounded-full transition"
           aria-label="Close chat"
+          type="button"
         >
           <X className="w-4 h-4" />
         </button>
@@ -146,6 +163,8 @@ const ChatWindow = ({
       <div className="px-3 py-3 bg-white border-t border-gray-100 flex items-center gap-2">
         <input
           type="text"
+          name="chat-message"
+          id="chat-message-input"
           value={input}
           onChange={(e) => {
             setInput(e.target.value);
@@ -156,8 +175,11 @@ const ChatWindow = ({
           placeholder="Type a message…"
           maxLength={1000}
           className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-300 transition"
+          autoComplete="off"
         />
-        <button
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.95 }}
           onClick={handleSend}
           disabled={!input.trim()}
           className="w-9 h-9 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-white flex items-center justify-center disabled:opacity-40 hover:opacity-90 transition flex-shrink-0"
@@ -171,7 +193,7 @@ const ChatWindow = ({
           >
             <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
           </svg>
-        </button>
+        </motion.button>
       </div>
     </div>
   );

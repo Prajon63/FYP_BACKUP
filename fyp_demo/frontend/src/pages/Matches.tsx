@@ -14,6 +14,7 @@ import {
   Bell,
   Loader2,
   UserX,
+  Info,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { discoverService } from '../services/discoverService';
@@ -43,12 +44,12 @@ function scoreColor(score: number) {
 }
 
 // ── New Match Bubble ───────────────────────────────────────────────────
-function NewMatchBubble({ match, onClick }: { match: Match; onClick: () => void }) {
+function NewMatchBubble({ match, onProfileClick }: { match: Match; onProfileClick: () => void }) {
   return (
     <motion.button
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      onClick={onClick}
+      onClick={onProfileClick}
       className="flex flex-col items-center gap-1.5 shrink-0"
       type="button"
     >
@@ -78,13 +79,15 @@ function NewMatchBubble({ match, onClick }: { match: Match; onClick: () => void 
 function MatchCard({
   match,
   index,
-  onSelect,
+  onOpenDetails,
+  onNavigateProfile,
   onMessage,
   onUnmatch,
 }: {
   match: Match;
   index: number;
-  onSelect: () => void;
+  onOpenDetails: () => void;
+  onNavigateProfile: (e: React.MouseEvent) => void;
   onMessage: (e: React.MouseEvent) => void;
   onUnmatch: (e: React.MouseEvent) => void;
 }) {
@@ -97,27 +100,38 @@ function MatchCard({
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.07, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="group relative rounded-3xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl transition-all duration-500"
+      className="group relative rounded-3xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500"
       style={{ aspectRatio: '3/4' }}
-      onClick={onSelect}
-      role="button"
-      tabIndex={0}
     >
-      {/* Photo */}
+      <motion.button
+        type="button"
+        whileTap={{ scale: 0.95 }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenDetails();
+        }}
+        className="absolute top-14 left-4 z-20 w-9 h-9 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+        title="Quick view"
+        aria-label="Open match details"
+      >
+        <Info className="w-4 h-4" />
+      </motion.button>
+
       <img
         src={
           match.user?.profilePicture ||
           `https://api.dicebear.com/7.x/avataaars/svg?seed=${match.user?._id}`
         }
         alt={match.user?.username || 'Match'}
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+        onClick={onNavigateProfile}
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer z-0"
       />
 
       {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent z-[1] pointer-events-none" />
 
       {/* Badges */}
-      <div className="absolute top-4 left-4 flex gap-2">
+      <div className="absolute top-4 left-4 flex gap-2 z-[1] pointer-events-none">
         {isHot && (
           <span className="flex items-center gap-1 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-lg">
             <Flame className="w-3 h-3" /> Hot Match
@@ -132,22 +146,29 @@ function MatchCard({
 
       {/* Compatibility score */}
       <div
-        className={`absolute top-4 right-4 bg-gradient-to-r ${colors.bg} text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg`}
+        className={`absolute top-4 right-4 z-[1] pointer-events-none bg-gradient-to-r ${colors.bg} text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg`}
       >
         {match.compatibilityScore}%
       </div>
 
       {/* Bottom info */}
-      <div className="absolute bottom-0 left-0 right-0 p-5">
-        <h3
-          className="text-white font-bold text-xl leading-tight mb-0.5"
-          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+      <div className="absolute bottom-0 left-0 right-0 p-5 z-10">
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.98 }}
+          onClick={onNavigateProfile}
+          className="text-left w-full"
         >
-          {match.user?.username || 'Anonymous'}
-          {match.user?.age && (
-            <span className="font-normal text-white/80 text-lg">, {match.user.age}</span>
-          )}
-        </h3>
+          <h3
+            className="text-white font-bold text-xl leading-tight mb-0.5 cursor-pointer"
+            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+          >
+            {match.user?.username || 'Anonymous'}
+            {match.user?.age && (
+              <span className="font-normal text-white/80 text-lg">, {match.user.age}</span>
+            )}
+          </h3>
+        </motion.button>
 
         <div className="flex items-center gap-1 text-white/70 text-xs mb-3">
           {match.user?.location && (
@@ -338,6 +359,12 @@ const Matches: React.FC = () => {
   // FIX 14: Robust userId retrieval - same pattern as Discover.tsx
   const userId = getStoredUserId();
 
+  const goProfile = (targetId: string | undefined) => {
+    if (!targetId) return;
+    if (targetId === userId) navigate('/profile');
+    else navigate(`/profile/${targetId}`);
+  };
+
   useEffect(() => {
     if (!userId) {
       navigate('/');
@@ -482,7 +509,11 @@ const Matches: React.FC = () => {
             </div>
             <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-hide">
               {newMatches.map((m) => (
-                <NewMatchBubble key={m.matchId} match={m} onClick={() => setSelectedMatch(m)} />
+                <NewMatchBubble
+                  key={m.matchId}
+                  match={m}
+                  onProfileClick={() => goProfile(m.user?._id)}
+                />
               ))}
             </div>
           </div>
@@ -598,7 +629,11 @@ const Matches: React.FC = () => {
                 key={match.matchId}
                 match={match}
                 index={i}
-                onSelect={() => setSelectedMatch(match)}
+                onOpenDetails={() => setSelectedMatch(match)}
+                onNavigateProfile={(e) => {
+                  e.stopPropagation();
+                  goProfile(match.user?._id);
+                }}
                 onMessage={(e) => {
                   e.stopPropagation();
                   handleMessage(match);

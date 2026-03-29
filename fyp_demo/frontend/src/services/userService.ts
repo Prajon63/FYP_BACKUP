@@ -1,5 +1,12 @@
 import api from './api';
-import type { ProfileUpdateData, ProfileResponse, PostData, PostResponse, PostsResponse } from '../types';
+import type {
+  ProfileUpdateData,
+  ProfileResponse,
+  PostData,
+  PostResponse,
+  PostsResponse,
+  Post,
+} from '../types';
 
 // This service will handle user-related API calls
 export const userService = {
@@ -13,6 +20,20 @@ export const userService = {
       return response.data;
     } catch (error: any) {
       throw new Error(error.message || 'Failed to fetch user profile');
+    }
+  },
+
+  /**
+   * Public profile for another user (auth required). Strips private fields server-side.
+   */
+  async getPublicProfile(
+    userId: string
+  ): Promise<{ success: boolean; user?: ProfileResponse['user']; posts?: Post[]; error?: string }> {
+    try {
+      const response = await api.get(`/profile/${userId}/public`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to load public profile');
     }
   },
 
