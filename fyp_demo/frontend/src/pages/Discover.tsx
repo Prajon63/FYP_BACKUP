@@ -68,6 +68,8 @@ function PersonRow({
   rightAction,
   subLabel,
   delay = 0,
+  profileUserId,
+  currentUserId,
 }: {
   name: string;
   bio?: string;
@@ -75,7 +77,16 @@ function PersonRow({
   rightAction: React.ReactNode;
   subLabel?: React.ReactNode;
   delay?: number;
+  profileUserId: string;
+  currentUserId: string;
 }) {
+  const navigate = useNavigate();
+  const goProfile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (profileUserId === currentUserId) navigate('/profile');
+    else navigate(`/profile/${profileUserId}`);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -83,9 +94,26 @@ function PersonRow({
       transition={{ delay, duration: 0.3 }}
       className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4"
     >
-      <img src={image} alt="" className="w-14 h-14 rounded-2xl object-cover" />
+      <motion.button
+        type="button"
+        whileTap={{ scale: 0.95 }}
+        onClick={goProfile}
+        className="shrink-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+        aria-label={`View ${name}'s profile`}
+      >
+        <img src={image} alt="" className="w-14 h-14 rounded-2xl object-cover" />
+      </motion.button>
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-slate-800 truncate">{name}</p>
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.98 }}
+          onClick={goProfile}
+          className="text-left w-full"
+        >
+          <p className="font-bold text-slate-800 truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
+            {name}
+          </p>
+        </motion.button>
         {bio && <p className="text-sm text-slate-500 truncate">{bio}</p>}
         {subLabel}
       </div>
@@ -634,6 +662,7 @@ const Discover: React.FC = () => {
                   isSuperLikedByThem={currentLike.isSuperLike}
                   superLikesRemaining={stats.superLikesRemaining}
                   superLikeLimit={stats.superLikeLimit}
+                  currentUserId={userId}
                 />
               </AnimatePresence>
               <div className="text-center mt-4">
@@ -666,6 +695,8 @@ const Discover: React.FC = () => {
                 <PersonRow
                   key={item.interactionId}
                   delay={index * 0.07}
+                  profileUserId={item.user._id}
+                  currentUserId={userId}
                   image={item.user.profilePicture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + item.user._id}
                   name={item.user.username || 'Someone'}
                   bio={item.user.bio}
@@ -708,6 +739,8 @@ const Discover: React.FC = () => {
                 <PersonRow
                   key={item.interactionId}
                   delay={index * 0.07}
+                  profileUserId={item.user._id}
+                  currentUserId={userId}
                   image={item.user.profilePicture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + item.user._id}
                   name={item.user.username || 'Someone'}
                   bio={item.user.bio}
@@ -769,6 +802,7 @@ const Discover: React.FC = () => {
                     onSuperLike={handleSuperLike}
                     superLikesRemaining={stats.superLikesRemaining}
                     superLikeLimit={stats.superLikeLimit}
+                    currentUserId={userId}
                   />
                 )}
               </AnimatePresence>

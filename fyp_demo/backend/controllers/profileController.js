@@ -29,6 +29,76 @@ export async function getProfile(req, res) {   //function to retrieve user data
   }
 }
 
+/**
+ * Public profile for viewers: strips sensitive fields and respects per-field visibility.
+ * GET /api/profile/:userId/public (requires auth via protect)
+ */
+export async function getPublicProfile(req, res) {
+  try {
+    const { userId } = req.params;
+
+    const user = await findById(userId).select(
+      '-password -passwordResetToken -passwordResetExpires -verificationPhoto -email'
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const u = user.toObject();
+
+    const publicUser = {
+      _id: u._id,
+      username: u.username,
+      profilePicture: u.profilePicture,
+      coverImage: u.coverImage,
+      photos: u.photos,
+      bio: u.bio,
+      about: u.about,
+      age: u.age,
+      interests: u.interests,
+      relationshipGoals: u.relationshipGoals,
+      profileCompleteness: u.profileCompleteness,
+      isVerified: u.isVerified,
+      isOnline: u.isOnline,
+      lastActive: u.discoverySettings?.lastActiveVisible ? u.lastActive : undefined,
+
+      pronouns: u.pronounsVisibility === 'public' ? u.pronouns : undefined,
+      gender: u.genderVisibility === 'public' ? u.gender : undefined,
+      interestedIn: u.interestedInVisibility === 'public' ? u.interestedIn : undefined,
+
+      workTitle: u.workVisibility === 'public' ? u.workTitle : undefined,
+      workCompany: u.workVisibility === 'public' ? u.workCompany : undefined,
+
+      educationSchool: u.educationVisibility === 'public' ? u.educationSchool : undefined,
+      educationDegree: u.educationVisibility === 'public' ? u.educationDegree : undefined,
+
+      height: u.heightVisibility === 'public' ? u.height : undefined,
+
+      location: u.locationVisibility === 'public'
+        ? {
+            city: u.location?.city,
+            country: u.location?.country,
+            displayLocation: u.location?.displayLocation,
+          }
+        : undefined,
+
+      lifestyle: u.lifestyle,
+    };
+
+    const posts = u.posts || [];
+
+    return res.status(200).json({
+      success: true,
+      user: publicUser,
+      posts,
+    });
+  } catch (error) {
+    console.error('getPublicProfile error:', error);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+}
+
 // Update user profile (bio, username, profile picture, about)
 export async function updateProfile(req, res) {
   try {
