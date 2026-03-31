@@ -6,6 +6,7 @@ import type {
   LikesResponse,
   LikedByMeResponse,
   PassedResponse,
+  BlockedResponse,
   RemoveInteractionResponse,
   StatsResponse,
   UnmatchResponse,
@@ -123,6 +124,19 @@ export const discoverService = {
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to fetch passed list');
+    }
+  },
+
+  /**
+   * Get people I blocked
+   * @param userId - User ID
+   */
+  async getBlocked(userId: string): Promise<BlockedResponse> {
+    try {
+      const response = await api.get<BlockedResponse>(`/discover/${userId}/blocked`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to fetch blocked list');
     }
   },
 

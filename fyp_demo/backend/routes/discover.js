@@ -7,6 +7,7 @@ import {
   getLikes,
   getLikedByMe,
   getPassed,
+  getBlocked,
   removeInteraction,
   updateMatchPreferences,
   updateDiscoverySettings,
@@ -39,6 +40,9 @@ router.get('/:userId/liked-by-me', protect, getLikedByMe);
 
 // GET /api/discover/:userId/passed - People I passed on
 router.get('/:userId/passed', protect, getPassed);
+
+// GET /api/discover/:userId/blocked - People I blocked
+router.get('/:userId/blocked', protect, getBlocked);
 
 // POST /api/discover/:userId/remove-interaction - Remove my like/pass (undo)
 router.post('/:userId/remove-interaction', protect, removeInteraction);

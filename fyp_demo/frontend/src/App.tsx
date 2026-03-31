@@ -5,6 +5,7 @@ import EnhancedPreferences from './pages/EnhancedPreferences';
 import Home from './pages/Home';
 import Profile from './pages/profile';
 import ViewProfile from './pages/ViewProfile';
+import Settings from './pages/Settings';
 import About from './pages/About';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -23,6 +24,7 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         {/* Public profile view — any user's profile by ID */}
         <Route path="/profile/:userId" element={<ViewProfile />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/about" element={<About />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
