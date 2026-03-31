@@ -151,6 +151,7 @@ const Discover: React.FC = () => {
   const [loadingPassed, setLoadingPassed] = useState(false);
   const [likesTabIndex, setLikesTabIndex] = useState(0);
   const [activeSection, setActiveSection] = useState<'likes' | 'likedByMe' | 'passed' | 'discover'>('discover');
+  const [savedProfiles, setSavedProfiles] = useState<Set<string>>(new Set());
 
   const userId = localStorage.getItem('userId') ||
     (() => { try { return JSON.parse(localStorage.getItem('user') || '{}')._id || ''; } catch { return ''; } })();
@@ -501,6 +502,22 @@ const Discover: React.FC = () => {
     }
   };
 
+  const handleSaveProfile = async (targetUserId: string) => {
+    if (!userId) return;
+    try {
+      await discoverService.handleInteraction(userId, targetUserId, 'like');
+      setSavedProfiles(prev => {
+        const next = new Set(prev);
+        next.add(targetUserId);
+        return next;
+      });
+      toast.success('Saved profile');
+      fetchStats();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to save');
+    }
+  };
+
   const currentUser = users[currentIndex];
   const noMoreUsers = !loading && currentIndex >= users.length;
   const noMoreLikes = !loadingLikes && likesList.length === 0;
@@ -663,6 +680,8 @@ const Discover: React.FC = () => {
                   superLikesRemaining={stats.superLikesRemaining}
                   superLikeLimit={stats.superLikeLimit}
                   currentUserId={userId}
+                  onSaveProfile={() => handleSaveProfile(currentLike.user._id)}
+                  isSaved={savedProfiles.has(currentLike.user._id)}
                 />
               </AnimatePresence>
               <div className="text-center mt-4">
@@ -803,6 +822,8 @@ const Discover: React.FC = () => {
                     superLikesRemaining={stats.superLikesRemaining}
                     superLikeLimit={stats.superLikeLimit}
                     currentUserId={userId}
+                    onSaveProfile={() => handleSaveProfile(currentUser._id)}
+                    isSaved={savedProfiles.has(currentUser._id)}
                   />
                 )}
               </AnimatePresence>

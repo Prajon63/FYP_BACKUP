@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -70,6 +71,81 @@ function SkeletonCard() {
   );
 }
 
+// ── Portal dropdown ────────────────────────────────────────────────────
+// Rendered into document.body so it is never clipped by any card's
+// overflow:hidden, regardless of card size or scroll position.
+function DropdownPortal({
+  anchorRect,
+  onAction,
+  onClose,
+}: {
+  anchorRect: DOMRect;
+  onAction: (action: 'pass' | 'like' | 'block') => void;
+  onClose: () => void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click (delayed so the trigger click doesn't re-close instantly)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
+    };
+    const id = window.setTimeout(() => document.addEventListener('mousedown', handler), 0);
+    return () => { clearTimeout(id); document.removeEventListener('mousedown', handler); };
+  }, [onClose]);
+
+  // Close when the page scrolls so the menu doesn't drift
+  useEffect(() => {
+    const handler = () => onClose();
+    window.addEventListener('scroll', handler, { capture: true, passive: true });
+    return () => window.removeEventListener('scroll', handler, true);
+  }, [onClose]);
+
+  // getBoundingClientRect() returns viewport-relative coords — correct for
+  // position:fixed WITHOUT adding scrollY (that was the bug in the prev attempt).
+  const top = anchorRect.bottom + 6;
+  const right = window.innerWidth - anchorRect.right;
+
+  return createPortal(
+    <motion.div
+      ref={menuRef}
+      initial={{ opacity: 0, scale: 0.95, y: -6 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: -6 }}
+      transition={{ duration: 0.13 }}
+      style={{ position: 'fixed', top, right, width: 192, zIndex: 99999 }}
+      className="rounded-2xl border border-slate-100 bg-white shadow-2xl py-1 overflow-hidden"
+    >
+      <button
+        type="button"
+        onMouseDown={(e) => { e.stopPropagation(); onAction('pass'); }}
+        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left transition-colors"
+      >
+        <EyeOff className="w-4 h-4 text-slate-500 shrink-0" />
+        Not interested
+      </button>
+      <button
+        type="button"
+        onMouseDown={(e) => { e.stopPropagation(); onAction('like'); }}
+        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left transition-colors"
+      >
+        <Bookmark className="w-4 h-4 text-rose-500 shrink-0" />
+        Save profile
+      </button>
+      <div className="my-0.5 border-t border-slate-100" />
+      <button
+        type="button"
+        onMouseDown={(e) => { e.stopPropagation(); onAction('block'); }}
+        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 text-left transition-colors"
+      >
+        <Ban className="w-4 h-4 shrink-0" />
+        Block user
+      </button>
+    </motion.div>,
+    document.body
+  );
+}
+
 // ── Profile Feed Card ──────────────────────────────────────────────────
 function ProfileCard({
   user,
@@ -77,58 +153,61 @@ function ProfileCard({
   liked,
   onToggleLike,
   currentUserId,
+  cardAction,
+  onOverflowAction,
+  onUndoAction,
+  onDismissAction,
 }: {
   user: DiscoveryUser;
   index: number;
   liked: boolean;
   onToggleLike: () => void;
   currentUserId: string;
+  cardAction?: 'pass' | 'block' | null;
+  onOverflowAction: (action: 'pass' | 'like' | 'block') => void;
+  onUndoAction: () => void;
+  onDismissAction: () => void;
 }) {
   const navigate = useNavigate();
-  const [localLikes, setLocalLikes] = useState(Math.floor(Math.random() * 900) + 100);
+  // Stable random counts — won't re-roll on re-render
+  const [localLikes] = useState(() => Math.floor(Math.random() * 900) + 100);
+  const [localComments] = useState(() => Math.floor(Math.random() * 80) + 10);
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
 
-  const displayPicture =
-    user.profilePicture ||
-    `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`;
+  // ── Image sources ───────────────────────────────────────────────────
+  // dicebear fallback keeps avatars for profiles with no uploaded images
+  const dicebear = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`;
 
-  const handleLike = () => {
-    setLocalLikes(prev => (liked ? prev - 1 : prev + 1));
-    onToggleLike();
-  };
+  // Small avatar chip on banner — always profile pic (or dicebear)
+  const avatarSrc = user.profilePicture || dicebear;
 
+  // Large banner at top:
+  //   coverImage → profilePicture → dicebear
+  // This means if a user has a profile pic but no cover, the profile pic
+  // fills the banner (which is the original behaviour before the bugs).
+  const coverImage = (user as any).coverImage as string | undefined;
+  const bannerSrc = coverImage || user.profilePicture || dicebear;
+
+  // Body image (the "post" preview section):
+  //   profilePicture → dicebear
+  // Once real posts are available from the API, swap to post.images[0].
+  const bodyImageSrc = user.profilePicture || dicebear;
+
+  // ── Handlers ────────────────────────────────────────────────────────
   const goToProfile = () => {
     if (user._id === currentUserId) navigate('/profile');
     else navigate(`/profile/${user._id}`);
   };
 
-  const handleMenuAction = async (action: 'pass' | 'like' | 'block') => {
-    setMenuOpen(false);
-    if (!currentUserId || !user._id) {
-      toast.error('Please log in');
-      return;
-    }
-    try {
-      await discoverService.handleInteraction(currentUserId, user._id, action);
-      if (action === 'pass') toast.success('Marked as not interested');
-      if (action === 'like') toast.success('Profile saved');
-      if (action === 'block') toast.success('User blocked');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Something went wrong');
-    }
+  const toggleMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (cardAction) return;
+    if (menuOpen) { setMenuOpen(false); return; }
+    if (menuBtnRef.current) setAnchorRect(menuBtnRef.current.getBoundingClientRect());
+    setMenuOpen(true);
   };
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const close = (ev: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(ev.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [menuOpen]);
 
   return (
     <motion.article
@@ -137,10 +216,10 @@ function ProfileCard({
       transition={{ delay: index * 0.08, duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
       className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group"
     >
-      {/* Cover / banner area */}
+      {/* ── Banner ── */}
       <div className="relative h-52 overflow-hidden">
         <img
-          src={displayPicture}
+          src={bannerSrc}
           alt={user.username || 'Profile'}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
@@ -152,17 +231,17 @@ function ProfileCard({
           </div>
         )}
 
-        {/* Clickable author: avatar + name */}
+        {/* Author chip */}
         <motion.button
           type="button"
           whileTap={{ scale: 0.98 }}
           onClick={goToProfile}
           className="absolute bottom-4 left-4 right-4 flex items-end gap-3 text-left rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
         >
-          <div className="relative shrink-0 pointer-events-none">
+          <div className="shrink-0 pointer-events-none">
             <div className="w-14 h-14 rounded-2xl p-0.5 bg-gradient-to-br from-rose-400 to-pink-500 shadow-lg">
               <img
-                src={displayPicture}
+                src={avatarSrc}
                 alt={user.username || ''}
                 className="w-full h-full rounded-xl object-cover border-2 border-white"
               />
@@ -188,7 +267,43 @@ function ProfileCard({
         </motion.button>
       </div>
 
+      {/* ── Card body ── */}
       <div className="p-5 space-y-4">
+        {cardAction && (
+          <div className={`rounded-2xl border p-4 ${cardAction === 'block' ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className={`text-sm font-bold ${cardAction === 'block' ? 'text-red-700' : 'text-amber-800'}`}>
+                  {cardAction === 'block' ? 'Blocked' : 'Not interested'}
+                </p>
+                <p className={`text-xs mt-0.5 ${cardAction === 'block' ? 'text-red-600/80' : 'text-amber-700/80'}`}>
+                  {cardAction === 'block'
+                    ? 'This account will no longer appear anywhere.'
+                    : 'You won’t see this profile in Discover or Feed.'}
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={onUndoAction}
+                  className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50"
+                >
+                  Undo
+                </motion.button>
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={onDismissAction}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold ${cardAction === 'block' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-amber-600 text-white hover:bg-amber-700'}`}
+                >
+                  Dismiss
+                </motion.button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {user.bio && (
           <p className="text-slate-600 text-sm leading-relaxed line-clamp-2">{user.bio}</p>
         )}
@@ -211,36 +326,38 @@ function ProfileCard({
           </div>
         )}
 
+        {/* Body image — profile pic (or dicebear).
+            TODO: replace bodyImageSrc with post.images[0] once post data
+            is included in the discover API response. */}
         <div className="relative rounded-2xl overflow-hidden">
           <img
-            src={displayPicture}
+            src={bodyImageSrc}
             alt={`${user.username || 'User'}'s photo`}
             className="w-full h-56 object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
         </div>
 
-        <div className="flex items-center justify-between pt-1">
+        {/* Action row */}
+        <div className={`flex items-center justify-between pt-1 ${cardAction ? 'opacity-50 pointer-events-none' : ''}`}>
           <div className="flex items-center gap-4">
             <motion.button
               type="button"
               whileTap={{ scale: 0.85 }}
-              onClick={handleLike}
+              onClick={() => onToggleLike()}
               className={`flex items-center gap-1.5 transition-colors ${
                 liked ? 'text-rose-500' : 'text-slate-400 hover:text-rose-500'
               }`}
             >
-              <Heart
-                className={`w-5 h-5 transition-all ${liked ? 'fill-rose-500 scale-110' : ''}`}
-              />
-              <span className="text-sm font-semibold">{formatNumber(localLikes)}</span>
+              <Heart className={`w-5 h-5 transition-all ${liked ? 'fill-rose-500 scale-110' : ''}`} />
+              <span className="text-sm font-semibold">
+                {formatNumber(localLikes + (liked ? 1 : 0))}
+              </span>
             </motion.button>
 
             <button type="button" className="flex items-center gap-1.5 text-slate-400 hover:text-rose-500 transition-colors">
               <MessageCircle className="w-5 h-5" />
-              <span className="text-sm font-semibold">
-                {formatNumber(Math.floor(Math.random() * 80) + 10)}
-              </span>
+              <span className="text-sm font-semibold">{formatNumber(localComments)}</span>
             </button>
 
             <button type="button" className="text-slate-400 hover:text-rose-500 transition-colors">
@@ -248,53 +365,19 @@ function ProfileCard({
             </button>
           </div>
 
-          <div className="relative" ref={menuRef}>
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setMenuOpen(o => !o)}
-              className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-50"
-              aria-label="More options"
-              aria-expanded={menuOpen}
-            >
-              <MoreHorizontal className="w-5 h-5" />
-            </motion.button>
-            <AnimatePresence>
-              {menuOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-2xl border border-slate-100 bg-white shadow-xl py-1 overflow-hidden"
-                >
-                  <button
-                    type="button"
-                    onClick={() => void handleMenuAction('pass')}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
-                  >
-                    <EyeOff className="w-4 h-4 text-slate-500" />
-                    Not interested
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleMenuAction('like')}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
-                  >
-                    <Bookmark className="w-4 h-4 text-rose-500" />
-                    Save profile
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleMenuAction('block')}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 text-left"
-                  >
-                    <Ban className="w-4 h-4" />
-                    Block
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* ⋯ triggers portal dropdown */}
+          <motion.button
+            ref={menuBtnRef}
+            type="button"
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleMenu}
+            className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-lg hover:bg-slate-50"
+            aria-label="More options"
+            aria-expanded={menuOpen}
+            disabled={!!cardAction}
+          >
+            <MoreHorizontal className="w-5 h-5" />
+          </motion.button>
         </div>
 
         {user.age && (
@@ -311,34 +394,39 @@ function ProfileCard({
           </div>
         )}
       </div>
+
+      {/* Portal dropdown — escapes overflow:hidden completely */}
+      <AnimatePresence>
+        {menuOpen && anchorRect && (
+          <DropdownPortal
+            anchorRect={anchorRect}
+            onAction={(action) => {
+              setMenuOpen(false);
+              onOverflowAction(action);
+            }}
+            onClose={() => setMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </motion.article>
   );
 }
 
 // ── Nav link ───────────────────────────────────────────────────────────
 function NavLink({
-  icon,
-  label,
-  onClick,
-  active,
+  icon, label, onClick, active,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  active?: boolean;
+  icon: React.ReactNode; label: string; onClick: () => void; active?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-        active
-          ? 'bg-rose-50 text-rose-600'
-          : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+        active ? 'bg-rose-50 text-rose-600' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
       }`}
     >
-      {icon}
-      {label}
+      {icon}{label}
     </button>
   );
 }
@@ -351,35 +439,26 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [cardActions, setCardActions] = useState<Record<string, 'pass' | 'block' | null>>({});
 
   const userId = getStoredUserId();
   const storedUser = getStoredUser();
 
-  const fetchFeed = async (isRefresh = false) => {
-    if (!userId) {
-      navigate('/');
-      return;
-    }
+  const fetchFeed = useCallback(async (isRefresh = false) => {
+    if (!userId) { navigate('/'); return; }
     try {
       isRefresh ? setRefreshing(true) : setLoading(true);
-      const response = await discoverService.getDiscoverUsers(userId, {
-        limit: 12,
-        sortBy: 'score',
-      });
-      if (response.success) {
-        setFeedUsers(response.users || []);
-      }
+      const response = await discoverService.getDiscoverUsers(userId, { limit: 12, sortBy: 'score' });
+      if (response.success) setFeedUsers(response.users || []);
     } catch {
       toast.error('Failed to load feed');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [userId, navigate]);
 
-  useEffect(() => {
-    fetchFeed();
-  }, [userId]);
+  useEffect(() => { fetchFeed(); }, [fetchFeed]);
 
   const toggleLike = (id: string) => {
     setLikedPosts(prev => {
@@ -387,6 +466,98 @@ const Home: React.FC = () => {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  };
+
+  const isMobileNow = () =>
+    typeof window !== 'undefined' &&
+    !!window.matchMedia &&
+    window.matchMedia('(max-width: 767px)').matches;
+
+  const showMobileUndo = (targetUserId: string, action: 'pass' | 'block') => {
+    toast.custom((t) => (
+      <div
+        className={`max-w-sm w-[92vw] rounded-2xl shadow-2xl border px-4 py-3 bg-white ${
+          action === 'block' ? 'border-red-200' : 'border-amber-200'
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-bold text-slate-900">
+              {action === 'block' ? 'User blocked' : 'Not interested'}
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Tap undo to restore this profile.
+            </p>
+          </div>
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.95 }}
+            onClick={async () => {
+              toast.dismiss(t.id);
+              try {
+                await discoverService.removeInteraction(userId, targetUserId);
+                toast.success('Undone');
+                await fetchFeed(true);
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Failed to undo');
+              }
+            }}
+            className="px-3 py-2 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100"
+          >
+            Undo
+          </motion.button>
+        </div>
+      </div>
+    ), { position: 'bottom-center', duration: 4500 });
+  };
+
+  const handleOverflowAction = async (target: DiscoveryUser, action: 'pass' | 'like' | 'block') => {
+    if (!userId) { navigate('/'); return; }
+    const targetId = target._id;
+    if (!targetId) return;
+
+    // Save profile: treat as like interaction (reuses existing backend model)
+    if (action === 'like') {
+      try {
+        await discoverService.handleInteraction(userId, targetId, 'like');
+        toast.success('Profile saved');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Failed to save');
+      }
+      return;
+    }
+
+    // Pass / Block
+    try {
+      await discoverService.handleInteraction(userId, targetId, action);
+
+      if (isMobileNow()) {
+        // Instagram-like: remove instantly + toast undo
+        setFeedUsers(prev => prev.filter(u => u._id !== targetId));
+        showMobileUndo(targetId, action);
+      } else {
+        // Desktop: keep card visible with inline undo/dismiss
+        setCardActions(prev => ({ ...prev, [targetId]: action }));
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update');
+    }
+  };
+
+  const undoCardAction = async (targetUserId: string) => {
+    try {
+      await discoverService.removeInteraction(userId, targetUserId);
+      setCardActions(prev => ({ ...prev, [targetUserId]: null }));
+      toast.success('Undone');
+      await fetchFeed(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to undo');
+    }
+  };
+
+  const dismissCardAction = (targetUserId: string) => {
+    setCardActions(prev => ({ ...prev, [targetUserId]: null }));
+    setFeedUsers(prev => prev.filter(u => u._id !== targetUserId));
   };
 
   if (loading) {
@@ -397,16 +568,12 @@ const Home: React.FC = () => {
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="h-7 w-24 bg-slate-100 rounded-full animate-pulse" />
             <div className="flex gap-2">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-9 w-20 bg-slate-100 rounded-xl animate-pulse" />
-              ))}
+              {[1, 2, 3, 4].map(i => <div key={i} className="h-9 w-20 bg-slate-100 rounded-xl animate-pulse" />)}
             </div>
           </div>
         </div>
         <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <SkeletonCard key={i} />
-          ))}
+          {[1, 2, 3, 4, 5, 6].map(i => <SkeletonCard key={i} />)}
         </div>
       </div>
     );
@@ -421,6 +588,7 @@ const Home: React.FC = () => {
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
+      {/* Header */}
       <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between gap-4">
           <h1
@@ -428,52 +596,31 @@ const Home: React.FC = () => {
             style={{ fontFamily: "'Playfair Display', serif" }}
             onClick={() => navigate('/home')}
           >
-            <span className="bg-gradient-to-r from-rose-500 to-pink-500 bg-clip-text text-transparent">
-              Capella
-            </span>
+            <span className="bg-gradient-to-r from-rose-500 to-pink-500 bg-clip-text text-transparent">Capella</span>
           </h1>
 
           <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide max-w-[52%] md:max-w-none">
-            <NavLink
-              icon={<Compass className="w-4 h-4" />}
-              label="Discover"
-              active={location.pathname === '/discover'}
-              onClick={() => navigate('/discover')}
-            />
-            <NavLink
-              icon={<Sparkles className="w-4 h-4" />}
-              label="Matches"
-              active={location.pathname === '/matches'}
-              onClick={() => navigate('/matches')}
-            />
-            <NavLink
-              icon={<MessageCircle className="w-4 h-4" />}
-              label="Messages"
-              active={location.pathname === '/messages'}
-              onClick={() => navigate('/messages')}
-            />
-            <NavLink
-              icon={<UserIcon className="w-4 h-4" />}
-              label="Profile"
+            <NavLink icon={<Compass className="w-4 h-4" />} label="Discover"
+              active={location.pathname === '/discover'} onClick={() => navigate('/discover')} />
+            <NavLink icon={<Sparkles className="w-4 h-4" />} label="Matches"
+              active={location.pathname === '/matches'} onClick={() => navigate('/matches')} />
+            <NavLink icon={<MessageCircle className="w-4 h-4" />} label="Messages"
+              active={location.pathname === '/messages'} onClick={() => navigate('/messages')} />
+            <NavLink icon={<UserIcon className="w-4 h-4" />} label="Profile"
               active={location.pathname === '/profile' || location.pathname.startsWith('/profile/')}
-              onClick={() => navigate('/profile')}
-            />
+              onClick={() => navigate('/profile')} />
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.9 }}
-              onClick={() => fetchFeed(true)}
-              disabled={refreshing}
+            <motion.button type="button" whileTap={{ scale: 0.9 }}
+              onClick={() => fetchFeed(true)} disabled={refreshing}
               className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors text-slate-500"
               title="Refresh feed"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-rose-400' : ''}`} />
             </motion.button>
 
-            <button
-              type="button"
+            <button type="button"
               className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors text-slate-500"
               aria-label="Notifications"
             >
@@ -482,20 +629,15 @@ const Home: React.FC = () => {
             </button>
 
             <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
               onClick={() => navigate('/profile')}
               onKeyDown={(e) => e.key === 'Enter' && navigate('/profile')}
-              role="button"
-              tabIndex={0}
+              role="button" tabIndex={0}
               className="w-9 h-9 rounded-full p-0.5 bg-gradient-to-br from-rose-400 to-pink-500 cursor-pointer shadow-md shadow-rose-200"
             >
               {storedUser?.profilePicture ? (
-                <img
-                  src={storedUser.profilePicture}
-                  alt="Me"
-                  className="w-full h-full rounded-full object-cover border-2 border-white"
-                />
+                <img src={storedUser.profilePicture} alt="Me"
+                  className="w-full h-full rounded-full object-cover border-2 border-white" />
               ) : (
                 <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
                   <UserIcon className="w-4 h-4 text-rose-400" />
@@ -506,87 +648,61 @@ const Home: React.FC = () => {
         </div>
       </header>
 
+      {/* Hero greeting */}
       <div className="max-w-6xl mx-auto px-4 pt-8 pb-2">
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
           className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6"
         >
           <div>
-            <h2
-              className="text-3xl font-bold text-slate-900"
-              style={{ fontFamily: "'Playfair Display', serif" }}
-            >
+            <h2 className="text-3xl font-bold text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
               {storedUser?.username ? `Hello, ${String(storedUser.username).split(' ')[0]} 👋` : 'Your Feed'}
             </h2>
             <p className="text-slate-400 text-sm mt-1">
-              {feedUsers.length > 0
-                ? `${feedUsers.length} profiles curated for you today`
-                : 'Discover amazing people around you'}
+              {feedUsers.length > 0 ? `${feedUsers.length} profiles curated for you today` : 'Discover amazing people around you'}
             </p>
           </div>
-
           <div className="hidden sm:flex items-center gap-2">
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+            <motion.button type="button" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
               onClick={() => navigate('/discover')}
               className="flex items-center gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-xs font-bold px-4 py-2 rounded-2xl shadow-lg shadow-rose-300/40"
             >
-              <Compass className="w-3.5 h-3.5" />
-              Swipe Mode
+              <Compass className="w-3.5 h-3.5" /> Swipe Mode
             </motion.button>
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+            <motion.button type="button" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
               onClick={() => navigate('/matches')}
-              className="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold px-4 py-2 rounded-2xl hover:border-rose-200 hover:text-rose-600 transition-colors shadow-sm"
+              className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold px-4 py-2 rounded-2xl hover:border-rose-200 hover:text-rose-600 transition-colors shadow-sm"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              My Matches
+              <Sparkles className="w-3.5 h-3.5" /> My Matches
             </motion.button>
           </div>
         </motion.div>
       </div>
 
+      {/* Feed */}
       <div className="max-w-6xl mx-auto px-4 pb-16">
         {feedUsers.length === 0 ? (
           <motion.div
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-2xl border-2 border-dashed border-slate-200 shadow-sm p-16 text-center max-w-md mx-auto mt-8"
           >
             <div className="w-16 h-16 rounded-2xl bg-rose-50 flex items-center justify-center mx-auto mb-4">
               <Sparkles className="w-8 h-8 text-rose-300" />
             </div>
-            <h3
-              className="text-xl font-bold text-slate-700 mb-2"
-              style={{ fontFamily: "'Playfair Display', serif" }}
-            >
+            <h3 className="text-xl font-bold text-slate-700 mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
               Your feed is empty
             </h3>
-            <p className="text-slate-400 text-sm mb-6">
-              No profiles to show right now. Try refreshing or adjusting your preferences.
-            </p>
+            <p className="text-slate-400 text-sm mb-6">No profiles to show right now. Try refreshing or adjusting your preferences.</p>
             <div className="flex flex-wrap gap-3 justify-center">
-              <button
-                type="button"
-                onClick={() => fetchFeed(true)}
+              <button type="button" onClick={() => fetchFeed(true)}
                 className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold px-5 py-2.5 rounded-2xl shadow-lg shadow-rose-300/40 hover:from-rose-600 hover:to-pink-600 transition-all"
               >
-                <RefreshCw className="w-4 h-4" />
-                Refresh
+                <RefreshCw className="w-4 h-4" /> Refresh
               </button>
-              <button
-                type="button"
-                onClick={() => navigate('/discover')}
+              <button type="button" onClick={() => navigate('/discover')}
                 className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 font-bold px-5 py-2.5 rounded-2xl hover:border-rose-200 hover:text-rose-600 transition-colors"
               >
-                <Compass className="w-4 h-4" />
-                Discover
+                <Compass className="w-4 h-4" /> Discover
               </button>
             </div>
           </motion.div>
@@ -601,42 +717,32 @@ const Home: React.FC = () => {
                   liked={likedPosts.has(user._id)}
                   onToggleLike={() => toggleLike(user._id)}
                   currentUserId={userId}
+                  cardAction={cardActions[user._id] || null}
+                  onOverflowAction={(action) => void handleOverflowAction(user, action)}
+                  onUndoAction={() => void undoCardAction(user._id)}
+                  onDismissAction={() => dismissCardAction(user._id)}
                 />
               ))}
             </div>
 
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
               className="text-center mt-12"
             >
               <p className="text-slate-400 text-sm mb-4">Want to see more people?</p>
               <div className="flex flex-wrap items-center justify-center gap-3">
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => fetchFeed(true)}
-                  disabled={refreshing}
+                <motion.button type="button" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => fetchFeed(true)} disabled={refreshing}
                   className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 font-semibold text-sm px-5 py-2.5 rounded-2xl hover:border-rose-200 hover:text-rose-500 transition-colors shadow-sm"
                 >
-                  {refreshing ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-rose-400" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
+                  {refreshing ? <Loader2 className="w-4 h-4 animate-spin text-rose-400" /> : <RefreshCw className="w-4 h-4" />}
                   Refresh Feed
                 </motion.button>
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+                <motion.button type="button" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                   onClick={() => navigate('/discover')}
                   className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold text-sm px-5 py-2.5 rounded-2xl shadow-lg shadow-rose-300/40 hover:from-rose-600 hover:to-pink-600 transition-all"
                 >
-                  <Compass className="w-4 h-4" />
-                  Switch to Swipe Mode
+                  <Compass className="w-4 h-4" /> Switch to Swipe Mode
                 </motion.button>
               </div>
             </motion.div>
@@ -644,6 +750,7 @@ const Home: React.FC = () => {
         )}
       </div>
 
+      {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-slate-100 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex justify-between z-40">
         {[
           { icon: <Sparkles className="w-5 h-5" />, label: 'Feed', path: '/home' },
@@ -653,17 +760,12 @@ const Home: React.FC = () => {
         ].map(item => {
           const active = location.pathname === item.path;
           return (
-            <button
-              key={item.path}
-              type="button"
-              onClick={() => navigate(item.path)}
+            <button key={item.path} type="button" onClick={() => navigate(item.path)}
               className={`flex flex-col items-center gap-0.5 text-[10px] font-semibold transition-colors ${
                 active ? 'text-rose-500' : 'text-slate-400 hover:text-slate-600'
               }`}
             >
-              <span className={`p-1.5 rounded-xl transition-colors ${active ? 'bg-rose-50' : ''}`}>
-                {item.icon}
-              </span>
+              <span className={`p-1.5 rounded-xl transition-colors ${active ? 'bg-rose-50' : ''}`}>{item.icon}</span>
               {item.label}
             </button>
           );

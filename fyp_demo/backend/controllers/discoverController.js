@@ -582,6 +582,52 @@ export const getPassed = async (req, res) => {
 };
 
 /**
+ * Get users I blocked
+ */
+export const getBlocked = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const docs = await Match.find({
+      fromUser: userId,
+      status: 'blocked'
+    })
+      .populate('toUser', 'username profilePicture bio age location interests')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const list = docs
+      .filter(doc => doc.toUser)
+      .map(doc => ({
+        interactionId: doc._id,
+        user: {
+          _id: doc.toUser._id,
+          username: doc.toUser.username,
+          profilePicture: doc.toUser.profilePicture,
+          bio: doc.toUser.bio,
+          age: doc.toUser.age,
+          location: doc.toUser.location?.displayLocation || doc.toUser.location?.city,
+          interests: doc.toUser.interests
+        },
+        blockedAt: doc.createdAt
+      }));
+
+    return res.status(200).json({
+      success: true,
+      list,
+      total: list.length
+    });
+  } catch (error) {
+    console.error('getBlocked error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to fetch blocked list',
+      detail: error.message
+    });
+  }
+};
+
+/**
  * Remove my interaction (like or pass). They can show in Discover / Likes you again.
  * Not allowed for mutual matches.
  */

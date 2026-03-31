@@ -13,6 +13,7 @@ import {
   Sparkles,
   Info,
   ExternalLink,
+  Bookmark,
 } from 'lucide-react';
 import type { DiscoveryUser } from '../types';
 
@@ -21,6 +22,9 @@ interface UserCardProps {
   onLike: () => void;
   onPass: () => void;
   onSuperLike: () => void;
+  /** Optional: save profile (bookmark) without swiping */
+  onSaveProfile?: () => void;
+  isSaved?: boolean;
   onCardClick?: () => void;
   style?: React.CSSProperties;
   isSuperLikedByThem?: boolean;
@@ -35,6 +39,8 @@ const UserCard: React.FC<UserCardProps> = ({
   onLike,
   onPass,
   onSuperLike,
+  onSaveProfile,
+  isSaved = false,
   onCardClick,
   style,
   isSuperLikedByThem = false,
@@ -243,13 +249,33 @@ const UserCard: React.FC<UserCardProps> = ({
                 <p className="text-sm text-gray-500">{user.pronouns}</p>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => setShowInfo(!showInfo)}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <Info className="w-5 h-5 text-gray-600" />
-            </button>
+            <div className="flex items-center gap-1.5">
+              {onSaveProfile && (
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSaveProfile();
+                  }}
+                  className={`p-2 rounded-full transition-colors ${
+                    isSaved ? 'bg-rose-50 text-rose-600' : 'hover:bg-gray-100 text-gray-600'
+                  }`}
+                  title={isSaved ? 'Saved' : 'Save profile'}
+                  aria-label="Save profile"
+                >
+                  <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-rose-500 text-rose-500' : ''}`} />
+                </motion.button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowInfo(!showInfo)}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="More info"
+              >
+                <Info className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2 mb-4">

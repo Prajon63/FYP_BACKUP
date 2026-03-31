@@ -210,6 +210,21 @@ export interface PassedItem {
   passedAt: string;
 }
 
+// Blocked (people I blocked)
+export interface BlockedItem {
+  interactionId: string;
+  user: {
+    _id: string;
+    username?: string;
+    profilePicture?: string;
+    bio?: string;
+    age?: number;
+    location?: string;
+    interests?: string[];
+  };
+  blockedAt: string;
+}
+
 // Auth types
 export interface LoginCredentials {
   email: string;
@@ -365,6 +380,13 @@ export interface LikedByMeResponse {
 export interface PassedResponse {
   success: boolean;
   list: PassedItem[];
+  total: number;
+  error?: string;
+}
+
+export interface BlockedResponse {
+  success: boolean;
+  list: BlockedItem[];
   total: number;
   error?: string;
 }
