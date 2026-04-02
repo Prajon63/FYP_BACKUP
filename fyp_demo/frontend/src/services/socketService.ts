@@ -1,7 +1,28 @@
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL =
-  import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+const SOCKET_RESET_EVENT = 'capella-socket-reset';
+
+function resolveSocketUrl(): string {
+  const direct = import.meta.env.VITE_SOCKET_URL?.replace(/\/$/, '');
+  if (direct) return direct;
+
+  const api = import.meta.env.VITE_API_URL;
+  if (api) return api.replace(/\/api\/?$/, '').replace(/\/$/, '') || 'http://localhost:5000';
+
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname } = window.location;
+    return `${protocol}//${hostname}:5000`;
+  }
+  return 'http://localhost:5000';
+}
+
+function notifySocketInstanceChanged(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(SOCKET_RESET_EVENT));
+}
+
+/** NotificationProvider should subscribe to this so listeners re-bind after login/logout. */
+export const SOCKET_RESET_EVENT_NAME = SOCKET_RESET_EVENT;
 
 let socket: Socket | null = null;
 
@@ -23,12 +44,15 @@ export const connectSocket = (): Socket => {
   }
 
   const token = localStorage.getItem('token');
+  const url = resolveSocketUrl();
 
-  socket = io(SOCKET_URL, {
+  socket = io(url, {
     auth: { token },
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     autoConnect: true
   });
+
+  notifySocketInstanceChanged();
 
   socket.on('connect', () => {
     console.log('[Socket] Connected:', socket?.id);
@@ -59,6 +83,7 @@ export const disconnectSocket = (): void => {
     socket.disconnect();
     socket = null;
     console.log('[Socket] Manually disconnected');
+    notifySocketInstanceChanged();
   }
 };
 

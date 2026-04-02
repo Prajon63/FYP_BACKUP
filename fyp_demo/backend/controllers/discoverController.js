@@ -385,6 +385,20 @@ export const handleInteraction = async (req, res) => {
       };
     }
 
+    // Real-time notification to the person who was liked (or super-liked)
+    const io = req.app.get('io');
+    if (io && (action === 'like' || action === 'super_like')) {
+      const targetRoom = String(targetUserId);
+      io.to(`user:${String(targetRoom)}`).emit('app_notification', {
+        type: action === 'super_like' ? 'super_like' : 'like',
+        fromUserId: String(userId),
+        username: currentUser.username,
+        profilePicture: currentUser.profilePicture || null,
+        isMatch: isMutualMatch,
+        createdAt: new Date().toISOString()
+      });
+    }
+
     return res.status(201).json(response);
 
   } catch (error) {

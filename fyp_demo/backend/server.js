@@ -20,9 +20,13 @@ dotenv.config();  //es module style ma environment var load gareko
 
 const app = express();
 
-//middleware
+const isDev = (process.env.NODE_ENV || 'development') !== 'production';
+const clientOrigin =
+  process.env.CLIENT_URL || 'http://localhost:5173';
+
+//middleware — in dev, reflect browser origin so LAN (192.168.x) + localhost both work
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: isDev ? true : clientOrigin,
   credentials: true
 }));
 app.use(json());
@@ -74,7 +78,7 @@ const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: isDev ? true : clientOrigin,
     methods: ['GET', 'POST'],
     credentials: true
   }

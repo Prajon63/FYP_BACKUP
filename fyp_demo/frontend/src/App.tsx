@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { NotificationProvider } from './contexts/NotificationContext';
 import Login from './pages/Login';
 // import Preferences from './pages/Preferences';
 import EnhancedPreferences from './pages/EnhancedPreferences';
@@ -16,6 +17,7 @@ import Messages from './pages/Messages';
 function App() {
   return (
     <BrowserRouter>
+      <NotificationProvider>
       <Routes>
         <Route path="/" element={<Login />} />
         {/* <Route path="/preferences" element={<Preferences />} /> */}
@@ -32,6 +34,7 @@ function App() {
         <Route path="/matches" element={<Matches />} />
         <Route path="/messages" element={<Messages />} />
       </Routes>
+      </NotificationProvider>
     </BrowserRouter>
   );
 }
