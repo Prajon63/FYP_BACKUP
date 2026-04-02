@@ -10,7 +10,6 @@ import {
   Compass,
   Sparkles,
   User as UserIcon,
-  Bell,
   Loader2,
   RefreshCw,
   Calendar,
@@ -22,6 +21,7 @@ import {
 import { discoverService } from '../services/discoverService';
 import type { DiscoveryUser } from '../types';
 import toast from 'react-hot-toast';
+import NotificationBell from '../components/NotificationBell';
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
 
@@ -620,13 +620,7 @@ const Home: React.FC = () => {
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-rose-400' : ''}`} />
             </motion.button>
 
-            <button type="button"
-              className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors text-slate-500"
-              aria-label="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-white" />
-            </button>
+            <NotificationBell />
 
             <motion.div
               whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}

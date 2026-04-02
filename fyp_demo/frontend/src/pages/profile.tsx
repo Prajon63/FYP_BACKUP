@@ -7,6 +7,7 @@ import {
   Grid3X3, BookOpen, ChevronRight, Loader2
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 import api from '../services/api';
 import type { User, Post, ProfileUpdateData } from '../types';
@@ -17,6 +18,7 @@ import ProfileCompletion from '../components/ProfileCompletion';
 import ImageUpload from '../components/ImageUpload';
 import { ProfileSkeleton, PostSkeleton } from '../components/SkeletonLoader';
 import PhotoCarousel from '../components/PhotoCarousel';
+import NotificationBell from '../components/NotificationBell';
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
@@ -302,8 +304,8 @@ const Profile: React.FC = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    authService.logout();
+    localStorage.removeItem('userId');
     toast.success('👋 Logged out successfully!');
     navigate('/');
   };
@@ -397,6 +399,7 @@ const Profile: React.FC = () => {
             >
               Home
             </button>
+            <NotificationBell />
             <div className="relative">
               <button
                 onClick={() => setShowSettings(!showSettings)}

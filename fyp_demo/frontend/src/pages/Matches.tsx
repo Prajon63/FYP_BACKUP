@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   Flame,
   Clock,
-  Bell,
   Loader2,
   UserX,
   Info,
@@ -21,6 +20,7 @@ import { discoverService } from '../services/discoverService';
 import ChatWindow from '../components/ChatWindow';
 import type { Match } from '../types';
 import { getStoredUserId } from '../utils/auth';
+import NotificationBell from '../components/NotificationBell';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 function timeAgo(dateString: string) {
@@ -483,16 +483,7 @@ const Matches: React.FC = () => {
               {matches.length} {matches.length === 1 ? 'person' : 'people'} matched with you
             </p>
           </div>
-          <motion.button
-            whileTap={{ scale: 0.93 }}
-            className="relative w-9 h-9 flex items-center justify-center rounded-full bg-rose-50 text-rose-500"
-            type="button"
-          >
-            <Bell className="w-4 h-4" />
-            {newMatches.length > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full border border-white" />
-            )}
-          </motion.button>
+          <NotificationBell variant="soft" />
         </div>
       </header>
 

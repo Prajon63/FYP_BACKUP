@@ -30,7 +30,7 @@ const {hash,compare}= bcrypt;  //hash() ra compare() is accessed from bcrypt now
 // }
 
 
-//2 
+// for register
 export async function register(req, res) {
   const { email, password } = req.body;
 
@@ -42,7 +42,7 @@ export async function register(req, res) {
     const hashed = await bcrypt.hash(password, 10);
     
     const user = await create({ email, password: hashed });
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, {
       expiresIn: '7d',
     });
     
@@ -74,12 +74,12 @@ export async function register(req, res) {
 
 
 
-//same as register
+//same as register but for login
 export async function login(req, res) {
   const { email, password } = req.body;
   const user = await findOne({ email });  //user db ma xa ki nai check garxa
   if (user && await bcrypt.compare(password, user.password)) {  //if true bhayo bhane
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, {
       expiresIn: '7d',
     });
     res.json({ success: true, user: { _id: user._id, email: user.email }, token });            // success dekhauxa

@@ -12,6 +12,7 @@ import {
   UserX,
   Sparkles
 } from 'lucide-react';
+import NotificationBell from '../components/NotificationBell';
 import toast from 'react-hot-toast';
 import UserCard from '../components/UserCard';
 import MatchModal from '../components/MatchModal';
@@ -558,15 +559,18 @@ const Discover: React.FC = () => {
               Discover
             </h1>
 
-            <button
-              onClick={() => setShowFilterModal(true)}
-              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors relative"
-            >
-              <Settings className="w-5 h-5 text-slate-600" />
-              {preferences.genderPreference.length > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
-              )}
-            </button>
+            <div className="flex items-center gap-1">
+              <NotificationBell />
+              <button
+                onClick={() => setShowFilterModal(true)}
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors relative"
+              >
+                <Settings className="w-5 h-5 text-slate-600" />
+                {preferences.genderPreference.length > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Stats: likes you, matches */}

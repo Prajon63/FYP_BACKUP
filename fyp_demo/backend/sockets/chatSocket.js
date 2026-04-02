@@ -14,7 +14,8 @@ export const registerChatSocket = (io) => {
       if (!token) return next(new Error('Authentication token missing'));
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      socket.userId = decoded.id || decoded._id || decoded.userId;
+      const rawId = decoded.id ?? decoded._id ?? decoded.userId;
+      socket.userId = rawId != null ? String(rawId) : null;
 
       if (!socket.userId) return next(new Error('Invalid token payload'));
       next();
@@ -27,7 +28,7 @@ export const registerChatSocket = (io) => {
     console.log(`[Socket] User connected: ${socket.userId}`);
 
     // Personal room for direct notifications
-    socket.join(`user:${socket.userId}`);
+    socket.join(`user:${String(socket.userId)}`);  //room will use the same string
 
     // Join chat room for a specific match
     socket.on('join_chat', async ({ matchId }) => {
@@ -78,9 +79,10 @@ export const registerChatSocket = (io) => {
           return socket.emit('error', { message: 'Not authorized for this match' });
         }
 
+        const rid = String(receiverId);
         const isValidReceiver =
-          match.fromUser.toString() === receiverId ||
-          match.toUser.toString() === receiverId;
+          match.fromUser.toString() === rid ||
+          match.toUser.toString() === rid;
 
         if (!isValidReceiver) {
           return socket.emit('error', { message: 'Invalid receiver for this match' });
@@ -101,7 +103,7 @@ export const registerChatSocket = (io) => {
         const message = await Message.create({
           matchId: targetMatchId,
           sender: socket.userId,
-          receiver: receiverId,
+          receiver: rid,
           content: content.trim()
         });
 
@@ -119,10 +121,16 @@ export const registerChatSocket = (io) => {
           io.to(`chat:${id}`).emit('receive_message', populated);
         });
 
-        io.to(`user:${receiverId}`).emit('new_message_notification', {
-          matchId,
-          senderId: socket.userId,
-          preview: content.trim().slice(0, 60)
+        const preview = content.trim().slice(0, 60);
+        const senderName = populated.sender?.username;
+
+        const receiverRoomId = rid;
+
+        io.to(`user:${receiverRoomId}`).emit('new_message_notification', {
+          matchId: String(matchId),
+          senderId: String(socket.userId),
+          preview,
+          senderUsername: senderName
         });
       } catch (err) {
         console.error('[Socket] send_message error:', err);
