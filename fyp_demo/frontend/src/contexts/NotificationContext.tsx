@@ -12,7 +12,11 @@ import {
   getSocket,
   SOCKET_RESET_EVENT_NAME,
 } from '../services/socketService';
+import { getUnreadMessageDigest } from '../services/chatService';
+import { discoverService } from '../services/discoverService';
+import { getStoredUserId } from '../utils/auth';
 import type { Socket } from 'socket.io-client';
+import type { Like, LikesResponse } from '../types';
 
 export type NotificationKind = 'message' | 'like' | 'super_like';
 
@@ -154,8 +158,28 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     const push = (item: AppNotificationItem | null) => {
       if (!item) return;
       setNotifications((prev) => {
-        const next = [item, ...prev].slice(0, MAX_ITEMS);
-        return next;
+        let base = prev;
+        if (item.kind === 'message' && item.meta?.matchId) {
+          const mid = String(item.meta.matchId);
+          base = base.filter(
+            (n) =>
+              !(n.id.startsWith('digest-') && String(n.meta?.matchId) === mid)
+          );
+        }
+        if (
+          (item.kind === 'like' || item.kind === 'super_like') &&
+          item.meta?.fromUserId
+        ) {
+          const fid = String(item.meta.fromUserId);
+          base = base.filter(
+            (n) =>
+              !(
+                n.id.startsWith('like-pending-') &&
+                String(n.meta?.fromUserId) === fid
+              )
+          );
+        }
+        return [item, ...base].slice(0, MAX_ITEMS);
       });
     };
 
@@ -176,7 +200,74 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     socket.on('app_notification', onApp);
     socket.on('new_message_notification', onLegacy);
 
+    /** REST: missed socket events while logged out (messages + pending likes). */
+    let cancelled = false;
+    (async () => {
+      try {
+        const uid = getStoredUserId();
+        const emptyLikes: LikesResponse = {
+          success: true,
+          likes: [],
+          total: 0,
+        };
+        const [digestRows, likesRes] = await Promise.all([
+          getUnreadMessageDigest(),
+          uid
+            ? discoverService.getLikes(uid).catch(() => emptyLikes)
+            : Promise.resolve(emptyLikes),
+        ]);
+        if (cancelled) return;
+
+        const digestItems: AppNotificationItem[] = digestRows.map((row) => ({
+          id: `digest-${row.messageId}`,
+          kind: 'message',
+          title: 'New message',
+          body: row.preview?.trim()
+            ? `${row.senderUsername}: ${row.preview.trim()}`
+            : `Message from ${row.senderUsername}`,
+          createdAt: new Date(row.createdAt).getTime(),
+          read: false,
+          href: '/messages',
+          meta: {
+            matchId: row.matchId,
+            senderId: row.senderId,
+            messageId: row.messageId,
+          },
+        }));
+
+        const likes = likesRes.likes ?? [];
+        const likeItems: AppNotificationItem[] = likes.map((like: Like) => {
+          const u = like.user;
+          const fromId = String(u._id);
+          const isSuper = Boolean(like.isSuperLike);
+          return {
+            id: `like-pending-${fromId}`,
+            kind: isSuper ? 'super_like' : 'like',
+            title: isSuper ? 'Super like' : 'New like',
+            body: isSuper
+              ? `${u.username || 'Someone'} super liked you`
+              : `${u.username || 'Someone'} liked you`,
+            createdAt: new Date(like.likedAt).getTime(),
+            read: false,
+            href: '/discover',
+            meta: { fromUserId: fromId },
+          };
+        });
+
+        setNotifications((prev) => {
+          const keep = prev.filter(
+            (n) =>
+              !n.id.startsWith('digest-') && !n.id.startsWith('like-pending-')
+          );
+          return [...likeItems, ...digestItems, ...keep].slice(0, MAX_ITEMS);
+        });
+      } catch {
+        /* ignore */
+      }
+    })();
+
     return () => {
+      cancelled = true;
       socket.off('connect', onConnect);
       socket.off('app_notification', onApp);
       socket.off('new_message_notification', onLegacy);

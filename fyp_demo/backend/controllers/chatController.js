@@ -76,3 +76,39 @@ export const getUnreadCount = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/chat/unread-digest
+ * Unread messages for the bell when the user was offline (socket missed them).
+ * One row per match (latest unread in that thread).
+ */
+export const getUnreadDigest = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const unread = await Message.find({ receiver: userId, read: false })
+      .sort({ createdAt: -1 })
+      .populate('sender', 'username')
+      .limit(80);
+
+    const byMatch = new Map();
+    for (const m of unread) {
+      const mid = m.matchId.toString();
+      if (!byMatch.has(mid)) byMatch.set(mid, m);
+    }
+
+    const items = [...byMatch.values()].slice(0, 25).map((m) => ({
+      matchId: m.matchId.toString(),
+      senderId: m.sender?._id?.toString?.() || '',
+      senderUsername: m.sender?.username || 'Someone',
+      preview: (m.content || '').slice(0, 60),
+      createdAt: m.createdAt?.toISOString?.() || new Date().toISOString(),
+      messageId: m._id.toString()
+    }));
+
+    res.json({ success: true, items });
+  } catch (err) {
+    console.error('getUnreadDigest error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
