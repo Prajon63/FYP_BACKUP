@@ -22,7 +22,7 @@ async function getTransporter() {
 
 async function sendResetEmail({ to, resetLink }) {
   try {
-    console.log("📧 Preparing to send reset email to:", to);
+    console.log("Preparing to send reset email to:", to);
     
     const transporter = await getTransporter();
     console.log("Transporter ready");
@@ -47,15 +47,15 @@ async function sendResetEmail({ to, resetLink }) {
 
     // Shows a preview link in console (Ethereal)
     const previewUrl = nodemailer.getTestMessageUrl(info);
-    console.log("✅ Reset email sent successfully!");
-    console.log("📧 Message ID:", info.messageId);
+    console.log("Reset email sent successfully!");
+    console.log("Message ID:", info.messageId);
     
     if (previewUrl) {
-      console.log("🌐 Preview URL (copy this to see the email):");
+      console.log("Preview URL (copy this to see the email):");
       console.log("   ", previewUrl);
-      console.log("   ⚠️  Note: Check your BACKEND console/terminal for this URL, not browser console!");
+      console.log("   Note: Check your BACKEND console/terminal for this URL, not browser console!");
     } else {
-      console.log("⚠️  No preview URL available");
+      console.log(" No preview URL available");
     }
     
     return { success: true, messageId: info.messageId, previewUrl };
