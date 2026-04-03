@@ -387,8 +387,9 @@ const Profile: React.FC = () => {
       <nav className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-100">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1
-            className="text-xl font-bold bg-gradient-to-r from-rose-500 to-pink-500 bg-clip-text text-transparent"
+            className="text-xl font-bold bg-gradient-to-r from-rose-500 to-pink-500 bg-clip-text text-transparent cursor-pointer"
             style={{ fontFamily: "'Playfair Display', serif" }}
+            onClick={() => navigate('/home')}
           >
             Capella
           </h1>
