@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     host: true,
 
-    allowedHosts: ['.ngrok-free.dev'], // 🔥 THIS is what you're missing
+    allowedHosts: ['.ngrok-free.dev'], // .dev is required instead of .app
 
     proxy: {
       '/api': {
