@@ -12,14 +12,13 @@
 
     /* Modules */
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "noEmit": true,
 
-    /* Paths & Types */
-    "baseUrl": "./src",
+    /* Types */
     "types": ["vite/client"],
 
     /* Optional / future-proof */
