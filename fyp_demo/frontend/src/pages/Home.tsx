@@ -749,10 +749,14 @@ const Home: React.FC = () => {
         {[
           { icon: <Sparkles className="w-5 h-5" />, label: 'Feed', path: '/home' },
           { icon: <Compass className="w-5 h-5" />, label: 'Discover', path: '/discover' },
+          { icon: <Heart className="w-5 h-5" />, label: 'Matches', path: '/matches' },
           { icon: <MessageCircle className="w-5 h-5" />, label: 'Messages', path: '/messages' },
           { icon: <UserIcon className="w-5 h-5" />, label: 'Profile', path: '/profile' },
         ].map(item => {
-          const active = location.pathname === item.path;
+          const active =
+            item.path === '/profile'
+              ? location.pathname === '/profile' || location.pathname.startsWith('/profile/')
+              : location.pathname === item.path;
           return (
             <button key={item.path} type="button" onClick={() => navigate(item.path)}
               className={`flex flex-col items-center gap-0.5 text-[10px] font-semibold transition-colors ${
