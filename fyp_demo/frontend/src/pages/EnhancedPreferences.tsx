@@ -299,7 +299,7 @@ const EnhancedPreferences: React.FC = () => {
       content: (
         <div className="space-y-6">
           <p className="text-sm text-gray-600">
-            Add your area so we can match you with people nearby and show distance on cards. You control what others see.
+            Add your area so we can match you with people nearby. You control what others see. Distance info visible in profiles.
           </p>
 
           <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-pink-50/80 to-purple-50/80 p-4 space-y-3">
