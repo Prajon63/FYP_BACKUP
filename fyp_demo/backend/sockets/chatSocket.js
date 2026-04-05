@@ -107,6 +107,21 @@ export const registerChatSocket = (io) => {
           content: content.trim()
         });
 
+        const now = new Date();
+        const pairIds = pairMatches.length
+          ? pairMatches.map((m) => m._id)
+          : [targetMatchId];
+        await Match.updateMany(
+          { _id: { $in: pairIds } },
+          {
+            $set: {
+              lastMessageAt: now,
+              conversationStarted: true,
+              updatedAt: now,
+            },
+          }
+        );
+
         const populated = await message.populate([
           { path: 'sender', select: 'username profilePicture' },
           { path: 'receiver', select: 'username profilePicture' }

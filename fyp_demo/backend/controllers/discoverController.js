@@ -1,10 +1,18 @@
 import User from '../models/User.js';
 import Match from '../models/Match.js';
+import Message from '../models/Message.js';
 import {
   calculateCompatibilityScore,
   passesBasicFilters,
   calculateDistance
 } from '../Utils/matchingAlgorithm.js';
+
+/** Works for populated User docs or bare ObjectIds (getUserMatches populates; this is defensive). */
+function userRefId(ref) {
+  if (ref == null) return undefined;
+  if (typeof ref === 'object' && ref._id != null) return ref._id.toString();
+  return ref.toString();
+}
 
 /**
  * Get potential matches for discovery
@@ -425,28 +433,92 @@ export const getMatches = async (req, res) => {
     const { limit = 50 } = req.query;
 
     const matches = await Match.getUserMatches(userId, parseInt(limit));
+    const uid = userId.toString();
+
+    /**
+     * Messages attach to one Match document (A→B or B→A). The deduped row may be the
+     * sibling doc, so Match.lastMessageAt is often still null. Resolve latest message time
+     * per *pair* from the Message collection, then backfill Match rows when missing.
+     */
+    const allPairDocs = await Match.find({
+      $or: [
+        { fromUser: userId, isMutual: true },
+        { toUser: userId, isMutual: true }
+      ]
+    })
+      .select('_id fromUser toUser')
+      .lean();
+
+    const pairKeyToMatchIds = new Map();
+    for (const doc of allPairDocs) {
+      const a = doc.fromUser.toString();
+      const b = doc.toUser.toString();
+      const key = [a, b].sort().join('-');
+      if (!pairKeyToMatchIds.has(key)) pairKeyToMatchIds.set(key, []);
+      pairKeyToMatchIds.get(key).push(doc._id);
+    }
+
+    const allMatchIdsForMsgs = allPairDocs.map((d) => d._id);
+    const pairKeyToLastAt = new Map();
+
+    if (allMatchIdsForMsgs.length > 0) {
+      const latestByMid = await Message.aggregate([
+        { $match: { matchId: { $in: allMatchIdsForMsgs } } },
+        { $sort: { createdAt: -1 } },
+        { $group: { _id: '$matchId', lastAt: { $first: '$createdAt' } } }
+      ]);
+
+      const midToLast = new Map(latestByMid.map((x) => [x._id.toString(), x.lastAt]));
+
+      for (const [key, mids] of pairKeyToMatchIds.entries()) {
+        let best = null;
+        for (const mid of mids) {
+          const t = midToLast.get(mid.toString());
+          if (t && (!best || new Date(t) > new Date(best))) best = t;
+        }
+        if (best) pairKeyToLastAt.set(key, best);
+      }
+
+      for (const [key, lastAt] of pairKeyToLastAt.entries()) {
+        const ids = pairKeyToMatchIds.get(key);
+        if (!ids?.length || !lastAt) continue;
+        await Match.updateMany(
+          {
+            _id: { $in: ids },
+            $or: [{ lastMessageAt: { $exists: false } }, { lastMessageAt: null }]
+          },
+          { $set: { lastMessageAt: lastAt, conversationStarted: true, updatedAt: new Date() } }
+        );
+      }
+    }
 
     const formattedMatches = matches.map(match => {
-      // FIX 6: Safe toString comparison - _id may be ObjectId or string
-      const fromId = match.fromUser?._id?.toString();
-      const otherUser = fromId === userId.toString()
+      const fromId = userRefId(match.fromUser);
+      const otherUser = fromId === uid
         ? match.toUser
         : match.fromUser;
+
+      const otherId = userRefId(otherUser);
+      const pairKey = otherId ? [uid, otherId].sort().join('-') : null;
+      const lastFromMessages = pairKey ? pairKeyToLastAt.get(pairKey) : null;
+
+      const lastMessageAt = match.lastMessageAt || lastFromMessages || null;
+      const conversationStarted = !!match.conversationStarted || !!lastFromMessages;
 
       return {
         matchId: match._id,
         user: {
-          _id: otherUser._id,
-          username: otherUser.username,
-          profilePicture: otherUser.profilePicture,
-          bio: otherUser.bio,
-          age: otherUser.age,
-          location: otherUser.location?.displayLocation || otherUser.location?.city
+          _id: otherId || otherUser?._id,
+          username: otherUser?.username,
+          profilePicture: otherUser?.profilePicture,
+          bio: otherUser?.bio,
+          age: otherUser?.age,
+          location: otherUser?.location?.displayLocation || otherUser?.location?.city
         },
         compatibilityScore: match.matchScore,
         matchedAt: match.createdAt,
-        conversationStarted: match.conversationStarted,
-        lastMessageAt: match.lastMessageAt
+        conversationStarted,
+        lastMessageAt
       };
     });
 

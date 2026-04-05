@@ -146,7 +146,7 @@ export interface Match {
   };
   compatibilityScore: number;
   matchedAt: string;
-  conversationStarted: boolean;
+  conversationStarted?: boolean;
   lastMessageAt?: string;
 }
 
