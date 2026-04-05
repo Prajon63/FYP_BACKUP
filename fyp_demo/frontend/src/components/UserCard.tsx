@@ -96,7 +96,7 @@ const UserCard: React.FC<UserCardProps> = ({
   };
 
   const formatDistance = (distance?: number | null) => {
-    if (!distance) return null;
+    if (distance == null || !Number.isFinite(distance)) return null;
     return distance < 1 ? '< 1 km away' : `${distance} km away`;
   };
 
@@ -305,12 +305,12 @@ const UserCard: React.FC<UserCardProps> = ({
 
             {/* Meta info */}
             <div className="space-y-1.5 mb-3">
-              {user.location && (
+              {(user.location ||
+                (user.distance != null && Number.isFinite(user.distance))) && (
                 <div className="flex items-center gap-2 text-gray-500 text-xs">
                   <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-pink-400" />
                   <span className="truncate">
-                    {user.location}
-                    {user.distance && ` • ${formatDistance(user.distance)}`}
+                    {[user.location, formatDistance(user.distance)].filter(Boolean).join(' • ')}
                   </span>
                 </div>
               )}
