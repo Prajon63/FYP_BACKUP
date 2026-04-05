@@ -11,12 +11,25 @@ import {
   Cigarette,
   Wine,
   Dumbbell,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Crosshair,
+  Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { discoverService } from '../services/discoverService';
 import { userService } from '../services/userService';
+import { geocodeService } from '../services/geocodeService';
 import type { MatchPreferences, User } from '../types';
+
+/** Stored discovery flags are always fully defined in React state (unlike optional API fields). */
+type DiscoverySettingsState = NonNullable<User['discoverySettings']>;
+
+const defaultDiscoverySettings: DiscoverySettingsState = {
+  isActive: true,
+  ageRangeVisible: true,
+  distanceVisible: true,
+  lastActiveVisible: false,
+};
 
 const EnhancedPreferences: React.FC = () => {
   const navigate = useNavigate();
@@ -61,6 +74,17 @@ const EnhancedPreferences: React.FC = () => {
 
   const [interestInput, setInterestInput] = useState('');
 
+  const [locationDraft, setLocationDraft] = useState({ city: '', country: '' });
+  const [resolvedLocation, setResolvedLocation] = useState<User['location'] | null>(null);
+  const [locationVisibility, setLocationVisibility] = useState<'public' | 'private'>('public');
+  const [discoverySettings, setDiscoverySettings] =
+    useState<DiscoverySettingsState>(defaultDiscoverySettings);
+  const [locLoading, setLocLoading] = useState(false);
+
+  const hasRealCoords = (loc?: User['location'] | null) =>
+    !!loc?.coordinates &&
+    !(loc.coordinates[0] === 0 && loc.coordinates[1] === 0);
+
   // Fetch existing preferences
   useEffect(() => {
     if (userId) {
@@ -95,6 +119,26 @@ const EnhancedPreferences: React.FC = () => {
             diet: user.lifestyle?.diet || ''
           }
         });
+
+        if (user.locationVisibility) {
+          setLocationVisibility(user.locationVisibility);
+        }
+        if (user.discoverySettings) {
+          const ds = user.discoverySettings;
+          setDiscoverySettings({
+            isActive: ds.isActive ?? true,
+            ageRangeVisible: ds.ageRangeVisible ?? true,
+            distanceVisible: ds.distanceVisible ?? true,
+            lastActiveVisible: ds.lastActiveVisible ?? false,
+          });
+        }
+        if (hasRealCoords(user.location)) {
+          setResolvedLocation(user.location!);
+          setLocationDraft({
+            city: user.location?.city || '',
+            country: user.location?.country || '',
+          });
+        }
       }
     } catch (error: any) {
       console.error('Failed to fetch user data:', error);
@@ -115,7 +159,21 @@ const EnhancedPreferences: React.FC = () => {
         interestedIn: personalInfo.interestedIn,
         relationshipGoals: personalInfo.relationshipGoals as any,
         interests: personalInfo.interests,
-        lifestyle: personalInfo.lifestyle
+        lifestyle: personalInfo.lifestyle,
+        ...(resolvedLocation && hasRealCoords(resolvedLocation)
+          ? {
+              location: {
+                type: 'Point',
+                coordinates: resolvedLocation.coordinates,
+                city: resolvedLocation.city,
+                state: resolvedLocation.state,
+                country: resolvedLocation.country,
+                displayLocation: resolvedLocation.displayLocation,
+              },
+            }
+          : {}),
+        locationVisibility,
+        discoverySettings,
       });
 
       toast.success('Preferences saved successfully!');
@@ -161,7 +219,193 @@ const EnhancedPreferences: React.FC = () => {
     setPersonalInfo({ ...personalInfo, interestedIn: updated });
   };
 
+  const useDeviceLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Location is not supported in this browser');
+      return;
+    }
+    setLocLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await geocodeService.reverse(latitude, longitude);
+          if (res.success && res.result) {
+            setResolvedLocation({
+              type: 'Point',
+              coordinates: res.result.coordinates,
+              city: res.result.city,
+              state: res.result.state,
+              country: res.result.country,
+              displayLocation: res.result.displayLocation,
+            });
+            setLocationDraft({
+              city: res.result.city,
+              country: res.result.country,
+            });
+            toast.success('Location set from device');
+          } else {
+            toast.error(res.error || 'Could not resolve address');
+          }
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : 'Reverse geocoding failed';
+          toast.error(msg);
+        } finally {
+          setLocLoading(false);
+        }
+      },
+      (err) => {
+        setLocLoading(false);
+        toast.error(err.message || 'Location permission denied or unavailable');
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
+    );
+  };
+
+  const lookupManualLocation = async () => {
+    const q = [locationDraft.city, locationDraft.country].filter(Boolean).join(', ');
+    if (q.length < 3) {
+      toast.error('Enter city and country to look up');
+      return;
+    }
+    setLocLoading(true);
+    try {
+      const res = await geocodeService.search(q);
+      if (res.success && res.result) {
+        setResolvedLocation({
+          type: 'Point',
+          coordinates: res.result.coordinates,
+          city: res.result.city,
+          state: res.result.state,
+          country: res.result.country,
+          displayLocation: res.result.displayLocation,
+        });
+        toast.success('Location saved');
+      } else {
+        toast.error(res.error || 'No place found — try a different spelling');
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Look up failed';
+      toast.error(msg);
+    } finally {
+      setLocLoading(false);
+    }
+  };
+
   const steps = [
+    {
+      title: 'Where you live',
+      icon: <MapPin className="w-6 h-6" />,
+      content: (
+        <div className="space-y-6">
+          <p className="text-sm text-gray-600">
+            Add your area so we can match you with people nearby and show distance on cards. You control what others see.
+          </p>
+
+          <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-pink-50/80 to-purple-50/80 p-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Use device GPS</p>
+            <button
+              type="button"
+              onClick={useDeviceLocation}
+              disabled={locLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold shadow-md hover:from-pink-600 hover:to-purple-700 disabled:opacity-60 transition-all"
+            >
+              {locLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Crosshair className="w-5 h-5" />}
+              Use current location
+            </button>
+            <p className="text-xs text-gray-500">
+              Browser will ask for permission — same idea as maps apps. We store coordinates to compute distance; we don&apos;t track you in real time.
+            </p>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase tracking-wider">
+              <span className="bg-white px-3 text-gray-400">or enter manually</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2 text-sm">City</label>
+              <input
+                type="text"
+                value={locationDraft.city}
+                onChange={(e) => setLocationDraft({ ...locationDraft, city: e.target.value })}
+                placeholder="e.g. Kathmandu"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2 text-sm">Country</label>
+              <input
+                type="text"
+                value={locationDraft.country}
+                onChange={(e) => setLocationDraft({ ...locationDraft, country: e.target.value })}
+                placeholder="e.g. Nepal"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void lookupManualLocation()}
+            disabled={locLoading}
+            className="w-full py-3 rounded-xl border-2 border-purple-200 text-purple-700 font-semibold hover:bg-purple-50 disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {locLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+            Look up &amp; save this place
+          </button>
+
+          {resolvedLocation && hasRealCoords(resolvedLocation) && (
+            <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-900">
+              <span className="font-semibold">Saved: </span>
+              {resolvedLocation.displayLocation ||
+                [resolvedLocation.city, resolvedLocation.country].filter(Boolean).join(', ')}
+            </div>
+          )}
+
+          <div className="space-y-4 pt-2 border-t border-gray-100">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={locationVisibility === 'public'}
+                onChange={(e) => setLocationVisibility(e.target.checked ? 'public' : 'private')}
+                className="mt-1 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              />
+              <span>
+                <span className="font-medium text-gray-800">Show city / region on my profile</span>
+                <span className="block text-xs text-gray-500 mt-0.5">
+                  If off, your city won&apos;t appear on your card, but distance can still be used for matching if enabled below.
+                </span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={discoverySettings.distanceVisible !== false}
+                onChange={(e) =>
+                  setDiscoverySettings((prev) => ({
+                    ...prev,
+                    distanceVisible: e.target.checked,
+                  }))
+                }
+                className="mt-1 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              />
+              <span>
+                <span className="font-medium text-gray-800">Show approximate distance to others</span>
+                <span className="block text-xs text-gray-500 mt-0.5">
+                  Others see roughly how many km away you are (e.g. &quot;12 km away&quot;). Turn off for more privacy.
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
+      )
+    },
     {
       title: 'About You',
       icon: <Users className="w-6 h-6" />,
