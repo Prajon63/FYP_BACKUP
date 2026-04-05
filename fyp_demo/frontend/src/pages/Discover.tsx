@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -10,7 +10,9 @@ import {
   Loader2,
   RefreshCw,
   UserX,
-  Sparkles
+  Sparkles,
+  Search,
+  X
 } from 'lucide-react';
 import NotificationBell from '../components/NotificationBell';
 import toast from 'react-hot-toast';
@@ -153,6 +155,13 @@ const Discover: React.FC = () => {
   const [likesTabIndex, setLikesTabIndex] = useState(0);
   const [activeSection, setActiveSection] = useState<'likes' | 'likedByMe' | 'passed' | 'discover'>('discover');
   const [savedProfiles, setSavedProfiles] = useState<Set<string>>(new Set());
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResult, setSearchResult] = useState<DiscoveryUser | null | undefined>(undefined); // undefined = not yet searched, null = not found
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const userId = localStorage.getItem('userId') ||
     (() => { try { return JSON.parse(localStorage.getItem('user') || '{}')._id || ''; } catch { return ''; } })();
@@ -519,6 +528,87 @@ const Discover: React.FC = () => {
     }
   };
 
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    try {
+      setSearchLoading(true);
+      setSearchResult(undefined);
+      const response = await discoverService.searchUsers(userId, q);
+      setSearchResult(response.user ?? null);
+      setActiveSection('discover');
+      setSearchActive(true);
+    } catch (error: any) {
+      toast.error(error.message || 'Search failed');
+      setSearchResult(null);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResult(undefined);
+    setSearchActive(false);
+  };
+
+  const handleLikeSearchResult = async () => {
+    if (!searchResult) return;
+    try {
+      const response = await discoverService.handleInteraction(userId, searchResult._id, 'like');
+      if (response.success) {
+        if (response.isMatch && response.match) {
+          setMatchedUser(response.match.user);
+          setMatchScore(response.match.compatibilityScore);
+          setShowMatchModal(true);
+          fetchStats();
+        } else if (!response.alreadyInteracted) {
+          toast.success('Liked!', { duration: 1000, icon: '💖' });
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to like user');
+    }
+  };
+
+  const handlePassSearchResult = async () => {
+    if (!searchResult) return;
+    try {
+      await discoverService.handleInteraction(userId, searchResult._id, 'pass');
+      toast('Passed', { duration: 1000, icon: '👋' });
+    } catch (error: any) {
+      console.error('Pass error:', error);
+    }
+  };
+
+  const handleSuperLikeSearchResult = async () => {
+    if (!searchResult) return;
+    try {
+      const response = await discoverService.handleInteraction(userId, searchResult._id, 'super_like');
+      if (response.success) {
+        if (response.superLikesRemaining !== undefined) {
+          setStats(prev => ({ ...prev, superLikesRemaining: response.superLikesRemaining ?? 0 }));
+        }
+        if (response.isMatch && response.match) {
+          setMatchedUser(response.match.user);
+          setMatchScore(response.match.compatibilityScore ?? 0);
+          setShowMatchModal(true);
+          fetchStats();
+        } else if (!response.alreadyInteracted) {
+          toast.success('Super Liked!', { duration: 1500, icon: '⭐' });
+        }
+      }
+    } catch (error: any) {
+      if (error.response?.status === 403 && error.response?.data?.code === 'SUPER_LIKE_LIMIT') {
+        toast.error("No Super likes left today. Resets tomorrow! ⭐", { duration: 4000 });
+        setStats(prev => ({ ...prev, superLikesRemaining: 0 }));
+        return;
+      }
+      toast.error(error.message || 'Failed to super like');
+    }
+  };
+
   const currentUser = users[currentIndex];
   const noMoreUsers = !loading && currentIndex >= users.length;
   const noMoreLikes = !loadingLikes && likesList.length === 0;
@@ -643,7 +733,7 @@ const Discover: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => setActiveSection('discover')}
+              onClick={() => { setActiveSection('discover'); clearSearch(); }}
               className={`flex-shrink-0 py-2 px-3 rounded-full text-xs font-semibold transition-all border ${
                 activeSection === 'discover'
                   ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white border-transparent shadow-md shadow-rose-300/30'
@@ -652,13 +742,115 @@ const Discover: React.FC = () => {
             >
               Discover
             </button>
+
+            {/* Search bar */}
+            <form
+              onSubmit={handleSearch}
+              className="flex-shrink-0 flex items-center gap-1 ml-1"
+            >
+              <div className="relative flex items-center">
+                <Search className="absolute left-2.5 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search username…"
+                  className="pl-8 pr-7 py-1.5 text-xs rounded-full border border-slate-200 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent w-52 transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    className="absolute right-2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              <button
+                type="submit"
+                disabled={!searchQuery.trim() || searchLoading}
+                className="flex-shrink-0 py-1.5 px-3 rounded-full text-xs font-semibold bg-gradient-to-r from-rose-500 to-pink-500 text-white border-transparent shadow-md shadow-rose-300/30 disabled:opacity-50 disabled:cursor-not-allowed hover:from-rose-600 hover:to-pink-600 transition-all"
+              >
+                {searchLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Go'}
+              </button>
+            </form>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="max-w-2xl mx-auto px-4 py-8">
-        {activeSection === 'likes' ? (
+        {/* Search Results */}
+        {searchActive && activeSection === 'discover' ? (
+          searchLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-10 h-10 text-rose-500 animate-spin" />
+            </div>
+          ) : searchResult === null ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-4 text-slate-400">
+                <UserX className="w-8 h-8" />
+              </div>
+              <h2
+                className="text-2xl font-bold text-slate-800 mb-2"
+                style={{ fontFamily: "'Playfair Display', serif" }}
+              >
+                User not found
+              </h2>
+              <p className="text-slate-500 mb-6">
+                No user with the username <span className="font-semibold text-slate-700">"{searchQuery}"</span> was found. Check the spelling and try again.
+              </p>
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-rose-300/40 hover:from-rose-600 hover:to-pink-600 transition-all"
+              >
+                Back to Discover
+              </button>
+            </motion.div>
+          ) : searchResult ? (
+            <div className="flex flex-col gap-3 w-full">
+              <div className="flex items-center justify-between shrink-0 z-10 px-0.5">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm">
+                  <Search className="w-3.5 h-3.5 shrink-0" />
+                  Search result for "{searchQuery}"
+                </span>
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="text-xs font-medium text-slate-500 hover:text-slate-700 flex items-center gap-1"
+                >
+                  <X className="w-3.5 h-3.5" /> Clear
+                </button>
+              </div>
+              <div
+                className="relative w-full mx-auto rounded-2xl"
+                style={{ height: 'min(70vh, 700px)', minHeight: '420px' }}
+              >
+                <AnimatePresence>
+                  <UserCard
+                    key={searchResult._id}
+                    user={searchResult}
+                    onLike={handleLikeSearchResult}
+                    onPass={handlePassSearchResult}
+                    onSuperLike={handleSuperLikeSearchResult}
+                    superLikesRemaining={stats.superLikesRemaining}
+                    superLikeLimit={stats.superLikeLimit}
+                    currentUserId={userId}
+                    onSaveProfile={() => handleSaveProfile(searchResult._id)}
+                    isSaved={savedProfiles.has(searchResult._id)}
+                  />
+                </AnimatePresence>
+              </div>
+            </div>
+          ) : null
+        ) : activeSection === 'likes' ? (
           loadingLikes ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-10 h-10 text-rose-500 animate-spin" />
@@ -855,7 +1047,7 @@ const Discover: React.FC = () => {
           </div>
         )}
 
-        {activeSection === 'discover' && !noMoreUsers && (
+        {activeSection === 'discover' && !noMoreUsers && !searchActive && (
           <div className="text-center mt-6">
             <p className="text-sm text-slate-500">
               {currentIndex + 1} / {users.length}

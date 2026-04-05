@@ -935,6 +935,94 @@ export const unmatch = async (req, res) => {
   }
 };
 
+/**
+ * Search users by username (case-insensitive partial match).
+ * Returns a single DiscoveryUser-shaped object or null.
+ * GET /api/discover/:userId/search?q=username
+ */
+export const searchUsers = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const q = (req.query.q || '').trim();
+
+    if (!q) {
+      return res.status(400).json({ success: false, error: 'Query parameter q is required' });
+    }
+
+    const currentUser = await User.findById(userId).lean();
+    if (!currentUser) {
+      return res.status(404).json({ success: false, error: 'Current user not found' });
+    }
+
+    // Case-insensitive exact username match first, then partial
+    const user = await User.findOne({
+      _id: { $ne: userId },
+      username: { $regex: new RegExp(`^${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+    })
+      .select('-password -passwordResetToken -passwordResetExpires')
+      .lean();
+
+    if (!user) {
+      return res.status(200).json({ success: true, user: null });
+    }
+
+    let distance = null;
+    if (currentUser.location?.coordinates && user.location?.coordinates) {
+      const [lon1, lat1] = currentUser.location.coordinates;
+      const [lon2, lat2] = user.location.coordinates;
+      distance = calculateDistance(lat1, lon1, lat2, lon2);
+    }
+
+    const compatibilityScore = calculateCompatibilityScore(currentUser, user);
+
+    const publicProfile = {
+      _id: user._id,
+      username: user.username,
+      profilePicture: user.profilePicture,
+      photos: user.photos || [],
+      bio: user.bio,
+      age: user.age,
+      compatibilityScore,
+      distance: user.discoverySettings?.distanceVisible === false
+        ? null
+        : distance != null && Number.isFinite(distance)
+          ? Math.round(distance)
+          : null,
+      interests: user.interests || [],
+      relationshipGoals: user.relationshipGoals,
+      profileCompleteness: user.profileCompleteness,
+      isVerified: user.isVerified,
+    };
+
+    if (user.genderVisibility === 'public') publicProfile.gender = user.gender;
+    if (user.pronounsVisibility === 'public') publicProfile.pronouns = user.pronouns;
+    if (user.workVisibility === 'public') {
+      publicProfile.workTitle = user.workTitle;
+      publicProfile.workCompany = user.workCompany;
+    }
+    if (user.educationVisibility === 'public') {
+      publicProfile.educationSchool = user.educationSchool;
+      publicProfile.educationDegree = user.educationDegree;
+    }
+    if (user.locationVisibility === 'public' && user.location) {
+      publicProfile.location = user.location.displayLocation || user.location.city;
+    }
+    if (user.discoverySettings?.lastActiveVisible) {
+      publicProfile.lastActive = user.lastActive;
+    }
+
+    return res.status(200).json({ success: true, user: publicProfile });
+
+  } catch (error) {
+    console.error('searchUsers error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Search failed',
+      detail: error.message
+    });
+  }
+};
+
 export default {
   getDiscoverUsers,
   handleInteraction,
@@ -946,5 +1034,6 @@ export default {
   updateMatchPreferences,
   updateDiscoverySettings,
   getDiscoveryStats,
-  unmatch
+  unmatch,
+  searchUsers
 };
