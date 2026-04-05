@@ -12,7 +12,8 @@ import {
   updateMatchPreferences,
   updateDiscoverySettings,
   getDiscoveryStats,
-  unmatch
+  unmatch,
+  searchUsers
 } from '../controllers/discoverController.js';
 
 const router = express.Router();
@@ -58,6 +59,9 @@ router.get('/:userId/stats', protect, getDiscoveryStats);
 
 // POST /api/discover/:userId/unmatch - Unmatch with a user
 router.post('/:userId/unmatch', protect, unmatch);
+
+// GET /api/discover/:userId/search - Search users by username
+router.get('/:userId/search', protect, searchUsers);
 
 // GET /api/discover/:userId - Get potential matches for discovery
 // Query params: limit, offset, minScore, sortBy

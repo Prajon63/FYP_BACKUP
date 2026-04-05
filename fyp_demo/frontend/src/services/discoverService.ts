@@ -205,6 +205,23 @@ export const discoverService = {
   },
 
   /**
+   * Search for a user by exact username (case-insensitive)
+   * @param userId - Current user ID
+   * @param query - Username to search for
+   */
+  async searchUsers(
+    userId: string,
+    query: string
+  ): Promise<{ success: boolean; user: import('../types').DiscoveryUser | null; error?: string }> {
+    try {
+      const response = await api.get(`/discover/${userId}/search?q=${encodeURIComponent(query)}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Search failed');
+    }
+  },
+
+  /**
    * Unmatch with a user
    * @param userId - Current user ID
    * @param targetUserId - User to unmatch with
