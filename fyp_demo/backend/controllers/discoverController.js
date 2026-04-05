@@ -157,7 +157,12 @@ export const getDiscoverUsers = async (req, res) => {
         bio: user.bio,
         age: user.age,
         compatibilityScore: user.compatibilityScore,
-        distance: user.distance ? Math.round(user.distance) : null,
+        distance:
+          user.discoverySettings?.distanceVisible === false
+            ? null
+            : user.distance != null && Number.isFinite(user.distance)
+              ? Math.round(user.distance)
+              : null,
         interests: user.interests || [],
         relationshipGoals: user.relationshipGoals,
         profileCompleteness: user.profileCompleteness,
