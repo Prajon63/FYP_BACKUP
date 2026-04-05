@@ -409,159 +409,153 @@ const ViewProfile: React.FC = () => {
       <Toaster position="top-center" />
 
       <div
-        className="min-h-screen bg-slate-50"
+        className="min-h-screen bg-[#faf9f7]"
         style={{ fontFamily: "'DM Sans', sans-serif" }}
       >
-        {/* ── Hero / Cover ── */}
-        <div className="relative">
-          {/* Cover image */}
-          <div className="h-56 md:h-72 bg-gradient-to-br from-rose-200 via-pink-200 to-purple-200 overflow-hidden">
-            {profile.coverImage ? (
-              <img
-                src={profile.coverImage}
-                alt=""
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-rose-300 via-pink-300 to-purple-400" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-          </div>
+        <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
 
-          {/* Back button */}
-          <button
-            onClick={() => navigate(-1)}
-            className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors z-10"
+          {/* ── Hero Card (matches profile.tsx style) ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-3xl shadow-xl overflow-hidden"
           >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
+            {/* Cover */}
+            <div className="relative h-56 sm:h-72 bg-gradient-to-br from-rose-400 via-pink-400 to-purple-500">
+              {profile.coverImage && (
+                <img src={profile.coverImage} alt="Cover" className="w-full h-full object-cover" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
-          {/* More menu button */}
-          <div className="absolute top-4 right-4 z-10">
-            <button
-              onClick={() => setShowMenu((p) => !p)}
-              className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors"
-            >
-              <MoreVertical className="w-5 h-5" />
-            </button>
+              {/* Back button */}
+              <button
+                onClick={() => navigate(-1)}
+                className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors z-10"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
 
-            <AnimatePresence>
-              {showMenu && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.92, y: -8 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.92, y: -8 }}
-                  className="absolute right-0 top-12 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden w-44 z-20"
+              {/* More menu button */}
+              <div className="absolute top-4 right-4 z-10">
+                <button
+                  onClick={() => setShowMenu((p) => !p)}
+                  className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors"
                 >
-                  <button
-                    onClick={() => { setShowMenu(false); handleSave(); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                  >
-                    <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-rose-500 text-rose-500' : ''}`} />
-                    {isSaved ? 'Unsave profile' : 'Save profile'}
-                  </button>
-                  <button
-                    onClick={() => { setShowMenu(false); toast('Report feature coming soon'); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                  >
-                    <Flag className="w-4 h-4" />
-                    Report
-                  </button>
-                  <button
-                    onClick={() => { setShowMenu(false); setShowBlockConfirm(true); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition-colors border-t border-slate-100"
-                  >
-                    <Ban className="w-4 h-4" />
-                    Block user
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                  <MoreVertical className="w-5 h-5" />
+                </button>
 
-          {/* Avatar overlapping cover */}
-          <div className="absolute -bottom-12 left-6">
-            <div className="relative">
-              <img
-                src={profile.profilePicture || fallbackAvatar(profile._id)}
-                alt={profile.username}
-                className="w-24 h-24 rounded-2xl border-4 border-white object-cover shadow-lg"
-              />
-              {profile.isVerified && (
-                <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center shadow">
-                  <UserCheck className="w-3.5 h-3.5 text-white" />
-                </div>
-              )}
-              {profile.isOnline && (
-                <div className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-white" />
-              )}
+                <AnimatePresence>
+                  {showMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.92, y: -8 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                      className="absolute right-0 top-12 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden w-44 z-20"
+                    >
+                      <button
+                        onClick={() => { setShowMenu(false); handleSave(); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-rose-500 text-rose-500' : ''}`} />
+                        {isSaved ? 'Unsave profile' : 'Save profile'}
+                      </button>
+                      <button
+                        onClick={() => { setShowMenu(false); toast('Report feature coming soon'); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        <Flag className="w-4 h-4" />
+                        Report
+                      </button>
+                      <button
+                        onClick={() => { setShowMenu(false); setShowBlockConfirm(true); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition-colors border-t border-slate-100"
+                      >
+                        <Ban className="w-4 h-4" />
+                        Block user
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* ── Content ── */}
-        <div className="pt-16 px-4 pb-36 max-w-2xl mx-auto space-y-5">
+            {/* Avatar + name row (inside card, same as profile.tsx) */}
+            <div className="px-6 pb-6 relative">
+              <div className="flex items-end justify-between -mt-12 mb-4">
+                <motion.div whileHover={{ scale: 1.03 }} className="relative">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden ring-4 ring-white shadow-xl">
+                    <img
+                      src={profile.profilePicture || fallbackAvatar(profile._id)}
+                      alt={profile.username}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {profile.isVerified && (
+                    <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center shadow">
+                      <UserCheck className="w-3.5 h-3.5 text-white" />
+                    </div>
+                  )}
+                  {profile.isOnline && (
+                    <div className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-white" />
+                  )}
+                </motion.div>
 
-          {/* Name + basic info */}
-          <div>
-            <div className="flex items-start justify-between">
-              <div>
-                <h1
-                  className="text-2xl font-bold text-slate-900"
-                  style={{ fontFamily: "'Playfair Display', serif" }}
-                >
-                  {profile.username || 'Unknown'}
-                  {profile.age ? `, ${profile.age}` : ''}
-                </h1>
-                {profile.pronouns && (
-                  <p className="text-xs text-slate-400 font-medium mt-0.5">{profile.pronouns}</p>
+                {profile.profileCompleteness !== undefined && (
+                  <div className="flex flex-col items-end pb-1">
+                    <span className="text-xs font-semibold text-slate-400">Profile</span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-rose-400 to-pink-500"
+                          style={{ width: `${profile.profileCompleteness}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-500 font-medium">
+                        {profile.profileCompleteness}%
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
 
-              {profile.profileCompleteness !== undefined && (
-                <div className="flex flex-col items-end">
-                  <span className="text-xs font-semibold text-slate-400">Profile</span>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <div className="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-rose-400 to-pink-500"
-                        style={{ width: `${profile.profileCompleteness}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-slate-500 font-medium">
-                      {profile.profileCompleteness}%
-                    </span>
-                  </div>
-                </div>
+              {/* Name + bio */}
+              <h1
+                className="text-2xl font-bold text-slate-900 mb-0.5"
+                style={{ fontFamily: "'Playfair Display', serif" }}
+              >
+                {profile.username || 'Unknown'}
+                {profile.age ? `, ${profile.age}` : ''}
+              </h1>
+              {profile.pronouns && (
+                <p className="text-xs text-slate-400 font-medium mt-0.5">{profile.pronouns}</p>
               )}
-            </div>
 
-            <div className="flex flex-wrap items-center gap-3 mt-2">
-              {hasLocation && (
-                <span className="flex items-center gap-1 text-sm text-slate-500">
-                  <MapPin className="w-3.5 h-3.5 text-rose-400" />
-                  {displayLocation}
+              <div className="flex flex-wrap items-center gap-3 mt-2">
+                {hasLocation && (
+                  <span className="flex items-center gap-1 text-sm text-slate-500">
+                    <MapPin className="w-3.5 h-3.5 text-rose-400" />
+                    {displayLocation}
+                  </span>
+                )}
+                {profile.lastActive && (
+                  <span className="text-xs text-slate-400">
+                    Active {timeAgo(profile.lastActive)}
+                  </span>
+                )}
+              </div>
+
+              {profile.bio && (
+                <p className="text-sm text-slate-600 leading-relaxed mt-3 max-w-xl">{profile.bio}</p>
+              )}
+
+              {profile.relationshipGoals && (
+                <span className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-rose-50 to-pink-50 text-rose-600 border border-rose-100">
+                  <Target className="w-3 h-3" />
+                  {profile.relationshipGoals}
                 </span>
               )}
-              {profile.lastActive && (
-                <span className="text-xs text-slate-400">
-                  Active {timeAgo(profile.lastActive)}
-                </span>
-              )}
             </div>
-
-            {profile.bio && (
-              <p className="text-sm text-slate-600 leading-relaxed mt-3">{profile.bio}</p>
-            )}
-
-            {/* Relationship goal badge */}
-            {profile.relationshipGoals && (
-              <span className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-rose-50 to-pink-50 text-rose-600 border border-rose-100">
-                <Target className="w-3 h-3" />
-                {profile.relationshipGoals}
-              </span>
-            )}
-          </div>
+          </motion.div>
 
           {/* Interaction status banner */}
           <AnimatePresence>
@@ -608,9 +602,8 @@ const ViewProfile: React.FC = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="space-y-4"
+                className="space-y-4 pb-36"
               >
-                {/* About text */}
                 {profile.about && (
                   <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
                     <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">
@@ -620,7 +613,6 @@ const ViewProfile: React.FC = () => {
                   </div>
                 )}
 
-                {/* Details */}
                 <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
                   <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">
                     Details
@@ -636,7 +628,6 @@ const ViewProfile: React.FC = () => {
                   <InfoRow icon={<MapPin className="w-4 h-4" />} label="Location" value={displayLocation || null} />
                 </div>
 
-                {/* Lifestyle */}
                 {profile.lifestyle && Object.values(profile.lifestyle).some(Boolean) && (
                   <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
                     <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">
@@ -649,7 +640,6 @@ const ViewProfile: React.FC = () => {
                   </div>
                 )}
 
-                {/* Interests */}
                 {profile.interests && profile.interests.length > 0 && (
                   <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
                     <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">
@@ -672,6 +662,7 @@ const ViewProfile: React.FC = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
+                className="pb-36"
               >
                 {photos.length === 0 ? (
                   <div className="text-center py-16 text-slate-400">
@@ -707,7 +698,7 @@ const ViewProfile: React.FC = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="space-y-4"
+                className="space-y-4 pb-36"
               >
                 {posts.length === 0 ? (
                   <div className="text-center py-16 text-slate-400">
@@ -722,6 +713,7 @@ const ViewProfile: React.FC = () => {
               </motion.div>
             )}
           </AnimatePresence>
+
         </div>
 
         {/* ── Sticky action bar ── */}
