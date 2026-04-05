@@ -106,6 +106,12 @@ export async function updateProfile(req, res) {
     const { username, bio, profilePicture, coverImage, about, pronouns, gender,
       interestedIn, work, education } = req.body;
 
+    const existing = await findById(userId);
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    const prev = existing.toObject();
+
     // Build update object with only provided fields
     const updateData = {};
     if (username !== undefined) updateData.username = username;
@@ -134,13 +140,37 @@ export async function updateProfile(req, res) {
     if (req.body.lifestyle !== undefined) updateData.lifestyle = req.body.lifestyle;
     if (req.body.matchPreferences !== undefined) updateData.matchPreferences = req.body.matchPreferences;
 
-    // Always set discoverySettings.isActive when profile is updated
+    if (req.body.location !== undefined) {
+      const loc = req.body.location;
+      const coords = loc.coordinates;
+      if (
+        Array.isArray(coords) &&
+        coords.length === 2 &&
+        Number.isFinite(coords[0]) &&
+        Number.isFinite(coords[1])
+      ) {
+        updateData.location = {
+          type: 'Point',
+          coordinates: [coords[0], coords[1]],
+          city: loc.city ?? prev.location?.city ?? '',
+          state: loc.state ?? prev.location?.state ?? '',
+          country: loc.country ?? prev.location?.country ?? '',
+          displayLocation: loc.displayLocation ?? prev.location?.displayLocation ?? '',
+        };
+      }
+    }
+    if (req.body.locationVisibility !== undefined) {
+      updateData.locationVisibility = req.body.locationVisibility;
+    }
+
+    // Merge discovery settings so partial updates do not wipe existing flags
     updateData.discoverySettings = {
       isActive: true,
       ageRangeVisible: true,
       distanceVisible: true,
       lastActiveVisible: false,
-      ...(req.body.discoverySettings || {})
+      ...(prev.discoverySettings || {}),
+      ...(req.body.discoverySettings || {}),
     };
 
     if (req.body.workTitle !== undefined) updateData.workTitle = req.body.workTitle;
@@ -157,6 +187,7 @@ export async function updateProfile(req, res) {
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
+
 
     const { password, ...userData } = user.toObject();
     return res.status(200).json({
