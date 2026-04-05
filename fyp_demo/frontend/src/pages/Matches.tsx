@@ -23,6 +23,19 @@ import { getStoredUserId } from '../utils/auth';
 import NotificationBell from '../components/NotificationBell';
 
 // ── Helpers ────────────────────────────────────────────────────────────
+/** Matches created within this window count as "New" (All vs New tab). Default: 48 hours. */
+const NEW_MATCH_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+function isMatchedWithinNewWindow(matchedAt?: string) {
+  if (!matchedAt) return false;
+  return Date.now() - new Date(matchedAt).getTime() <= NEW_MATCH_WINDOW_MS;
+}
+
+/** Has an active chat thread: at least one message (or legacy conversationStarted). */
+function hasActiveChat(m: Match) {
+  return !!(m.lastMessageAt || m.conversationStarted);
+}
+
 function timeAgo(dateString: string) {
   if (!dateString) return 'Recently';
   const diff = Date.now() - new Date(dateString).getTime();
@@ -92,7 +105,7 @@ function MatchCard({
   onUnmatch: (e: React.MouseEvent) => void;
 }) {
   const colors = scoreColor(match.compatibilityScore);
-  const isNew = !match.lastMessageAt;
+  const isNew = !hasActiveChat(match);
   const isHot = match.compatibilityScore >= 90;
 
   return (
@@ -427,13 +440,20 @@ const Matches: React.FC = () => {
     );
   };
 
-  const newMatches = matches.filter((m) => !m.lastMessageAt);
-  const activeChats = matches.filter((m) => !!m.lastMessageAt);
+  /** Round avatar strip: matches you haven’t messaged yet (opens chat on tap). */
+  const newMatchesStrip = matches.filter((m) => !hasActiveChat(m));
+  const activeChats = matches.filter((m) => hasActiveChat(m));
 
   const filteredMatches = matches.filter((m) => {
-    const matchesSearch = (m.user?.username || '').toLowerCase().includes(searchQuery.toLowerCase());
-    if (activeTab === 'new') return matchesSearch && !m.lastMessageAt;
-    if (activeTab === 'chatting') return matchesSearch && !!m.lastMessageAt;
+    const matchesSearch = (m.user?.username || '')
+      .toLowerCase()
+      .includes(searchQuery.trim().toLowerCase());
+    if (activeTab === 'new') {
+      return matchesSearch && isMatchedWithinNewWindow(m.matchedAt);
+    }
+    if (activeTab === 'chatting') {
+      return matchesSearch && hasActiveChat(m);
+    }
     return matchesSearch;
   });
 
@@ -489,21 +509,22 @@ const Matches: React.FC = () => {
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
         {/* New Matches Strip */}
-        {newMatches.length > 0 && (
+        {newMatchesStrip.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-4 h-4 text-rose-400" />
               <h2 className="text-sm font-bold text-slate-700 tracking-wide">New Matches</h2>
               <span className="bg-rose-100 text-rose-600 text-xs font-bold px-2 py-0.5 rounded-full">
-                {newMatches.length}
+                {newMatchesStrip.length}
               </span>
+              <span className="text-[10px] text-slate-400 ml-1">Tap to chat</span>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-hide">
-              {newMatches.map((m) => (
+              {newMatchesStrip.map((m) => (
                 <NewMatchBubble
                   key={m.matchId}
                   match={m}
-                  onProfileClick={() => goProfile(m.user?._id)}
+                  onProfileClick={() => handleMessage(m)}
                 />
               ))}
             </div>
@@ -522,7 +543,7 @@ const Matches: React.FC = () => {
             },
             {
               label: 'New Matches',
-              value: newMatches.length,
+              value: newMatchesStrip.length,
               icon: Sparkles,
               iconBg: 'bg-purple-50',
               iconText: 'text-purple-500',
@@ -611,7 +632,13 @@ const Matches: React.FC = () => {
           <div className="bg-white rounded-2xl p-12 text-center shadow-lg">
             <Search className="w-12 h-12 text-slate-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-slate-800 mb-1">No matches found</h3>
-            <p className="text-slate-400 text-sm">Try a different name or filter</p>
+            <p className="text-slate-400 text-sm">
+              {activeTab === 'new'
+                ? 'No matches in the last 48 hours. Try “All” to see everyone.'
+                : activeTab === 'chatting'
+                  ? 'No active chats yet — send a message from a match to see them here.'
+                  : 'Try a different name or filter.'}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
