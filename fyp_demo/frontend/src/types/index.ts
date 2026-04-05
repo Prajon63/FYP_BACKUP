@@ -42,7 +42,7 @@ export interface User {
   
   // Location
   location?: {
-    type: string;
+    type?: string;
     coordinates: [number, number]; // [longitude, latitude]
     city?: string;
     state?: string;
