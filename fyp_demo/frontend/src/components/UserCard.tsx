@@ -303,7 +303,7 @@ const UserCard: React.FC<UserCardProps> = ({
               </div>
             )}
 
-            {/* Meta info */}
+            {/* Meta info for user card*/}
             <div className="space-y-1.5 mb-3">
               {(user.location ||
                 (user.distance != null && Number.isFinite(user.distance))) && (
