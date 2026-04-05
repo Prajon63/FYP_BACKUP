@@ -11,6 +11,7 @@ import dotenv from 'dotenv';
 import authRoute from './routes/auth.js';
 import profileRoute from './routes/profile.js';
 import discoverRoute from './routes/discover.js';
+import geocodeRoute from './routes/geocode.js';
 import chatRoutes from './routes/chat.js';
 import { registerChatSocket } from './sockets/chatSocket.js';
 import cloudinary from './config/cloudinary.js';  //  import to initialize config for cloudinary
@@ -38,6 +39,7 @@ connectDB();
 app.use('/api/auth', authRoute);
 app.use('/api/profile', profileRoute);
 app.use('/api/discover', discoverRoute);
+app.use('/api/geocode', geocodeRoute);
 app.use('/api/chat', chatRoutes);
 // app.use('/api/auth', require('./routes/auth'));
 
