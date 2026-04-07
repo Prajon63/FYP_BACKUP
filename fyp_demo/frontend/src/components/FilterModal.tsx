@@ -28,7 +28,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
   const handleReset = () => {
     const defaultPrefs: MatchPreferences = {
       ageRange: { min: 18, max: 100 },
-      distanceRange: 50,
+      distanceRange: 500,
       genderPreference: []
     };
     setPreferences(defaultPrefs);
@@ -141,16 +141,16 @@ const FilterModal: React.FC<FilterModalProps> = ({
                 </label>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-600">
-                    {preferences.distanceRange >= 100 ? 'Any distance' : `${preferences.distanceRange} km`}
+                    {preferences.distanceRange >= 500 ? 'Worldwide' : `${preferences.distanceRange} km`}
                   </span>
                   <span className="text-sm font-semibold text-purple-600">
-                    {preferences.distanceRange} km
+                    {preferences.distanceRange >= 500 ? '500+ km' : `${preferences.distanceRange} km`}
                   </span>
                 </div>
                 <input
                   type="range"
                   min="1"
-                  max="100"
+                  max="500"
                   value={preferences.distanceRange}
                   onChange={(e) =>
                     setPreferences({

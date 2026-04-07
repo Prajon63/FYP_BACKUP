@@ -41,7 +41,7 @@ const EnhancedPreferences: React.FC = () => {
   // Match Preferences
   const [preferences, setPreferences] = useState<MatchPreferences>({
     ageRange: { min: 18, max: 100 },
-    distanceRange: 50,
+    distanceRange: 500,
     genderPreference: []
   });
 
@@ -568,12 +568,13 @@ const EnhancedPreferences: React.FC = () => {
           <div>
             <label className="block text-gray-700 font-semibold mb-3 flex items-center gap-2">
               <MapPin className="w-5 h-5" />
-              Maximum Distance: {preferences.distanceRange} km
+              Maximum Distance:{' '}
+              {preferences.distanceRange >= 500 ? 'Worldwide' : `${preferences.distanceRange} km`}
             </label>
             <input
               type="range"
               min="1"
-              max="100"
+              max="500"
               value={preferences.distanceRange}
               onChange={(e) =>
                 setPreferences({ ...preferences, distanceRange: parseInt(e.target.value) })

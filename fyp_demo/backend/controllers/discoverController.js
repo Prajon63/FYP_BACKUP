@@ -122,13 +122,20 @@ export const getDiscoverUsers = async (req, res) => {
 
     console.log('🔍 DEBUG - after scoring, count:', scoredMatches.length, scoredMatches.map(u => `${u.username}(score:${u.compatibilityScore})`));
 
-    // Apply distance filter only if current user has a real location (not default [0,0])
+    // Apply distance filter only when:
+    //  1. The current user has a real (non-zero) location
+    //  2. They have a distanceRange preference saved
+    //  3. That value is below 500 km (the "Worldwide" sentinel used by the UI slider)
+    // When the slider is pushed to its maximum (500) the user explicitly means
+    // "show me everyone regardless of distance", so we skip the filter entirely.
     const userCoords = currentUser.location?.coordinates;
     const hasRealLocation = userCoords && !(userCoords[0] === 0 && userCoords[1] === 0);
-    console.log('🔍 DEBUG - hasRealLocation:', hasRealLocation, '| distanceRange:', currentUser.matchPreferences?.distanceRange);
-    if (hasRealLocation && currentUser.matchPreferences?.distanceRange) {
+    const distanceRange = currentUser.matchPreferences?.distanceRange;
+    const isWorldwide = !distanceRange || distanceRange >= 500;
+    console.log('🔍 DEBUG - hasRealLocation:', hasRealLocation, '| distanceRange:', distanceRange, '| isWorldwide:', isWorldwide);
+    if (hasRealLocation && !isWorldwide) {
       scoredMatches = scoredMatches.filter(user =>
-        !user.distance || user.distance <= currentUser.matchPreferences.distanceRange
+        !user.distance || user.distance <= distanceRange
       );
     }
 
@@ -177,21 +184,23 @@ export const getDiscoverUsers = async (req, res) => {
         isVerified: user.isVerified,
       };
 
-      if (user.genderVisibility === 'public') {
+      // Default to public when the field is unset (undefined/null).
+      // Users must explicitly set visibility to 'private' to hide a field.
+      if (user.genderVisibility !== 'private') {
         publicProfile.gender = user.gender;
       }
-      if (user.pronounsVisibility === 'public') {
+      if (user.pronounsVisibility !== 'private') {
         publicProfile.pronouns = user.pronouns;
       }
-      if (user.workVisibility === 'public') {
+      if (user.workVisibility !== 'private') {
         publicProfile.workTitle = user.workTitle;
         publicProfile.workCompany = user.workCompany;
       }
-      if (user.educationVisibility === 'public') {
+      if (user.educationVisibility !== 'private') {
         publicProfile.educationSchool = user.educationSchool;
         publicProfile.educationDegree = user.educationDegree;
       }
-      if (user.locationVisibility === 'public' && user.location) {
+      if (user.locationVisibility !== 'private' && user.location) {
         publicProfile.location = user.location.displayLocation || user.location.city;
       }
       if (user.discoverySettings?.lastActiveVisible) {
@@ -994,17 +1003,17 @@ export const searchUsers = async (req, res) => {
       isVerified: user.isVerified,
     };
 
-    if (user.genderVisibility === 'public') publicProfile.gender = user.gender;
-    if (user.pronounsVisibility === 'public') publicProfile.pronouns = user.pronouns;
-    if (user.workVisibility === 'public') {
+    if (user.genderVisibility !== 'private') publicProfile.gender = user.gender;
+    if (user.pronounsVisibility !== 'private') publicProfile.pronouns = user.pronouns;
+    if (user.workVisibility !== 'private') {
       publicProfile.workTitle = user.workTitle;
       publicProfile.workCompany = user.workCompany;
     }
-    if (user.educationVisibility === 'public') {
+    if (user.educationVisibility !== 'private') {
       publicProfile.educationSchool = user.educationSchool;
       publicProfile.educationDegree = user.educationDegree;
     }
-    if (user.locationVisibility === 'public' && user.location) {
+    if (user.locationVisibility !== 'private' && user.location) {
       publicProfile.location = user.location.displayLocation || user.location.city;
     }
     if (user.discoverySettings?.lastActiveVisible) {

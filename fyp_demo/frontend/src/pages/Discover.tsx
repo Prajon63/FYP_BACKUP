@@ -168,7 +168,7 @@ const Discover: React.FC = () => {
 
   const [preferences, setPreferences] = useState<MatchPreferences>({
     ageRange: { min: 18, max: 100 },
-    distanceRange: 50,
+    distanceRange: 500,
     genderPreference: []
   });
 
