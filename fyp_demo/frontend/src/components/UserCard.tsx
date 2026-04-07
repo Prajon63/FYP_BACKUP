@@ -136,18 +136,21 @@ const UserCard: React.FC<UserCardProps> = ({
 
         {/* ──────────────────────────────────────────────────────────────────────
             IMAGE SECTION
-            • Fixed pixel height (288 px / 72 on Tailwind scale) so it never
-              grows or shrinks unpredictably regardless of card height.
-            • object-cover + object-top keeps faces visible.
+            • h-80 (320 px) gives enough room for portrait photos without
+              overflowing the card container (min 70vh ≈ 560 px).
+            • object-cover + objectPosition 'center 20%' anchors the crop
+              ~20 % down from the image top — squarely in the face zone for
+              any portrait aspect ratio, avoiding the forehead-only crop that
+              object-top causes on tall images.
         ───────────────────────────────────────────────────────────────────── */}
-        <div className="relative h-72 flex-shrink-0 bg-gray-100">
+        <div className="relative h-80 flex-shrink-0 bg-gray-100">
           {photos.length > 0 ? (
             <>
               <img
                 src={photos[currentPhotoIndex]}
                 alt={user.username || 'User'}
-                /* object-top ensures the face is always shown */
-                className="w-full h-full object-cover object-top"
+                className="w-full h-full object-cover"
+                style={{ objectPosition: 'center 20%' }}
               />
 
               {/* photo dots / progress bar */}
