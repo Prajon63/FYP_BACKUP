@@ -78,10 +78,12 @@ function DropdownPortal({
   anchorRect,
   onAction,
   onClose,
+  isSaved,
 }: {
   anchorRect: DOMRect;
   onAction: (action: 'pass' | 'like' | 'block') => void;
   onClose: () => void;
+  isSaved: boolean;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -113,24 +115,26 @@ function DropdownPortal({
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: -6 }}
       transition={{ duration: 0.13 }}
-      style={{ position: 'fixed', top, right, width: 192, zIndex: 99999 }}
+      style={{ position: 'fixed', top, right, width: 200, zIndex: 99999 }}
       className="rounded-2xl border border-slate-100 bg-white shadow-2xl py-1 overflow-hidden"
     >
       <button
         type="button"
         onMouseDown={(e) => { e.stopPropagation(); onAction('pass'); }}
-        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left transition-colors"
+        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-amber-50 text-left transition-colors"
       >
-        <EyeOff className="w-4 h-4 text-slate-500 shrink-0" />
+        <EyeOff className="w-4 h-4 text-amber-500 shrink-0" />
         Not interested
       </button>
       <button
         type="button"
         onMouseDown={(e) => { e.stopPropagation(); onAction('like'); }}
-        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left transition-colors"
+        className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition-colors ${
+          isSaved ? 'text-rose-600 hover:bg-rose-50' : 'text-slate-700 hover:bg-rose-50'
+        }`}
       >
-        <Bookmark className="w-4 h-4 text-rose-500 shrink-0" />
-        Save profile
+        <Bookmark className={`w-4 h-4 shrink-0 ${isSaved ? 'fill-rose-500 text-rose-500' : 'text-rose-400'}`} />
+        {isSaved ? 'Unsave profile' : 'Save profile'}
       </button>
       <div className="my-0.5 border-t border-slate-100" />
       <button
@@ -157,6 +161,7 @@ function ProfileCard({
   onOverflowAction,
   onUndoAction,
   onDismissAction,
+  isSaved,
 }: {
   user: DiscoveryUser;
   index: number;
@@ -167,6 +172,7 @@ function ProfileCard({
   onOverflowAction: (action: 'pass' | 'like' | 'block') => void;
   onUndoAction: () => void;
   onDismissAction: () => void;
+  isSaved: boolean;
 }) {
   const navigate = useNavigate();
   // Stable random counts — won't re-roll on re-render
@@ -400,6 +406,7 @@ function ProfileCard({
         {menuOpen && anchorRect && (
           <DropdownPortal
             anchorRect={anchorRect}
+            isSaved={isSaved}
             onAction={(action) => {
               setMenuOpen(false);
               onOverflowAction(action);
@@ -440,6 +447,7 @@ const Home: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [cardActions, setCardActions] = useState<Record<string, 'pass' | 'block' | null>>({});
+  const [savedProfiles, setSavedProfiles] = useState<Set<string>>(new Set());
 
   const userId = getStoredUserId();
   const storedUser = getStoredUser();
@@ -473,21 +481,17 @@ const Home: React.FC = () => {
     !!window.matchMedia &&
     window.matchMedia('(max-width: 767px)').matches;
 
-  const showMobileUndo = (targetUserId: string, action: 'pass' | 'block') => {
+  // Rich toast shown whenever "Not interested" is triggered (all viewports)
+  const showNotInterestedToast = (targetUserId: string) => {
     toast.custom((t) => (
-      <div
-        className={`max-w-sm w-[92vw] rounded-2xl shadow-2xl border px-4 py-3 bg-white ${
-          action === 'block' ? 'border-red-200' : 'border-amber-200'
-        }`}
-      >
+      <div className="max-w-sm w-[92vw] rounded-2xl shadow-2xl border px-4 py-3 bg-white border-amber-200">
         <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+            <EyeOff className="w-4 h-4 text-amber-500" />
+          </div>
           <div className="flex-1">
-            <p className="text-sm font-bold text-slate-900">
-              {action === 'block' ? 'User blocked' : 'Not interested'}
-            </p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Tap undo to restore this profile.
-            </p>
+            <p className="text-sm font-bold text-slate-900">Not interested</p>
+            <p className="text-xs text-slate-500 mt-0.5">This profile won't appear in your feed.</p>
           </div>
           <motion.button
             type="button"
@@ -496,13 +500,86 @@ const Home: React.FC = () => {
               toast.dismiss(t.id);
               try {
                 await discoverService.removeInteraction(userId, targetUserId);
-                toast.success('Undone');
+                toast.success('Profile restored');
                 await fetchFeed(true);
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : 'Failed to undo');
               }
             }}
-            className="px-3 py-2 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100"
+            className="px-3 py-2 rounded-xl bg-amber-50 text-amber-700 text-xs font-bold border border-amber-100 shrink-0"
+          >
+            Undo
+          </motion.button>
+        </div>
+      </div>
+    ), { position: 'bottom-center', duration: 4500 });
+  };
+
+  // Rich toast for save / unsave
+  const showSaveToast = (isSave: boolean, targetUserId: string) => {
+    toast.custom((t) => (
+      <div className="max-w-sm w-[92vw] rounded-2xl shadow-2xl border px-4 py-3 bg-white border-rose-200">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+            <Bookmark className={`w-4 h-4 ${isSave ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-slate-900">
+              {isSave ? 'Profile saved' : 'Removed from saved'}
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isSave ? 'Find it anytime in your saved profiles.' : 'Profile removed from your saved list.'}
+            </p>
+          </div>
+          {isSave && (
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.95 }}
+              onClick={async () => {
+                toast.dismiss(t.id);
+                try {
+                  await discoverService.removeInteraction(userId, targetUserId);
+                  setSavedProfiles(prev => { const next = new Set(prev); next.delete(targetUserId); return next; });
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : 'Failed to undo');
+                }
+              }}
+              className="px-3 py-2 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100 shrink-0"
+            >
+              Undo
+            </motion.button>
+          )}
+        </div>
+      </div>
+    ), { position: 'bottom-center', duration: 4500 });
+  };
+
+  // Block-only mobile toast (block has its own inline panel on desktop)
+  const showBlockToast = (targetUserId: string) => {
+    toast.custom((t) => (
+      <div className="max-w-sm w-[92vw] rounded-2xl shadow-2xl border px-4 py-3 bg-white border-red-200">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+            <Ban className="w-4 h-4 text-red-500" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-slate-900">User blocked</p>
+            <p className="text-xs text-slate-500 mt-0.5">This account will no longer appear anywhere.</p>
+          </div>
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.95 }}
+            onClick={async () => {
+              toast.dismiss(t.id);
+              try {
+                await discoverService.removeInteraction(userId, targetUserId);
+                toast.success('Unblocked');
+                await fetchFeed(true);
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Failed to undo');
+              }
+            }}
+            className="px-3 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold border border-red-100 shrink-0"
           >
             Undo
           </motion.button>
@@ -516,31 +593,52 @@ const Home: React.FC = () => {
     const targetId = target._id;
     if (!targetId) return;
 
-    // Save profile: treat as like interaction (reuses existing backend model)
+    // ── Save / Unsave toggle ─────────────────────────────────────────────
     if (action === 'like') {
+      const isCurrentlySaved = savedProfiles.has(targetId);
       try {
-        await discoverService.handleInteraction(userId, targetId, 'like');
-        toast.success('Profile saved');
+        if (isCurrentlySaved) {
+          await discoverService.removeInteraction(userId, targetId);
+          setSavedProfiles(prev => { const next = new Set(prev); next.delete(targetId); return next; });
+          showSaveToast(false, targetId);
+        } else {
+          await discoverService.handleInteraction(userId, targetId, 'like');
+          setSavedProfiles(prev => new Set([...prev, targetId]));
+          showSaveToast(true, targetId);
+        }
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Failed to save');
+        toast.error(e instanceof Error ? e.message : 'Failed to update saved profiles');
       }
       return;
     }
 
-    // Pass / Block
-    try {
-      await discoverService.handleInteraction(userId, targetId, action);
+    // ── Not interested ───────────────────────────────────────────────────
+    if (action === 'pass') {
+      try {
+        await discoverService.handleInteraction(userId, targetId, 'pass');
+        if (isMobileNow()) {
+          setFeedUsers(prev => prev.filter(u => u._id !== targetId));
+        } else {
+          setCardActions(prev => ({ ...prev, [targetId]: 'pass' }));
+        }
+        showNotInterestedToast(targetId);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Failed to update');
+      }
+      return;
+    }
 
+    // ── Block ────────────────────────────────────────────────────────────
+    try {
+      await discoverService.handleInteraction(userId, targetId, 'block');
       if (isMobileNow()) {
-        // Instagram-like: remove instantly + toast undo
         setFeedUsers(prev => prev.filter(u => u._id !== targetId));
-        showMobileUndo(targetId, action);
+        showBlockToast(targetId);
       } else {
-        // Desktop: keep card visible with inline undo/dismiss
-        setCardActions(prev => ({ ...prev, [targetId]: action }));
+        setCardActions(prev => ({ ...prev, [targetId]: 'block' }));
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to update');
+      toast.error(e instanceof Error ? e.message : 'Failed to block');
     }
   };
 
@@ -712,6 +810,7 @@ const Home: React.FC = () => {
                   onToggleLike={() => toggleLike(user._id)}
                   currentUserId={userId}
                   cardAction={cardActions[user._id] || null}
+                  isSaved={savedProfiles.has(user._id)}
                   onOverflowAction={(action) => void handleOverflowAction(user, action)}
                   onUndoAction={() => void undoCardAction(user._id)}
                   onDismissAction={() => dismissCardAction(user._id)}
