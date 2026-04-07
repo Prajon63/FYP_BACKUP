@@ -1,8 +1,18 @@
 /**
  * Seed Data Script for Matchmaking Testing
  * Run this file to create test users with complete profiles
- * 
+ *
  * Usage: node seedData.js
+ *
+ * Generates 30 diverse users (15 female + 15 male) across global cities.
+ * Every user fills every field shown on the ProfileCard:
+ *   username, age, pronouns, relationshipGoals, location (with geocoding fields),
+ *   distance, workTitle, workCompany, educationSchool, educationDegree,
+ *   bio, interests, profilePicture, photos (2-3 per user), height, lifestyle, about.
+ *
+ * All profile pictures use unique Unsplash photo IDs — no duplicates.
+ * Secondary photos use curated lifestyle/activity shots shared across profiles
+ * (representing "other activities" shots, which is normal for dating profiles).
  */
 
 import mongoose from 'mongoose';
@@ -12,266 +22,1159 @@ import User from './models/User.js';
 
 dotenv.config();
 
+// ─── Lifestyle / activity secondary photos ────────────────────────────────────
+// These are shared as secondary shots across profiles (normal for test data).
+const ACT = [
+  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&h=600&fit=crop', //  0 mountains/hiking
+  'https://images.unsplash.com/photo-1481627834876-b7833e8f5a27?w=400&h=600&fit=crop', //  1 reading/books
+  'https://images.unsplash.com/photo-1495474472359-6ac945d4f3f8?w=400&h=600&fit=crop', //  2 coffee shop
+  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=600&fit=crop', //  3 beach/ocean
+  'https://images.unsplash.com/photo-1534258936659-a03a93644edb?w=400&h=600&fit=crop', //  4 gym/workout
+  'https://images.unsplash.com/photo-1488085061851-e29e3a83e7c6?w=400&h=600&fit=crop', //  5 travel/city night
+  'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=400&h=600&fit=crop', //  6 food/dining
+  'https://images.unsplash.com/photo-1511671001471-7e8f0fe32aec?w=400&h=600&fit=crop', //  7 music/guitar
+  'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&h=600&fit=crop', //  8 yoga/wellness
+  'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&h=600&fit=crop', //  9 nature/forest
+  'https://images.unsplash.com/photo-1480714378702-995f7f447af8?w=400&h=600&fit=crop', // 10 city skyline
+  'https://images.unsplash.com/photo-1513364776144-0e0d7b9ef415?w=400&h=600&fit=crop', // 11 art studio
+  'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=400&h=600&fit=crop', // 12 running/fitness
+  'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=400&h=600&fit=crop', // 13 travel/adventure
+  'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=400&h=600&fit=crop', // 14 cooking
+];
+
+// Helper: pick 2 activity photos for secondary shots, offset per user index
+const actPair = (i) => [ACT[i % ACT.length], ACT[(i + 5) % ACT.length]];
+
+// ─── Test users ───────────────────────────────────────────────────────────────
 const testUsers = [
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  FEMALE USERS  (15)
+  // ══════════════════════════════════════════════════════════════════════════
+
   {
     email: 'emma@test.com',
     password: 'password123',
     username: 'emma_watson',
+    pronouns: 'She/Her',
     bio: 'Actor & activist. Book lover 📚 Living life to the fullest ✨',
+    about: "Deeply passionate about literature, human rights, and meaningful connections. When I'm not buried in a book or on set, I love exploring hidden cafés and having late-night conversations about life. Looking for someone who values depth over surface-level connection.",
     gender: 'Female',
     age: 28,
+    height: 165,
     interestedIn: ['Men'],
     relationshipGoals: 'Long-term relationship',
     location: {
       type: 'Point',
-      coordinates: [-74.006, 40.7128], // New York
+      coordinates: [-74.006, 40.7128],
       city: 'New York',
       state: 'NY',
       country: 'USA',
-      displayLocation: 'New York, USA'
+      displayLocation: 'New York, USA',
     },
-    interests: ['Reading', 'Acting', 'Activism', 'Travel', 'Yoga'],
-    lifestyle: {
-      smoking: 'Never',
-      drinking: 'Socially',
-      exercise: 'Regularly',
-      diet: 'Vegetarian'
-    },
-    matchPreferences: {
-      ageRange: { min: 25, max: 35 },
-      distanceRange: 50,
-      genderPreference: ['Men']
-    },
-    discoverySettings: {
-      isActive: true,
-      ageRangeVisible: true,
-      distanceVisible: true,
-      lastActiveVisible: true
-    },
-    profilePicture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop'
+    workTitle: 'Actress',
+    workCompany: 'Independent',
+    educationSchool: 'Brown University',
+    educationDegree: 'BA English Literature',
+    interests: ['Reading', 'Acting', 'Activism', 'Travel', 'Yoga', 'Poetry', 'Theatre'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Vegetarian' },
+    matchPreferences: { ageRange: { min: 25, max: 35 }, distanceRange: 50, genderPreference: ['Men'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=600&fit=crop',
+      ...actPair(0),
+    ],
+    isVerified: true,
   },
-  {
-    email: 'alex@test.com',
-    password: 'password123',
-    username: 'alex_chen',
-    bio: 'Photographer 📸 Travel enthusiast 🌍 Coffee addict ☕',
-    gender: 'Male',
-    age: 26,
-    interestedIn: ['Women'],
-    relationshipGoals: 'Long-term relationship',
-    location: {
-      type: 'Point',
-      coordinates: [-122.4194, 37.7749], // San Francisco
-      city: 'San Francisco',
-      state: 'CA',
-      country: 'USA',
-      displayLocation: 'San Francisco, USA'
-    },
-    interests: ['Photography', 'Travel', 'Coffee', 'Hiking', 'Music'],
-    lifestyle: {
-      smoking: 'Never',
-      drinking: 'Socially',
-      exercise: 'Very active',
-      diet: 'Anything'
-    },
-    matchPreferences: {
-      ageRange: { min: 22, max: 32 },
-      distanceRange: 50,
-      genderPreference: ['Women']
-    },
-    discoverySettings: {
-      isActive: true,
-      ageRangeVisible: true,
-      distanceVisible: true,
-      lastActiveVisible: true
-    },
-    profilePicture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop'
-  },
+
   {
     email: 'sophia@test.com',
     password: 'password123',
     username: 'sophia_m',
+    pronouns: 'She/Her',
     bio: 'Yoga instructor 🧘‍♀️ Wellness advocate 🌿 Spreading positive energy ✨',
+    about: 'Life is about balance — on and off the mat. I teach yoga full-time and spend my free time hiking local trails, trying new vegan recipes, and meditating at sunrise. If you can hold a conversation about mindfulness and laugh at bad puns, we will get along great.',
     gender: 'Female',
     age: 24,
-    interestedIn: ['Men', 'Everyone'],
+    height: 163,
+    interestedIn: ['Men'],
     relationshipGoals: 'Casual dating',
     location: {
       type: 'Point',
-      coordinates: [-118.2437, 34.0522], // Los Angeles
+      coordinates: [-118.2437, 34.0522],
       city: 'Los Angeles',
       state: 'CA',
       country: 'USA',
-      displayLocation: 'Los Angeles, USA'
+      displayLocation: 'Los Angeles, USA',
     },
-    interests: ['Yoga', 'Meditation', 'Wellness', 'Cooking', 'Nature'],
-    lifestyle: {
-      smoking: 'Never',
-      drinking: 'Never',
-      exercise: 'Very active',
-      diet: 'Vegan'
-    },
-    matchPreferences: {
-      ageRange: { min: 22, max: 30 },
-      distanceRange: 30,
-      genderPreference: ['Men', 'Everyone']
-    },
-    discoverySettings: {
-      isActive: true,
-      ageRangeVisible: true,
-      distanceVisible: true,
-      lastActiveVisible: true
-    },
-    profilePicture: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop'
+    workTitle: 'Yoga Instructor',
+    workCompany: 'CorePower Yoga',
+    educationSchool: 'UCLA',
+    educationDegree: 'BS Kinesiology',
+    interests: ['Yoga', 'Meditation', 'Wellness', 'Cooking', 'Nature', 'Hiking', 'Veganism'],
+    lifestyle: { smoking: 'Never', drinking: 'Never', exercise: 'Very active', diet: 'Vegan' },
+    matchPreferences: { ageRange: { min: 22, max: 30 }, distanceRange: 30, genderPreference: ['Men'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop',
+      ...actPair(1),
+    ],
+    isVerified: false,
   },
-  {
-    email: 'james@test.com',
-    password: 'password123',
-    username: 'james_wilson',
-    bio: 'Software Engineer 💻 Music producer 🎵 Always learning something new',
-    gender: 'Male',
-    age: 30,
-    interestedIn: ['Women'],
-    relationshipGoals: 'Marriage',
-    location: {
-      type: 'Point',
-      coordinates: [-0.1278, 51.5074], // London
-      city: 'London',
-      country: 'UK',
-      displayLocation: 'London, UK'
-    },
-    interests: ['Coding', 'Music', 'Hiking', 'Gaming', 'Cooking'],
-    lifestyle: {
-      smoking: 'Never',
-      drinking: 'Socially',
-      exercise: 'Regularly',
-      diet: 'Anything'
-    },
-    matchPreferences: {
-      ageRange: { min: 25, max: 35 },
-      distanceRange: 50,
-      genderPreference: ['Women']
-    },
-    discoverySettings: {
-      isActive: true,
-      ageRangeVisible: true,
-      distanceVisible: true,
-      lastActiveVisible: true
-    },
-    profilePicture: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop'
-  },
+
   {
     email: 'olivia@test.com',
     password: 'password123',
     username: 'olivia_brown',
+    pronouns: 'She/Her',
     bio: 'Fashion designer 👗 Art lover 🎨 Exploring the world one city at a time 🌍',
+    about: "Paris stole my heart and I never asked for it back. I design sustainable fashion by day and haunt Parisian galleries by night. My love language is discovering tiny restaurants you won't find on any app. Speak French? Huge bonus.",
     gender: 'Female',
     age: 27,
+    height: 170,
     interestedIn: ['Men'],
     relationshipGoals: 'Long-term relationship',
     location: {
       type: 'Point',
-      coordinates: [2.3522, 48.8566], // Paris
+      coordinates: [2.3522, 48.8566],
       city: 'Paris',
+      state: '',
       country: 'France',
-      displayLocation: 'Paris, France'
+      displayLocation: 'Paris, France',
     },
-    interests: ['Fashion', 'Art', 'Travel', 'Photography', 'Wine'],
-    lifestyle: {
-      smoking: 'Socially',
-      drinking: 'Socially',
-      exercise: 'Sometimes',
-      diet: 'Anything'
-    },
-    matchPreferences: {
-      ageRange: { min: 26, max: 35 },
-      distanceRange: 50,
-      genderPreference: ['Men']
-    },
-    discoverySettings: {
-      isActive: true,
-      ageRangeVisible: true,
-      distanceVisible: true,
-      lastActiveVisible: true
-    },
-    profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop'
+    workTitle: 'Fashion Designer',
+    workCompany: 'Atelier Olivia',
+    educationSchool: 'Parsons School of Design',
+    educationDegree: 'BFA Fashion Design',
+    interests: ['Fashion', 'Art', 'Travel', 'Photography', 'Wine', 'Architecture', 'Film'],
+    lifestyle: { smoking: 'Socially', drinking: 'Socially', exercise: 'Sometimes', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 26, max: 35 }, distanceRange: 50, genderPreference: ['Men'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=600&fit=crop',
+      ...actPair(2),
+    ],
+    isVerified: true,
   },
+
+  {
+    email: 'isabella@test.com',
+    password: 'password123',
+    username: 'isabella_clark',
+    pronouns: 'She/Her',
+    bio: 'Marketing mind by day 📊 Brunch enthusiast 365 days a year 🥂',
+    about: "I orchestrate brand campaigns by day and run half-marathons by weekend. Chicago winters are rough but the food scene more than makes up for it. I am looking for someone who is genuinely curious about the world — bonus points if you can keep up on a 10 km run.",
+    gender: 'Female',
+    age: 29,
+    height: 167,
+    interestedIn: ['Men'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [-87.6298, 41.8781],
+      city: 'Chicago',
+      state: 'IL',
+      country: 'USA',
+      displayLocation: 'Chicago, USA',
+    },
+    workTitle: 'Marketing Manager',
+    workCompany: 'WPP',
+    educationSchool: 'Northwestern University',
+    educationDegree: 'MBA Marketing',
+    interests: ['Running', 'Brunch', 'Marketing', 'Travel', 'Jazz', 'Cooking', 'Museums'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 27, max: 37 }, distanceRange: 40, genderPreference: ['Men'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=600&fit=crop',
+      ...actPair(3),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'mia@test.com',
+    password: 'password123',
+    username: 'mia_thompson',
+    pronouns: 'She/Her',
+    bio: 'Graphic designer 🎨 Plant mom 🌱 Oat latte loyalist ☕',
+    about: "I spend my days turning ideas into pixels at Shopify and my evenings tending to an embarrassingly large plant collection. I believe design is how you see the world, not just how things look. Looking for someone creative, kind, and ideally not allergic to cats.",
+    gender: 'Female',
+    age: 25,
+    height: 162,
+    interestedIn: ['Men', 'Women'],
+    relationshipGoals: 'Casual dating',
+    location: {
+      type: 'Point',
+      coordinates: [-79.3832, 43.6532],
+      city: 'Toronto',
+      state: 'Ontario',
+      country: 'Canada',
+      displayLocation: 'Toronto, Canada',
+    },
+    workTitle: 'Graphic Designer',
+    workCompany: 'Shopify',
+    educationSchool: 'OCAD University',
+    educationDegree: 'BDes Graphic Design',
+    interests: ['Design', 'Plants', 'Coffee', 'Cats', 'Illustration', 'Cycling', 'Indie Music'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Sometimes', diet: 'Vegetarian' },
+    matchPreferences: { ageRange: { min: 23, max: 31 }, distanceRange: 25, genderPreference: ['Men', 'Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&h=600&fit=crop',
+      ...actPair(4),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'ava@test.com',
+    password: 'password123',
+    username: 'ava_tanaka',
+    pronouns: 'She/Her',
+    bio: 'Software engineer 💻 Matcha addict 🍵 Tokyo street food explorer 🍜',
+    about: "I write backend systems at Sony and unwind by exploring Tokyo's ramen alleys on the weekend. I am equal parts logical and spontaneous — I will plan a trip spreadsheet but also drag you to a random festival I found on a flyer. Let's build something together.",
+    gender: 'Female',
+    age: 26,
+    height: 158,
+    interestedIn: ['Men'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [139.6917, 35.6895],
+      city: 'Tokyo',
+      state: 'Kanto',
+      country: 'Japan',
+      displayLocation: 'Tokyo, Japan',
+    },
+    workTitle: 'Software Engineer',
+    workCompany: 'Sony',
+    educationSchool: 'Keio University',
+    educationDegree: 'BS Computer Science',
+    interests: ['Coding', 'Anime', 'Street Food', 'Matcha', 'Gaming', 'Photography', 'Travel'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Sometimes', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 24, max: 32 }, distanceRange: 20, genderPreference: ['Men'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&h=600&fit=crop',
+      ...actPair(5),
+    ],
+    isVerified: true,
+  },
+
+  {
+    email: 'charlotte@test.com',
+    password: 'password123',
+    username: 'charlotte_muller',
+    pronouns: 'She/They',
+    bio: 'Illustrator & muralist 🖌️ Queer. Loud laugh. Great taste in music 🎶',
+    about: "Berlin gave me a studio, a community, and a very strong espresso habit. I paint large-scale murals and create zines in my spare time. Looking for genuine human beings who still get excited about small things — a really good croissant, a new album, the right light.",
+    gender: 'Female',
+    age: 30,
+    height: 172,
+    interestedIn: ['Everyone'],
+    relationshipGoals: 'Friendship',
+    location: {
+      type: 'Point',
+      coordinates: [13.405, 52.52],
+      city: 'Berlin',
+      state: 'Berlin',
+      country: 'Germany',
+      displayLocation: 'Berlin, Germany',
+    },
+    workTitle: 'Illustrator',
+    workCompany: 'Freelance',
+    educationSchool: 'Berlin University of the Arts',
+    educationDegree: 'MFA Fine Arts',
+    interests: ['Art', 'Illustration', 'Murals', 'Music', 'Cycling', 'Zines', 'Queer Culture'],
+    lifestyle: { smoking: 'Socially', drinking: 'Socially', exercise: 'Sometimes', diet: 'Vegan' },
+    matchPreferences: { ageRange: { min: 26, max: 38 }, distanceRange: 20, genderPreference: ['Everyone'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=400&h=600&fit=crop',
+      ...actPair(6),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'amelia@test.com',
+    password: 'password123',
+    username: 'amelia_patel',
+    pronouns: 'She/Her',
+    bio: 'Pediatrician 👶 Weekend baker 🍰 Trying to save the world, one tiny patient at a time',
+    about: "Medicine chose me more than I chose it — I cannot imagine doing anything else. After long shifts I decompress by baking elaborate layer cakes and rewatching comfort shows. I value kindness above everything. If you are patient, curious, and know what you want from life, we should talk.",
+    gender: 'Female',
+    age: 31,
+    height: 160,
+    interestedIn: ['Men'],
+    relationshipGoals: 'Marriage',
+    location: {
+      type: 'Point',
+      coordinates: [72.8777, 19.076],
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      country: 'India',
+      displayLocation: 'Mumbai, India',
+    },
+    workTitle: 'Pediatrician',
+    workCompany: 'Kokilaben Dhirubhai Ambani Hospital',
+    educationSchool: 'AIIMS Mumbai',
+    educationDegree: 'MBBS',
+    interests: ['Medicine', 'Baking', 'Travelling', 'Bollywood', 'Reading', 'Volunteering'],
+    lifestyle: { smoking: 'Never', drinking: 'Never', exercise: 'Regularly', diet: 'Vegetarian' },
+    matchPreferences: { ageRange: { min: 29, max: 38 }, distanceRange: 30, genderPreference: ['Men'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1484863137850-59afcfe05386?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1484863137850-59afcfe05386?w=400&h=600&fit=crop',
+      ...actPair(7),
+    ],
+    isVerified: true,
+  },
+
+  {
+    email: 'harper@test.com',
+    password: 'password123',
+    username: 'harper_lee_sg',
+    pronouns: 'She/Her',
+    bio: 'Journalist ✍️ Obsessed with food culture 🍜 Always chasing the next story',
+    about: "I cover Southeast Asian politics and food culture for Reuters. My idea of a perfect day is a 6 am hawker breakfast, a good scoop by noon, and a cold tiger beer at sunset. Singapore is small but it punches above its weight — just like me.",
+    gender: 'Female',
+    age: 27,
+    height: 164,
+    interestedIn: ['Men'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [103.8198, 1.3521],
+      city: 'Singapore',
+      state: '',
+      country: 'Singapore',
+      displayLocation: 'Singapore',
+    },
+    workTitle: 'Journalist',
+    workCompany: 'Reuters',
+    educationSchool: 'National University of Singapore',
+    educationDegree: 'BA Communications',
+    interests: ['Journalism', 'Food Culture', 'Politics', 'Travel', 'Writing', 'Photography'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 25, max: 34 }, distanceRange: 30, genderPreference: ['Men'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=600&fit=crop',
+      ...actPair(8),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'evelyn@test.com',
+    password: 'password123',
+    username: 'evelyn_zhang',
+    pronouns: 'She/Her',
+    bio: 'Finance nerd by day 📈 Desert explorer by weekend 🏜️',
+    about: "I moved to Dubai for a two-year stint and never left. Working in structured finance at HSBC keeps my brain busy; the desert, the food, and the absolute chaos of this city keep everything else alive. Looking for someone ambitious but grounded.",
+    gender: 'Female',
+    age: 28,
+    height: 166,
+    interestedIn: ['Men'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [55.2708, 25.2048],
+      city: 'Dubai',
+      state: '',
+      country: 'UAE',
+      displayLocation: 'Dubai, UAE',
+    },
+    workTitle: 'Financial Analyst',
+    workCompany: 'HSBC',
+    educationSchool: 'London School of Economics',
+    educationDegree: 'BSc Finance',
+    interests: ['Finance', 'Hiking', 'Desert Camping', 'Travel', 'Fine Dining', 'Mandarin'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 26, max: 35 }, distanceRange: 40, genderPreference: ['Men'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=600&fit=crop',
+      ...actPair(9),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'luna@test.com',
+    password: 'password123',
+    username: 'luna_garcia',
+    pronouns: 'She/Her',
+    bio: 'Chef 🍳 Barcelona-born, world-flavoured 🌶️ FC Barça forever 💙❤️',
+    about: "Food is my first language. I run a pop-up tapas night and am finishing my first cookbook. Weekends I am either at the Boqueria, on my bike along the seafront, or having an argument about football with my family. Looking for someone spontaneous who eats adventurously.",
+    gender: 'Female',
+    age: 23,
+    height: 161,
+    interestedIn: ['Men'],
+    relationshipGoals: 'Casual dating',
+    location: {
+      type: 'Point',
+      coordinates: [2.1734, 41.3851],
+      city: 'Barcelona',
+      state: 'Catalonia',
+      country: 'Spain',
+      displayLocation: 'Barcelona, Spain',
+    },
+    workTitle: 'Chef',
+    workCompany: 'Self-employed',
+    educationSchool: 'Institut Paul Bocuse',
+    educationDegree: 'Culinary Arts Certificate',
+    interests: ['Cooking', 'Football', 'Cycling', 'Wine', 'Travel', 'Markets', 'Photography'],
+    lifestyle: { smoking: 'Socially', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 21, max: 30 }, distanceRange: 20, genderPreference: ['Men'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=400&h=600&fit=crop',
+      ...actPair(10),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'chloe@test.com',
+    password: 'password123',
+    username: 'chloe_anderson',
+    pronouns: 'She/Her',
+    bio: 'UX designer 🖥️ Cheese fiend 🧀 Cycling through Amsterdam one canal at a time 🚲',
+    about: "I design digital experiences at Booking.com and genuinely believe good design can change behaviour at scale. Outside work: cheese markets, canal swims, and arguing about which stroopwafel is best. I am looking for someone low-drama, warm, and maybe a little nerdy.",
+    gender: 'Female',
+    age: 29,
+    height: 168,
+    interestedIn: ['Men', 'Women'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [4.9041, 52.3676],
+      city: 'Amsterdam',
+      state: 'North Holland',
+      country: 'Netherlands',
+      displayLocation: 'Amsterdam, Netherlands',
+    },
+    workTitle: 'UX Designer',
+    workCompany: 'Booking.com',
+    educationSchool: 'Delft University of Technology',
+    educationDegree: 'MSc Interaction Design',
+    interests: ['UX Design', 'Cycling', 'Cheese', 'Swimming', 'Museums', 'Typography', 'Coffee'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Vegetarian' },
+    matchPreferences: { ageRange: { min: 27, max: 36 }, distanceRange: 20, genderPreference: ['Men', 'Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=600&fit=crop',
+      ...actPair(11),
+    ],
+    isVerified: true,
+  },
+
+  {
+    email: 'penelope@test.com',
+    password: 'password123',
+    username: 'penelope_kim',
+    pronouns: 'She/Her',
+    bio: 'Music producer 🎧 K-indie obsessed 🎵 Studio rat with a soft spot for rainy days',
+    about: "I produce music for indie artists and the occasional k-drama OST. Half my life is in headphones. The other half is looking for the right ramen spot. I like people who have one niche obsession they can talk about for an hour — tell me yours.",
+    gender: 'Female',
+    age: 25,
+    height: 163,
+    interestedIn: ['Men'],
+    relationshipGoals: 'Not sure yet',
+    location: {
+      type: 'Point',
+      coordinates: [126.978, 37.5665],
+      city: 'Seoul',
+      state: '',
+      country: 'South Korea',
+      displayLocation: 'Seoul, South Korea',
+    },
+    workTitle: 'Music Producer',
+    workCompany: 'Freelance',
+    educationSchool: 'Berklee Online',
+    educationDegree: 'BM Music Production',
+    interests: ['Music Production', 'K-indie', 'Ramen', 'Film', 'Photography', 'Night Drives'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Sometimes', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 23, max: 32 }, distanceRange: 15, genderPreference: ['Men'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=600&fit=crop',
+      ...actPair(12),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'aria@test.com',
+    password: 'password123',
+    username: 'aria_johnson',
+    pronouns: 'She/Her',
+    bio: 'Environmental scientist 🌊 Ocean advocate 🐠 Melbourne brunch devotee ☕',
+    about: "I study coastal ecosystems at the University of Melbourne and genuinely believe we can fix what we have broken if we move fast enough. Weekends mean surfing at Bells Beach or hiking the Grampians. Looking for someone who recycles and laughs easily.",
+    gender: 'Female',
+    age: 27,
+    height: 169,
+    interestedIn: ['Men'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [144.9631, -37.8136],
+      city: 'Melbourne',
+      state: 'Victoria',
+      country: 'Australia',
+      displayLocation: 'Melbourne, Australia',
+    },
+    workTitle: 'Environmental Scientist',
+    workCompany: 'University of Melbourne',
+    educationSchool: 'University of Melbourne',
+    educationDegree: 'BSc Environmental Science',
+    interests: ['Oceanography', 'Surfing', 'Hiking', 'Sustainability', 'Coffee', 'Photography'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Vegetarian' },
+    matchPreferences: { ageRange: { min: 25, max: 34 }, distanceRange: 40, genderPreference: ['Men'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=400&h=600&fit=crop',
+      ...actPair(13),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'layla@test.com',
+    password: 'password123',
+    username: 'layla_hassan',
+    pronouns: 'She/Her',
+    bio: 'Photographer 📷 Cape Town soul 🏔️ Chasing light, stories, and the perfect shot 🌅',
+    about: "I shoot documentary and travel photography across Sub-Saharan Africa. Every assignment teaches me something new about the world and about myself. Table Mountain is my backyard and I will never take it for granted. Looking for someone curious, kind, and down for an early morning shoot.",
+    gender: 'Female',
+    age: 26,
+    height: 165,
+    interestedIn: ['Men'],
+    relationshipGoals: 'Casual dating',
+    location: {
+      type: 'Point',
+      coordinates: [18.4241, -33.9249],
+      city: 'Cape Town',
+      state: 'Western Cape',
+      country: 'South Africa',
+      displayLocation: 'Cape Town, South Africa',
+    },
+    workTitle: 'Photographer',
+    workCompany: 'Freelance',
+    educationSchool: 'Cape Peninsula University of Technology',
+    educationDegree: 'BA Photography',
+    interests: ['Photography', 'Travel', 'Hiking', 'Storytelling', 'Wildlife', 'Coffee', 'Surfing'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 24, max: 33 }, distanceRange: 30, genderPreference: ['Men'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?w=400&h=600&fit=crop',
+      ...actPair(14),
+    ],
+    isVerified: false,
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  MALE USERS  (15)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  {
+    email: 'alex@test.com',
+    password: 'password123',
+    username: 'alex_chen',
+    pronouns: 'He/Him',
+    bio: 'Photographer 📸 Travel enthusiast 🌍 Coffee addict ☕',
+    about: "I shoot for Getty Images and spend half my life on planes. The other half is spent hunting light — golden hour is non-negotiable. San Francisco is home base but home is wherever there is good light and great coffee. Looking for someone who does not mind spontaneous trips.",
+    gender: 'Male',
+    age: 26,
+    height: 178,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [-122.4194, 37.7749],
+      city: 'San Francisco',
+      state: 'CA',
+      country: 'USA',
+      displayLocation: 'San Francisco, USA',
+    },
+    workTitle: 'Photographer',
+    workCompany: 'Getty Images',
+    educationSchool: 'Stanford University',
+    educationDegree: 'BA Visual Arts',
+    interests: ['Photography', 'Travel', 'Coffee', 'Hiking', 'Music', 'Film', 'Cycling'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 22, max: 32 }, distanceRange: 50, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop',
+      ...actPair(0),
+    ],
+    isVerified: true,
+  },
+
+  {
+    email: 'james@test.com',
+    password: 'password123',
+    username: 'james_wilson',
+    pronouns: 'He/Him',
+    bio: 'Software Engineer 💻 Music producer 🎵 Always learning something new',
+    about: "I build distributed systems at Google by day and produce electronic music at night. Oxford taught me to think; London taught me to live. I am looking for someone equally passionate about their craft — someone who has that thing they light up about.",
+    gender: 'Male',
+    age: 30,
+    height: 182,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Marriage',
+    location: {
+      type: 'Point',
+      coordinates: [-0.1278, 51.5074],
+      city: 'London',
+      state: '',
+      country: 'UK',
+      displayLocation: 'London, UK',
+    },
+    workTitle: 'Software Engineer',
+    workCompany: 'Google',
+    educationSchool: 'University of Oxford',
+    educationDegree: 'BSc Computer Science',
+    interests: ['Coding', 'Music Production', 'Hiking', 'Gaming', 'Cooking', 'Jazz', 'Football'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 25, max: 35 }, distanceRange: 50, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=600&fit=crop',
+      ...actPair(1),
+    ],
+    isVerified: true,
+  },
+
   {
     email: 'michael@test.com',
     password: 'password123',
     username: 'michael_t',
+    pronouns: 'He/Him',
     bio: 'Surfer 🏄‍♂️ Environmentalist 🌊 Living the beach life',
+    about: "I studied marine biology at UNSW and never really left the ocean. Now I split time between research dives and campaigning against plastic pollution. Sydney mornings start at dawn with a surf — everything else is secondary. Looking for someone who cares about the planet as much as I do.",
     gender: 'Male',
     age: 29,
+    height: 185,
     interestedIn: ['Women'],
     relationshipGoals: 'Not sure yet',
     location: {
       type: 'Point',
-      coordinates: [151.2093, -33.8688], // Sydney
+      coordinates: [151.2093, -33.8688],
       city: 'Sydney',
+      state: 'New South Wales',
       country: 'Australia',
-      displayLocation: 'Sydney, Australia'
+      displayLocation: 'Sydney, Australia',
     },
-    interests: ['Surfing', 'Environment', 'Beach', 'Fitness', 'Travel'],
-    lifestyle: {
-      smoking: 'Never',
-      drinking: 'Regularly',
-      exercise: 'Very active',
-      diet: 'Anything'
+    workTitle: 'Marine Environmentalist',
+    workCompany: 'UNSW Sydney',
+    educationSchool: 'UNSW Sydney',
+    educationDegree: 'BSc Marine Biology',
+    interests: ['Surfing', 'Marine Biology', 'Environment', 'Fitness', 'Travel', 'Photography'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 23, max: 32 }, distanceRange: 50, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=600&fit=crop',
+      ...actPair(2),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'noah@test.com',
+    password: 'password123',
+    username: 'noah_williams',
+    pronouns: 'He/Him',
+    bio: 'Executive chef 🍽️ Chicago deep dish defender 🍕 Making food that tells a story',
+    about: "I run a twelve-seat tasting menu in the West Loop and think about food basically all the time. Flavour is language — I want to cook for you and hear what it says. Off the clock I hit the farmers market, watch basketball, and occasionally sleep. Bonus points if you eat adventurously.",
+    gender: 'Male',
+    age: 27,
+    height: 183,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [-87.6298, 41.8781],
+      city: 'Chicago',
+      state: 'IL',
+      country: 'USA',
+      displayLocation: 'Chicago, USA',
     },
-    matchPreferences: {
-      ageRange: { min: 23, max: 32 },
-      distanceRange: 50,
-      genderPreference: ['Women']
+    workTitle: 'Executive Chef',
+    workCompany: 'Alinea Group',
+    educationSchool: 'Culinary Institute of America',
+    educationDegree: 'AOS Culinary Arts',
+    interests: ['Cooking', 'Farmers Markets', 'Basketball', 'Travel', 'Food History', 'Wine'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 24, max: 33 }, distanceRange: 40, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400&h=600&fit=crop',
+      ...actPair(3),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'liam@test.com',
+    password: 'password123',
+    username: 'liam_obrien',
+    pronouns: 'He/Him',
+    bio: 'Architect 🏛️ Brutalism fan 🏗️ Trying to make cities more human',
+    about: "I design civic buildings and public spaces at KPMB and spend a lot of time thinking about how the built environment shapes people. Toronto is a fascinating lab. My weekends involve long bike rides, live jazz, and probably a terrible attempt at sourdough. Looking for someone thoughtful and warm.",
+    gender: 'Male',
+    age: 31,
+    height: 186,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Marriage',
+    location: {
+      type: 'Point',
+      coordinates: [-79.3832, 43.6532],
+      city: 'Toronto',
+      state: 'Ontario',
+      country: 'Canada',
+      displayLocation: 'Toronto, Canada',
     },
-    discoverySettings: {
-      isActive: true,
-      ageRangeVisible: true,
-      distanceVisible: true,
-      lastActiveVisible: true
+    workTitle: 'Architect',
+    workCompany: 'KPMB Architects',
+    educationSchool: 'University of Toronto',
+    educationDegree: 'M.Arch',
+    interests: ['Architecture', 'Jazz', 'Cycling', 'Bread Baking', 'Urbanism', 'Photography'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 27, max: 37 }, distanceRange: 30, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1463453091185-61582044d556?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1463453091185-61582044d556?w=400&h=600&fit=crop',
+      ...actPair(4),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'ethan@test.com',
+    password: 'password123',
+    username: 'ethan_nakamura',
+    pronouns: 'He/Him',
+    bio: 'Game developer 🎮 Ramen enthusiast 🍜 Tokyo night owl 🌙',
+    about: "I build gameplay systems at Nintendo and spend way too much time thinking about why certain mechanics feel satisfying. Passion project: designing a narrative indie game on weekends. I like hiking on days off, trading ramen spot recommendations, and late-night Tokyo convenience store runs.",
+    gender: 'Male',
+    age: 25,
+    height: 175,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [139.6917, 35.6895],
+      city: 'Tokyo',
+      state: 'Kanto',
+      country: 'Japan',
+      displayLocation: 'Tokyo, Japan',
     },
-    profilePicture: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop'
-  }
+    workTitle: 'Game Developer',
+    workCompany: 'Nintendo',
+    educationSchool: 'Tokyo Institute of Technology',
+    educationDegree: 'BS Computer Science',
+    interests: ['Game Dev', 'Anime', 'Ramen', 'Hiking', 'Indie Music', 'Photography', 'Cycling'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Sometimes', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 22, max: 30 }, distanceRange: 20, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=600&fit=crop',
+      ...actPair(5),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'oliver@test.com',
+    password: 'password123',
+    username: 'oliver_schmidt',
+    pronouns: 'He/Him',
+    bio: 'Music producer 🎛️ Techno devotee 🔊 Berlin will always be home',
+    about: "I produce electronic music, teach sound design workshops at Ableton, and spend too many nights in Berghain. Berlin is the only place I can breathe properly. If you can name three Aphex Twin albums and have strong opinions about vinyl vs digital, we will get along.",
+    gender: 'Male',
+    age: 28,
+    height: 180,
+    interestedIn: ['Women', 'Everyone'],
+    relationshipGoals: 'Casual dating',
+    location: {
+      type: 'Point',
+      coordinates: [13.405, 52.52],
+      city: 'Berlin',
+      state: 'Berlin',
+      country: 'Germany',
+      displayLocation: 'Berlin, Germany',
+    },
+    workTitle: 'Music Producer',
+    workCompany: 'Ableton',
+    educationSchool: 'Berklee College of Music',
+    educationDegree: 'BM Music Production',
+    interests: ['Techno', 'Music Production', 'Cycling', 'Film', 'Cooking', 'Clubbing', 'Vinyl'],
+    lifestyle: { smoking: 'Socially', drinking: 'Socially', exercise: 'Sometimes', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 24, max: 35 }, distanceRange: 20, genderPreference: ['Women', 'Everyone'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=600&fit=crop',
+      ...actPair(6),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'william@test.com',
+    password: 'password123',
+    username: 'william_sharma',
+    pronouns: 'He/Him',
+    bio: 'Startup founder 🚀 IIT alumni ⚙️ Making fintech accessible in South Asia',
+    about: "I bootstrapped a fintech startup out of IIT Bombay and have been heads-down building ever since. The dream is financial inclusion for the next billion users. When I surface for air I play cricket, read sci-fi, and try to cook my grandmother's recipes. Looking for someone driven and authentic.",
+    gender: 'Male',
+    age: 32,
+    height: 177,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Marriage',
+    location: {
+      type: 'Point',
+      coordinates: [72.8777, 19.076],
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      country: 'India',
+      displayLocation: 'Mumbai, India',
+    },
+    workTitle: 'Co-founder & CEO',
+    workCompany: 'PayEase India',
+    educationSchool: 'IIT Bombay',
+    educationDegree: 'BTech Computer Engineering',
+    interests: ['Startups', 'Cricket', 'Sci-fi', 'Cooking', 'Fintech', 'Reading', 'Travel'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Vegetarian' },
+    matchPreferences: { ageRange: { min: 27, max: 36 }, distanceRange: 30, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=600&fit=crop',
+      ...actPair(7),
+    ],
+    isVerified: true,
+  },
+
+  {
+    email: 'mason@test.com',
+    password: 'password123',
+    username: 'mason_tan',
+    pronouns: 'He/Him',
+    bio: 'Investment banker 💹 Padel addict 🎾 Weekend foodie across Southeast Asia 🌏',
+    about: "I structure M&A deals at Goldman and unwind by destroying my friends at padel. Singapore makes it easy to hop to Bangkok or KL for a weekend food crawl. I value work-life balance way more than my job title suggests. Looking for someone who has their own thing going on.",
+    gender: 'Male',
+    age: 27,
+    height: 174,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [103.8198, 1.3521],
+      city: 'Singapore',
+      state: '',
+      country: 'Singapore',
+      displayLocation: 'Singapore',
+    },
+    workTitle: 'Investment Banker',
+    workCompany: 'Goldman Sachs',
+    educationSchool: 'National University of Singapore',
+    educationDegree: 'BBA Finance',
+    interests: ['Padel', 'Food', 'Travel', 'Finance', 'Cycling', 'Photography', 'Basketball'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 24, max: 33 }, distanceRange: 25, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=400&h=600&fit=crop',
+      ...actPair(8),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'logan@test.com',
+    password: 'password123',
+    username: 'logan_alrashid',
+    pronouns: 'He/Him',
+    bio: 'Emirates pilot ✈️ Desert runner 🏜️ Somewhere between the clouds and the dunes',
+    about: "I fly A380s for Emirates, which means I am often somewhere between Dubai and nowhere in particular. Layovers have taken me to 60+ countries. When I am on the ground I run ultramarathons in the desert and cook elaborate Lebanese food. Looking for someone with their own adventures.",
+    gender: 'Male',
+    age: 29,
+    height: 188,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [55.2708, 25.2048],
+      city: 'Dubai',
+      state: '',
+      country: 'UAE',
+      displayLocation: 'Dubai, UAE',
+    },
+    workTitle: 'Commercial Pilot',
+    workCompany: 'Emirates',
+    educationSchool: 'Embry-Riddle Aeronautical University',
+    educationDegree: 'BS Aviation Science',
+    interests: ['Flying', 'Running', 'Cooking', 'Travel', 'Desert Hiking', 'Photography', 'Arabic Coffee'],
+    lifestyle: { smoking: 'Never', drinking: 'Never', exercise: 'Very active', diet: 'Halal' },
+    matchPreferences: { ageRange: { min: 25, max: 34 }, distanceRange: 50, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=400&h=600&fit=crop',
+      ...actPair(9),
+    ],
+    isVerified: true,
+  },
+
+  {
+    email: 'lucas@test.com',
+    password: 'password123',
+    username: 'lucas_fernandez',
+    pronouns: 'He/Him',
+    bio: 'Personal trainer 💪 Barcelona local 🌊 Football is life, fitness is everything',
+    about: "I train clients at Equinox and compete in obstacle races on weekends. Barcelona born and raised — the beach, the food, the football — I would not trade it for anything. I am loud, warm, and genuinely invested in the people around me. Tell me what you are working towards.",
+    gender: 'Male',
+    age: 26,
+    height: 184,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Casual dating',
+    location: {
+      type: 'Point',
+      coordinates: [2.1734, 41.3851],
+      city: 'Barcelona',
+      state: 'Catalonia',
+      country: 'Spain',
+      displayLocation: 'Barcelona, Spain',
+    },
+    workTitle: 'Personal Trainer',
+    workCompany: 'Equinox',
+    educationSchool: 'INEF Barcelona',
+    educationDegree: 'BS Sports Science',
+    interests: ['Fitness', 'Football', 'Nutrition', 'Beach Volleyball', 'Cooking', 'Travel'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 22, max: 32 }, distanceRange: 20, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1553267751-1c148a7280a1?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1553267751-1c148a7280a1?w=400&h=600&fit=crop',
+      ...actPair(10),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'henry@test.com',
+    password: 'password123',
+    username: 'henry_vdb',
+    pronouns: 'He/Him',
+    bio: 'Research scientist 🔬 Amateur astronomer 🔭 Very much a morning person ☀️',
+    about: "I research photonics at Philips Research and genuinely enjoy the slow, methodical nature of science. After work I set up my telescope, bake sourdough, and cycle the Dutch countryside. I am looking for someone who finds depth in simple things and does not need to fill every silence.",
+    gender: 'Male',
+    age: 33,
+    height: 181,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [4.9041, 52.3676],
+      city: 'Amsterdam',
+      state: 'North Holland',
+      country: 'Netherlands',
+      displayLocation: 'Amsterdam, Netherlands',
+    },
+    workTitle: 'Research Scientist',
+    workCompany: 'Philips Research',
+    educationSchool: 'Delft University of Technology',
+    educationDegree: 'PhD Electrical Engineering',
+    interests: ['Astronomy', 'Cycling', 'Sourdough', 'Physics', 'Classical Music', 'Chess', 'Reading'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Vegetarian' },
+    matchPreferences: { ageRange: { min: 27, max: 38 }, distanceRange: 25, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1479936343636-73cdc5aae0c3?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1479936343636-73cdc5aae0c3?w=400&h=600&fit=crop',
+      ...actPair(11),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'sebastian@test.com',
+    password: 'password123',
+    username: 'sebastian_park',
+    pronouns: 'He/Him',
+    bio: 'Film director 🎬 Telling stories one frame at a time 🎞️ Seoul caffeine-powered',
+    about: "I make films. Right now I am in post-production on a feature about the Korean diaspora in Germany. I am drawn to small, honest human moments — they are the whole point. I spend my free time in cinematheques, Hongdae cafés, and hiking Bukhansan. Looking for someone with real depth.",
+    gender: 'Male',
+    age: 28,
+    height: 176,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Not sure yet',
+    location: {
+      type: 'Point',
+      coordinates: [126.978, 37.5665],
+      city: 'Seoul',
+      state: '',
+      country: 'South Korea',
+      displayLocation: 'Seoul, South Korea',
+    },
+    workTitle: 'Film Director',
+    workCompany: 'Independent',
+    educationSchool: 'Korean Academy of Film Arts',
+    educationDegree: 'MFA Film Directing',
+    interests: ['Film', 'Writing', 'Photography', 'Hiking', 'Coffee', 'Korean Cinema', 'Travel'],
+    lifestyle: { smoking: 'Socially', drinking: 'Socially', exercise: 'Sometimes', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 24, max: 34 }, distanceRange: 20, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=400&h=600&fit=crop',
+      ...actPair(12),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'jack@test.com',
+    password: 'password123',
+    username: 'jack_morrison',
+    pronouns: 'He/Him',
+    bio: 'Marine biologist 🐙 Great Barrier Reef advocate 🪸 Happiest underwater',
+    about: "I study cephalopod cognition at Monash University and firmly believe octopuses are smarter than most people give them credit for. Melbourne gives me incredible coffee and access to some of the world's best diving. If you want a partner who gets excited about bioluminescence, here I am.",
+    gender: 'Male',
+    age: 30,
+    height: 182,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [144.9631, -37.8136],
+      city: 'Melbourne',
+      state: 'Victoria',
+      country: 'Australia',
+      displayLocation: 'Melbourne, Australia',
+    },
+    workTitle: 'Marine Biologist',
+    workCompany: 'Monash University',
+    educationSchool: 'Monash University',
+    educationDegree: 'PhD Marine Biology',
+    interests: ['Diving', 'Marine Biology', 'Hiking', 'Coffee', 'Cycling', 'Rock Climbing', 'Photography'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 25, max: 35 }, distanceRange: 40, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1542909168-82c3e7fdcd5b?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1542909168-82c3e7fdcd5b?w=400&h=600&fit=crop',
+      ...actPair(13),
+    ],
+    isVerified: false,
+  },
+
+  {
+    email: 'aiden@test.com',
+    password: 'password123',
+    username: 'aiden_nkosi',
+    pronouns: 'He/Him',
+    bio: 'Tech entrepreneur 💡 Cape Town proud 🏔️ Building the future of African edtech',
+    about: "I founded an edtech startup at UCT and have been building it since. We are helping students across Africa access quality learning — it feels important. When I step away from the laptop I am hiking up Table Mountain, playing township football, or grilling with friends. Looking for someone real.",
+    gender: 'Male',
+    age: 27,
+    height: 179,
+    interestedIn: ['Women'],
+    relationshipGoals: 'Long-term relationship',
+    location: {
+      type: 'Point',
+      coordinates: [18.4241, -33.9249],
+      city: 'Cape Town',
+      state: 'Western Cape',
+      country: 'South Africa',
+      displayLocation: 'Cape Town, South Africa',
+    },
+    workTitle: 'Founder & CEO',
+    workCompany: 'LearnBridge Africa',
+    educationSchool: 'University of Cape Town',
+    educationDegree: 'BSc Computer Science',
+    interests: ['Startups', 'Football', 'Hiking', 'Edtech', 'Music', 'Travel', 'Entrepreneurship'],
+    lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
+    matchPreferences: { ageRange: { min: 24, max: 33 }, distanceRange: 30, genderPreference: ['Women'] },
+    discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
+    profilePicture: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop',
+    photos: [
+      'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=600&fit=crop',
+      ...actPair(14),
+    ],
+    isVerified: false,
+  },
 ];
 
+// ─── Seed runner ──────────────────────────────────────────────────────────────
 async function seedDatabase() {
   try {
-    console.log('🌱 Starting database seeding...');
+    console.log('Starting database seeding...');
 
-    // Connect to MongoDB
     await mongoose.connect(process.env.MONGO_URI);
-    console.log('✅ Connected to MongoDB');
+    console.log('Connected to MongoDB');
 
-    // Clear existing test users (optional)
-    const testEmails = testUsers.map(u => u.email);
-    await User.deleteMany({ email: { $in: testEmails } });
-    console.log('🗑️  Cleared existing test users');
+    // Remove any previously seeded test accounts before re-seeding
+    const testEmails = testUsers.map((u) => u.email);
+    const { deletedCount } = await User.deleteMany({ email: { $in: testEmails } });
+    console.log(` Removed ${deletedCount} existing test account(s)`);
 
-    // Create users
-    for (const userData of testUsers) {
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
-      
-      const user = await User.create({
-        ...userData,
-        password: hashedPassword
-      });
-
-      console.log(`✅ Created user: ${user.username} (${user.email})`);
+    // Verify no duplicate profilePicture URLs across the list
+    const pictureUrls = testUsers.map((u) => u.profilePicture);
+    const uniquePictures = new Set(pictureUrls);
+    if (uniquePictures.size !== pictureUrls.length) {
+      throw new Error('Duplicate profilePicture URLs detected — fix seedData.js before continuing.');
     }
 
-    console.log('\n🎉 Database seeding complete!');
-    console.log(`\n📊 Created ${testUsers.length} test users:`);
-    console.log('Email: emma@test.com - Password: password123');
-    console.log('Email: alex@test.com - Password: password123');
-    console.log('Email: sophia@test.com - Password: password123');
-    console.log('Email: james@test.com - Password: password123');
-    console.log('Email: olivia@test.com - Password: password123');
-    console.log('Email: michael@test.com - Password: password123');
-    console.log('\n💡 You can now login with any of these accounts!\n');
+    // Create all users in a loop
+    let created = 0;
+    for (const [i, userData] of testUsers.entries()) {
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      const user = await User.create({ ...userData, password: hashedPassword });
+      console.log(`[${String(i + 1).padStart(2, '0')}/${testUsers.length}] ${user.username.padEnd(22)} ${user.email}`);
+      created++;
+    }
+
+    console.log(`\n Seeding complete — ${created}/${testUsers.length} users created.`);
+    console.log('\n Login credentials (password for all: password123)');
+    console.log('─'.repeat(40));
+    testUsers.forEach((u) => console.log(`  ${u.email}`));
+    console.log('─'.repeat(40));
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error seeding database:', error);
+    console.error(' Seeding failed:', error.message || error);
     process.exit(1);
   }
 }
