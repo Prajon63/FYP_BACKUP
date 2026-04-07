@@ -101,7 +101,7 @@ function GalleryCarousel({ photos }: { photos: string[] }) {
   if (!photos.length) return null;
 
   return (
-    <div className="relative rounded-2xl overflow-hidden bg-slate-100" style={{ aspectRatio: '4/5' }}>
+    <div className="relative mx-auto w-full max-w-xs rounded-2xl overflow-hidden bg-slate-100" style={{ aspectRatio: '4/5' }}>
       <AnimatePresence mode="wait">
         <motion.img
           key={photos[idx]}
@@ -348,7 +348,7 @@ const ViewProfile: React.FC = () => {
   const photos = [
     ...(profile?.profilePicture ? [profile.profilePicture] : []),
     ...(profile?.photos || []),
-  ];
+  ].filter((url, i, arr) => arr.indexOf(url) === i);
 
   const hasLocation =
     profile?.location?.displayLocation || profile?.location?.city;
