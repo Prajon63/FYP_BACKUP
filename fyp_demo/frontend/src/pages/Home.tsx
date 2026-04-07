@@ -71,7 +71,7 @@ function SkeletonCard() {
   );
 }
 
-// ── Portal dropdown ────────────────────────────────────────────────────
+// ── Portal dropdown 
 // Rendered into document.body so it is never clipped by any card's
 // overflow:hidden, regardless of card size or scroll position.
 function DropdownPortal({
@@ -412,7 +412,7 @@ function ProfileCard({
   );
 }
 
-// ── Nav link ───────────────────────────────────────────────────────────
+// ─ Nav link 
 function NavLink({
   icon, label, onClick, active,
 }: {
@@ -431,7 +431,7 @@ function NavLink({
   );
 }
 
-// ── Main Page ──────────────────────────────────────────────────────────
+// ─ Main Page 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
