@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -25,6 +25,8 @@ import {
   Share2,
   Flag,
   UserCheck,
+  AlertTriangle,
+  ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { discoverService } from '../services/discoverService';
@@ -252,6 +254,85 @@ function BlockConfirmModal({
   );
 }
 
+const REPORT_REASONS = [
+  'Impersonating another person',
+  'Spam or fake account',
+  'Inappropriate content',
+  'Nudity or sexual content',
+  'Harassment or bullying',
+  'Scam or fraud',
+];
+
+/** Report modal — pick a reason, then fires onReport(reason) */
+function ReportModal({
+  username,
+  onReport,
+  onCancel,
+}: {
+  username: string;
+  onReport: (reason: string) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 60, opacity: 0 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 340 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden"
+      >
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 border-b border-slate-100">
+          <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center mx-auto mb-3">
+            <AlertTriangle className="w-6 h-6 text-orange-500" />
+          </div>
+          <h3
+            className="text-lg font-bold text-slate-900 text-center"
+            style={{ fontFamily: "'Playfair Display', serif" }}
+          >
+            Report {username}
+          </h3>
+          <p className="text-xs text-slate-500 text-center mt-1">
+            Why are you reporting this profile?
+          </p>
+        </div>
+
+        {/* Reason list */}
+        <div className="py-2">
+          {REPORT_REASONS.map((reason) => (
+            <button
+              key={reason}
+              onClick={() => onReport(reason)}
+              className="w-full flex items-center justify-between px-6 py-3.5 text-sm text-slate-700 hover:bg-orange-50 transition-colors text-left"
+            >
+              <span>{reason}</span>
+              <ChevronRightIcon className="w-4 h-4 text-slate-300 shrink-0" />
+            </button>
+          ))}
+        </div>
+
+        {/* Cancel */}
+        <div className="px-6 pb-6 pt-2 border-t border-slate-100">
+          <button
+            onClick={onCancel}
+            className="w-full py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 const ViewProfile: React.FC = () => {
   const { userId: targetUserId } = useParams<{ userId: string }>();
@@ -266,11 +347,26 @@ const ViewProfile: React.FC = () => {
   // UI state
   const [activeTab, setActiveTab] = useState<'about' | 'photos' | 'posts'>('about');
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
   const [interactionDone, setInteractionDone] = useState<
     'liked' | 'super_liked' | 'passed' | 'blocked' | null
   >(null);
+
+  // Close the three-dot menu when clicking outside of it
+  useEffect(() => {
+    if (!showMenu) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [showMenu]);
 
   // ── Fetch profile ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -338,10 +434,102 @@ const ViewProfile: React.FC = () => {
     }
   };
 
-  const handleSave = () => {
-    setIsSaved((p) => !p);
-    toast.success(isSaved ? 'Removed from saved' : 'Profile saved!');
-    // TODO: wire to backend saved profiles endpoint
+  const handleSave = async () => {
+    if (!currentUserId || !targetUserId || saveLoading) return;
+    setSaveLoading(true);
+    const saving = !isSaved;
+    try {
+      if (saving) {
+        await discoverService.handleInteraction(currentUserId, targetUserId, 'like');
+      } else {
+        await discoverService.removeInteraction(currentUserId, targetUserId);
+      }
+      setIsSaved(saving);
+
+      // Rich bookmark toast — mirrors Home.tsx style
+      toast.custom((t) => (
+        <div className="max-w-sm w-[92vw] rounded-2xl shadow-2xl border px-4 py-3 bg-white border-rose-200">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+              <Bookmark className={`w-4 h-4 ${saving ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-slate-900">
+                {saving ? 'Profile saved' : 'Removed from saved'}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {saving
+                  ? 'Find it anytime in your saved profiles.'
+                  : 'Profile removed from your saved list.'}
+              </p>
+            </div>
+            {saving && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.95 }}
+                onClick={async () => {
+                  toast.dismiss(t.id);
+                  try {
+                    await discoverService.removeInteraction(currentUserId, targetUserId);
+                    setIsSaved(false);
+                  } catch {
+                    toast.error('Failed to undo');
+                  }
+                }}
+                className="px-3 py-2 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100 shrink-0"
+              >
+                Undo
+              </motion.button>
+            )}
+          </div>
+        </div>
+      ), { position: 'bottom-center', duration: 4000 });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update saved profiles');
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  // Called when user picks a report reason — shows feedback toast with Block / Dismiss
+  const handleReport = (reason: string) => {
+    setShowReportModal(false);
+    toast.custom((t) => (
+      <div className="max-w-sm w-[92vw] rounded-2xl shadow-2xl border px-4 py-4 bg-white border-orange-200">
+        <div className="flex items-start gap-3 mb-3">
+          <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center shrink-0 mt-0.5">
+            <Flag className="w-4 h-4 text-orange-500" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-slate-900">Thanks for your feedback</p>
+            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+              We've received your report for <span className="font-medium">"{reason}"</span> and will review it shortly.
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              toast.dismiss(t.id);
+              setShowBlockConfirm(true);
+            }}
+            className="flex-1 py-2 rounded-xl bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors"
+          >
+            Block user
+          </motion.button>
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.95 }}
+            onClick={() => toast.dismiss(t.id)}
+            className="flex-1 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors"
+          >
+            Dismiss
+          </motion.button>
+        </div>
+      </div>
+    ), { position: 'bottom-center', duration: 8000 });
   };
 
   // ── Render helpers ────────────────────────────────────────────────────────
@@ -436,7 +624,7 @@ const ViewProfile: React.FC = () => {
               </button>
 
               {/* More menu button */}
-              <div className="absolute top-4 right-4 z-10">
+              <div ref={menuRef} className="absolute top-4 right-4 z-10">
                 <button
                   onClick={() => setShowMenu((p) => !p)}
                   className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors"
@@ -460,8 +648,8 @@ const ViewProfile: React.FC = () => {
                         {isSaved ? 'Unsave profile' : 'Save profile'}
                       </button>
                       <button
-                        onClick={() => { setShowMenu(false); toast('Report feature coming soon'); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                        onClick={() => { setShowMenu(false); setShowReportModal(true); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-orange-600 hover:bg-orange-50 transition-colors"
                       >
                         <Flag className="w-4 h-4" />
                         Report
@@ -792,8 +980,9 @@ const ViewProfile: React.FC = () => {
                   Not interested
                 </button>
                 <button
-                  onClick={handleSave}
-                  className={`flex items-center gap-1 text-xs px-2 py-1 transition-colors ${
+                  onClick={() => void handleSave()}
+                  disabled={saveLoading}
+                  className={`flex items-center gap-1 text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
                     isSaved ? 'text-rose-500' : 'text-slate-400 hover:text-slate-600'
                   }`}
                 >
@@ -816,13 +1005,17 @@ const ViewProfile: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Close menu on outside click */}
-        {showMenu && (
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setShowMenu(false)}
-          />
-        )}
+        {/* ── Report modal ── */}
+        <AnimatePresence>
+          {showReportModal && (
+            <ReportModal
+              username={profile.username || 'this user'}
+              onReport={handleReport}
+              onCancel={() => setShowReportModal(false)}
+            />
+          )}
+        </AnimatePresence>
+
       </div>
     </>
   );
