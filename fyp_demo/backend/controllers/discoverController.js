@@ -945,9 +945,10 @@ export const unmatch = async (req, res) => {
 };
 
 /**
- * Search users by username (case-insensitive partial match).
- * Returns a single DiscoveryUser-shaped object or null.
- * GET /api/discover/:userId/search?q=username
+ * Search users by username – case-insensitive partial/prefix match.
+ * Returns up to 10 DiscoveryUser-shaped objects ranked by exactness then
+ * alphabetical order.
+ * GET /api/discover/:userId/search?q=<partial-username>
  */
 export const searchUsers = async (req, res) => {
   try {
@@ -963,64 +964,85 @@ export const searchUsers = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Current user not found' });
     }
 
-    // Case-insensitive exact username match first, then partial
-    const user = await User.findOne({
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Case-insensitive "contains" search – prefix matches rank first via JS sort
+    const rawUsers = await User.find({
       _id: { $ne: userId },
-      username: { $regex: new RegExp(`^${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      'discoverySettings.isActive': { $ne: false },
+      username: { $regex: new RegExp(escaped, 'i') }
     })
       .select('-password -passwordResetToken -passwordResetExpires')
+      .limit(50)
       .lean();
 
-    if (!user) {
-      return res.status(200).json({ success: true, user: null });
+    if (!rawUsers.length) {
+      return res.status(200).json({ success: true, users: [] });
     }
 
-    let distance = null;
-    if (currentUser.location?.coordinates && user.location?.coordinates) {
-      const [lon1, lat1] = currentUser.location.coordinates;
-      const [lon2, lat2] = user.location.coordinates;
-      distance = calculateDistance(lat1, lon1, lat2, lon2);
-    }
+    // Sort: exact match first → starts-with → contains; then alphabetical
+    const lq = q.toLowerCase();
+    rawUsers.sort((a, b) => {
+      const aName = (a.username || '').toLowerCase();
+      const bName = (b.username || '').toLowerCase();
+      const aExact = aName === lq ? 0 : aName.startsWith(lq) ? 1 : 2;
+      const bExact = bName === lq ? 0 : bName.startsWith(lq) ? 1 : 2;
+      if (aExact !== bExact) return aExact - bExact;
+      return aName.localeCompare(bName);
+    });
 
-    const compatibilityScore = calculateCompatibilityScore(currentUser, user);
+    const top = rawUsers.slice(0, 10);
 
-    const publicProfile = {
-      _id: user._id,
-      username: user.username,
-      profilePicture: user.profilePicture,
-      photos: user.photos || [],
-      bio: user.bio,
-      age: user.age,
-      compatibilityScore,
-      distance: user.discoverySettings?.distanceVisible === false
-        ? null
-        : distance != null && Number.isFinite(distance)
-          ? Math.round(distance)
-          : null,
-      interests: user.interests || [],
-      relationshipGoals: user.relationshipGoals,
-      profileCompleteness: user.profileCompleteness,
-      isVerified: user.isVerified,
-    };
+    const publicProfiles = top.map(user => {
+      let distance = null;
+      if (currentUser.location?.coordinates && user.location?.coordinates) {
+        const [lon1, lat1] = currentUser.location.coordinates;
+        const [lon2, lat2] = user.location.coordinates;
+        distance = calculateDistance(lat1, lon1, lat2, lon2);
+      }
 
-    if (user.genderVisibility !== 'private') publicProfile.gender = user.gender;
-    if (user.pronounsVisibility !== 'private') publicProfile.pronouns = user.pronouns;
-    if (user.workVisibility !== 'private') {
-      publicProfile.workTitle = user.workTitle;
-      publicProfile.workCompany = user.workCompany;
-    }
-    if (user.educationVisibility !== 'private') {
-      publicProfile.educationSchool = user.educationSchool;
-      publicProfile.educationDegree = user.educationDegree;
-    }
-    if (user.locationVisibility !== 'private' && user.location) {
-      publicProfile.location = user.location.displayLocation || user.location.city;
-    }
-    if (user.discoverySettings?.lastActiveVisible) {
-      publicProfile.lastActive = user.lastActive;
-    }
+      const compatibilityScore = calculateCompatibilityScore(currentUser, user);
 
-    return res.status(200).json({ success: true, user: publicProfile });
+      const profile = {
+        _id: user._id,
+        username: user.username,
+        profilePicture: user.profilePicture,
+        photos: user.photos || [],
+        bio: user.bio,
+        age: user.age,
+        compatibilityScore,
+        distance: user.discoverySettings?.distanceVisible === false
+          ? null
+          : distance != null && Number.isFinite(distance)
+            ? Math.round(distance)
+            : null,
+        interests: user.interests || [],
+        relationshipGoals: user.relationshipGoals,
+        profileCompleteness: user.profileCompleteness,
+        isVerified: user.isVerified,
+      };
+
+      if (user.genderVisibility !== 'private') profile.gender = user.gender;
+      if (user.pronounsVisibility !== 'private') profile.pronouns = user.pronouns;
+      if (user.workVisibility !== 'private') {
+        profile.workTitle = user.workTitle;
+        profile.workCompany = user.workCompany;
+      }
+      if (user.educationVisibility !== 'private') {
+        profile.educationSchool = user.educationSchool;
+        profile.educationDegree = user.educationDegree;
+      }
+      if (user.locationVisibility !== 'private' && user.location) {
+        profile.location = user.location.displayLocation || user.location.city;
+      }
+      if (user.discoverySettings?.lastActiveVisible) {
+        profile.lastActive = user.lastActive;
+      }
+
+      return profile;
+    });
+
+    return res.status(200).json({ success: true, users: publicProfiles });
 
   } catch (error) {
     console.error('searchUsers error:', error);
