@@ -107,6 +107,7 @@ const UserCard: React.FC<UserCardProps> = ({
       style={{ x, rotate, opacity, ...style }}
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
+      dragDirectionLock
       onDragEnd={handleDragEnd}
       /* ─── Key fix: max-w keeps the card from being too wide on large screens ─── */
       className="absolute w-full h-full cursor-grab active:cursor-grabbing flex items-center justify-center"
@@ -257,8 +258,12 @@ const UserCard: React.FC<UserCardProps> = ({
         ───────────────────────────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col min-h-0">
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto px-5 pt-4 pb-2">
+          {/* Scrollable content — stop drag capture so vertical scroll works on mobile */}
+          <div
+            className="flex-1 overflow-y-auto px-5 pt-4 pb-2"
+            style={{ touchAction: 'pan-y' }}
+            onPointerDownCapture={(e) => e.stopPropagation()}
+          >
 
             {/* Name row */}
             <div className="flex items-start justify-between mb-2">
