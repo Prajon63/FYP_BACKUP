@@ -861,7 +861,7 @@ const Discover: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-2xl md:max-w-4xl mx-auto px-4 py-8">
         {/* Search Results */}
         {searchActive && activeSection === 'discover' ? (
           searchLoading ? (
@@ -914,8 +914,8 @@ const Discover: React.FC = () => {
                 </button>
               </div>
               <div
-                className="relative w-full mx-auto rounded-2xl"
-                style={{ height: 'min(70vh, 700px)', minHeight: '420px' }}
+                className="relative w-full mx-auto rounded-2xl md:min-h-[540px]"
+                style={{ height: 'min(72vh, 720px)', minHeight: '420px' }}
               >
                 <AnimatePresence>
                   <UserCard
@@ -1005,7 +1005,7 @@ const Discover: React.FC = () => {
               onCta={() => setActiveSection('discover')}
             />
           ) : currentLike ? (
-            <div className="relative" style={{ height: '70vh', maxHeight: '700px' }}>
+            <div className="relative md:min-h-[540px]" style={{ height: 'min(72vh, 720px)', minHeight: '420px' }}>
               <AnimatePresence>
                 <UserCard
                   key={currentLike.likeId}
@@ -1145,8 +1145,8 @@ const Discover: React.FC = () => {
             </div>
 
             <div
-              className="relative w-full mx-auto rounded-2xl"
-              style={{ height: 'min(70vh, 700px)', minHeight: '420px' }}
+              className="relative w-full mx-auto rounded-2xl md:min-h-[540px]"
+              style={{ height: 'min(72vh, 720px)', minHeight: '420px' }}
             >
               <AnimatePresence>
                 {currentUser && (

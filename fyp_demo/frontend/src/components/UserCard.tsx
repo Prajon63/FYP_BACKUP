@@ -109,26 +109,26 @@ const UserCard: React.FC<UserCardProps> = ({
       dragConstraints={{ left: 0, right: 0 }}
       dragDirectionLock
       onDragEnd={handleDragEnd}
-      /* ─── Key fix: max-w keeps the card from being too wide on large screens ─── */
       className="absolute w-full h-full cursor-grab active:cursor-grabbing flex items-center justify-center"
     >
       {/*
         ─── Card shell ───────────────────────────────────────────────────────────
-        • max-w-sm  → caps the card width (~384 px) so it never stretches wall-to-wall
-        • h-full    → respects the parent container height
-        • flex flex-col → stacks image + info + buttons without overlap
+        Mobile  : narrow single-column (max-w-sm), flex-col — image on top, info below
+        Desktop : wide two-column (md:max-w-3xl), flex-row — photo left, details right
       */}
       <div
         className={`
-          relative w-full max-w-sm h-full bg-white rounded-3xl shadow-2xl
-          overflow-hidden flex flex-col
+          relative w-full h-full bg-white rounded-3xl shadow-2xl overflow-hidden
+          flex flex-col
+          max-w-sm
+          md:flex-row md:max-w-3xl
           ${isSuperLikedByThem ? 'ring-2 ring-amber-400 ring-offset-2' : ''}
         `}
         onClick={onCardClick}
       >
         {/* ── Super-liked banner ── */}
         {isSuperLikedByThem && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-gradient-to-r from-amber-400 via-blue-500 to-amber-400 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg flex items-center gap-2">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-gradient-to-r from-amber-400 via-blue-500 to-amber-400 text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg flex items-center gap-2 whitespace-nowrap">
             <Star className="w-4 h-4 fill-white" />
             Super Liked you
             <Star className="w-4 h-4 fill-white" />
@@ -136,15 +136,11 @@ const UserCard: React.FC<UserCardProps> = ({
         )}
 
         {/* ──────────────────────────────────────────────────────────────────────
-            IMAGE SECTION
-            • h-80 (320 px) gives enough room for portrait photos without
-              overflowing the card container (min 70vh ≈ 560 px).
-            • object-cover + objectPosition 'center 20%' anchors the crop
-              ~20 % down from the image top — squarely in the face zone for
-              any portrait aspect ratio, avoiding the forehead-only crop that
-              object-top causes on tall images.
+            IMAGE PANEL
+            Mobile  : fixed h-80 (320 px), full width, flex-shrink-0
+            Desktop : full card height, 45% width — portrait photo fills nicely
         ───────────────────────────────────────────────────────────────────── */}
-        <div className="relative h-80 flex-shrink-0 bg-gray-100">
+        <div className="relative h-80 flex-shrink-0 bg-gray-100 md:h-full md:w-[45%] md:flex-shrink-0">
           {photos.length > 0 ? (
             <>
               <img
@@ -154,7 +150,7 @@ const UserCard: React.FC<UserCardProps> = ({
                 style={{ objectPosition: 'center 20%' }}
               />
 
-              {/* photo dots / progress bar */}
+              {/* Photo progress dots */}
               {photos.length > 1 && (
                 <>
                   <div className="absolute top-3 left-0 right-0 flex justify-center gap-1 px-4 z-10">
@@ -184,7 +180,7 @@ const UserCard: React.FC<UserCardProps> = ({
                 </>
               )}
 
-              {/* Match % badge — top left */}
+              {/* Match % badge */}
               <div className="absolute top-4 left-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-lg z-10">
                 {user.compatibilityScore}% Match
               </div>
@@ -197,22 +193,17 @@ const UserCard: React.FC<UserCardProps> = ({
                 </div>
               )}
 
-              {/* ── Save (bookmark) button — sits on the image, bottom-right ── */}
+              {/* Save / bookmark — bottom-right of image */}
               {onSaveProfile && (
                 <motion.button
                   type="button"
                   whileTap={{ scale: 0.9 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSaveProfile();
-                  }}
+                  onClick={(e) => { e.stopPropagation(); onSaveProfile(); }}
                   className={`
                     absolute bottom-3 right-3 z-10
                     w-9 h-9 rounded-full flex items-center justify-center
                     shadow-lg backdrop-blur-sm transition-colors
-                    ${isSaved
-                      ? 'bg-rose-500 text-white'
-                      : 'bg-black/40 hover:bg-black/60 text-white'}
+                    ${isSaved ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 text-white'}
                   `}
                   title={isSaved ? 'Saved' : 'Save profile'}
                   aria-label="Save profile"
@@ -221,7 +212,7 @@ const UserCard: React.FC<UserCardProps> = ({
                 </motion.button>
               )}
 
-              {/* View profile button */}
+              {/* View profile — bottom-left of image */}
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.95 }}
@@ -232,7 +223,7 @@ const UserCard: React.FC<UserCardProps> = ({
                 View profile
               </motion.button>
 
-              {/* Subtle gradient overlay at bottom of image */}
+              {/* Gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
             </>
           ) : (
@@ -252,20 +243,23 @@ const UserCard: React.FC<UserCardProps> = ({
         </div>
 
         {/* ──────────────────────────────────────────────────────────────────────
-            INFO SECTION
-            • flex-1 + overflow-y-auto on the scrollable inner bit
-            • Action buttons are OUTSIDE the scroll area, pinned at the bottom
+            INFO PANEL
+            Mobile  : stacks below image, scrollable, action buttons pinned bottom
+            Desktop : right column, all content visible at a glance, no scrolling needed
         ───────────────────────────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0 md:min-w-0">
 
-          {/* Scrollable content — stop drag capture so vertical scroll works on mobile */}
+          {/* Scrollable content area
+              Mobile : overflow-y-auto so user can scroll to see more
+              Desktop: content fits without scrolling; overflow-y-auto is harmless fallback
+              onPointerDownCapture: only stop propagation for touch events so mobile
+              vertical scroll works, while mouse-driven drag on desktop still fires. */}
           <div
-            className="flex-1 overflow-y-auto px-5 pt-4 pb-2"
+            className="flex-1 overflow-y-auto px-5 pt-5 pb-2 md:px-7 md:pt-7"
             style={{ touchAction: 'pan-y' }}
-            onPointerDownCapture={(e) => e.stopPropagation()}
+            onPointerDownCapture={(e) => { if (e.pointerType === 'touch') e.stopPropagation(); }}
           >
-
-            {/* Name row */}
+            {/* ── Name row ── */}
             <div className="flex items-start justify-between mb-2">
               <div className="flex-1 min-w-0">
                 <motion.button
@@ -275,11 +269,13 @@ const UserCard: React.FC<UserCardProps> = ({
                   className="text-left"
                 >
                   <h2
-                    className="text-xl font-bold text-gray-900 leading-tight"
+                    className="text-xl font-bold text-gray-900 leading-tight md:text-2xl"
                     style={{ fontFamily: "'Playfair Display', serif" }}
                   >
                     {user.username || 'Anonymous'}
-                    {user.age && <span className="text-gray-500 font-medium">, {user.age}</span>}
+                    {user.age && (
+                      <span className="text-gray-500 font-medium">, {user.age}</span>
+                    )}
                   </h2>
                 </motion.button>
                 {user.pronouns && (
@@ -287,35 +283,33 @@ const UserCard: React.FC<UserCardProps> = ({
                 )}
               </div>
 
-              {/* Info toggle */}
+              {/* Info toggle — desktop: hidden (everything is already visible) */}
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setShowInfo(!showInfo); }}
-                className="p-1.5 rounded-full hover:bg-gray-100 transition-colors ml-2 flex-shrink-0"
+                className="p-1.5 rounded-full hover:bg-gray-100 transition-colors ml-2 flex-shrink-0 md:hidden"
                 aria-label="More info"
               >
                 <Info className="w-4 h-4 text-gray-500" />
               </button>
             </div>
 
-            {/* ── Relationship goal tag — prominent, right under the name ── */}
+            {/* ── Relationship goal tag ── */}
             {user.relationshipGoals && gs && (
               <div className="mb-3">
                 <span
                   className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${gs.bg} ${gs.text} border-current/20`}
                 >
-                  {/* small heart-like dot */}
                   <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
                   {user.relationshipGoals}
                 </span>
               </div>
             )}
 
-            {/* Meta info for user card*/}
+            {/* ── Meta: location, work, education ── */}
             <div className="space-y-1.5 mb-3">
-              {(user.location ||
-                (user.distance != null && Number.isFinite(user.distance))) && (
-                <div className="flex items-center gap-2 text-gray-500 text-xs">
+              {(user.location || (user.distance != null && Number.isFinite(user.distance))) && (
+                <div className="flex items-center gap-2 text-gray-500 text-xs md:text-sm">
                   <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-pink-400" />
                   <span className="truncate">
                     {[user.location, formatDistance(user.distance)].filter(Boolean).join(' • ')}
@@ -323,7 +317,7 @@ const UserCard: React.FC<UserCardProps> = ({
                 </div>
               )}
               {user.workTitle && (
-                <div className="flex items-center gap-2 text-gray-500 text-xs">
+                <div className="flex items-center gap-2 text-gray-500 text-xs md:text-sm">
                   <Briefcase className="w-3.5 h-3.5 flex-shrink-0" />
                   <span className="truncate">
                     {user.workTitle}
@@ -332,7 +326,7 @@ const UserCard: React.FC<UserCardProps> = ({
                 </div>
               )}
               {user.educationSchool && (
-                <div className="flex items-center gap-2 text-gray-500 text-xs">
+                <div className="flex items-center gap-2 text-gray-500 text-xs md:text-sm">
                   <GraduationCap className="w-3.5 h-3.5 flex-shrink-0" />
                   <span className="truncate">
                     {user.educationDegree && `${user.educationDegree} • `}
@@ -342,51 +336,68 @@ const UserCard: React.FC<UserCardProps> = ({
               )}
             </div>
 
-            {/* Bio */}
+            {/* ── Bio ──
+                Mobile  : clamped to 2 lines (expand via info toggle)
+                Desktop : show full bio */}
             {user.bio && (
-              <p className="text-gray-600 text-xs leading-relaxed mb-3 line-clamp-2">
+              <p className="text-gray-600 text-xs leading-relaxed mb-4 line-clamp-2 md:line-clamp-none md:text-sm">
                 {user.bio}
               </p>
             )}
 
-            {/* Interests */}
+            {/* ── Interests ──
+                Mobile  : show 4 + "+N" badge (expand via info toggle)
+                Desktop : show all */}
             {user.interests && user.interests.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {user.interests.slice(0, showInfo ? undefined : 4).map((interest, idx) => (
-                  <span
-                    key={idx}
-                    className="bg-rose-50 text-rose-600 px-2.5 py-1 rounded-full text-xs font-medium border border-rose-100"
-                  >
-                    {interest}
-                  </span>
-                ))}
+                {/* Mobile: respect showInfo toggle; Desktop: always show all */}
+                {user.interests.map((interest, idx) => {
+                  const hiddenOnMobile = !showInfo && idx >= 4;
+                  return (
+                    <span
+                      key={idx}
+                      className={`bg-rose-50 text-rose-600 px-2.5 py-1 rounded-full text-xs font-medium border border-rose-100 ${hiddenOnMobile ? 'hidden md:inline-flex' : ''}`}
+                    >
+                      {interest}
+                    </span>
+                  );
+                })}
+                {/* "+N more" badge — mobile only when collapsed */}
                 {!showInfo && user.interests.length > 4 && (
-                  <span className="bg-rose-50 text-rose-600 px-2.5 py-1 rounded-full text-xs font-medium border border-rose-100">
-                    +{user.interests.length - 4}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setShowInfo(true); }}
+                    className="md:hidden bg-rose-50 text-rose-600 px-2.5 py-1 rounded-full text-xs font-medium border border-rose-100"
+                  >
+                    +{user.interests.length - 4} more
+                  </button>
                 )}
               </div>
             )}
+
+            {/* Extra breathing room at bottom of scroll area on desktop */}
+            <div className="h-3 md:h-4" />
           </div>
 
-          {/* ────────────────────────────────────────────────────────────────────
-              ACTION BUTTONS — fixed height, never scrolls away, never clipped
-          ─────────────────────────────────────────────────────────────────── */}
-          <div className="flex-shrink-0 px-5 py-3 bg-white border-t border-gray-100">
-            <div className="flex justify-center items-center gap-5">
+          {/* ── Action buttons — pinned at bottom of info panel ── */}
+          <div
+            className="flex-shrink-0 px-5 py-3 bg-white border-t border-gray-100 md:px-7 md:py-5"
+            onPointerDownCapture={(e) => { if (e.pointerType === 'touch') e.stopPropagation(); }}
+          >
+            <div className="flex justify-center items-center gap-5 md:gap-8">
 
               {/* Pass */}
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.92 }}
                 onClick={(e) => { e.stopPropagation(); onPass(); }}
-                className="w-14 h-14 bg-white rounded-full shadow-md hover:shadow-lg transition-all flex items-center justify-center border border-gray-200 hover:border-red-200 hover:scale-110"
+                className="w-14 h-14 bg-white rounded-full shadow-md hover:shadow-lg transition-all flex items-center justify-center border border-gray-200 hover:border-red-200 hover:scale-110 md:w-16 md:h-16"
                 aria-label="Pass"
               >
-                <X className="w-6 h-6 text-red-400" />
+                <X className="w-6 h-6 text-red-400 md:w-7 md:h-7" />
               </motion.button>
 
-              {/* Super Like (centre, slightly smaller) */}
+              {/* Super Like */}
               <div className="flex flex-col items-center gap-0.5">
                 <motion.button
                   type="button"
@@ -400,6 +411,7 @@ const UserCard: React.FC<UserCardProps> = ({
                   }
                   className={`
                     w-12 h-12 rounded-full shadow-md transition-all flex items-center justify-center
+                    md:w-14 md:h-14
                     ${canSuperLike
                       ? 'bg-gradient-to-br from-blue-400 to-blue-600 hover:shadow-lg hover:scale-110 cursor-pointer'
                       : 'bg-gray-200 cursor-not-allowed opacity-60'}
@@ -407,7 +419,7 @@ const UserCard: React.FC<UserCardProps> = ({
                   aria-label="Super like"
                 >
                   <Star
-                    className={`w-5 h-5 ${canSuperLike ? 'text-white fill-white' : 'text-gray-400'}`}
+                    className={`w-5 h-5 md:w-6 md:h-6 ${canSuperLike ? 'text-white fill-white' : 'text-gray-400'}`}
                   />
                 </motion.button>
                 <span className="text-[9px] text-gray-400 font-medium tracking-tight">
@@ -420,10 +432,10 @@ const UserCard: React.FC<UserCardProps> = ({
                 type="button"
                 whileTap={{ scale: 0.92 }}
                 onClick={(e) => { e.stopPropagation(); onLike(); }}
-                className="w-14 h-14 bg-white rounded-full shadow-md hover:shadow-lg transition-all flex items-center justify-center border border-gray-200 hover:border-pink-200 hover:scale-110"
+                className="w-14 h-14 bg-white rounded-full shadow-md hover:shadow-lg transition-all flex items-center justify-center border border-gray-200 hover:border-pink-200 hover:scale-110 md:w-16 md:h-16"
                 aria-label="Like"
               >
-                <Heart className="w-6 h-6 text-pink-500 hover:fill-pink-500 transition-all" />
+                <Heart className="w-6 h-6 text-pink-500 hover:fill-pink-500 transition-all md:w-7 md:h-7" />
               </motion.button>
             </div>
           </div>
