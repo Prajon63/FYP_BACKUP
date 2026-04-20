@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, Heart, Sparkles, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Heart, Sparkles, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import Input from '../components/Input';
@@ -10,9 +11,11 @@ import { validateAuthForm } from '../utils/validation';
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
 
 const Login = () => {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [form, setForm] = useState({ email: '', password: '' });
   const [formError, setFormError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const { login, register, isLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -115,7 +118,7 @@ const Login = () => {
             <Input
               id="password"
               name="password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               label="Password"
               icon={<Lock className="w-4 h-4" />}
               placeholder="Enter your password"
@@ -124,6 +127,16 @@ const Login = () => {
               autoComplete={isLogin ? 'current-password' : 'new-password'}
               required
               className="border-slate-200 focus:ring-rose-300"
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              }
             />
 
             <Button
@@ -144,7 +157,7 @@ const Login = () => {
           {isLogin && (
             <div className="text-center">
               <button
-                onClick={() => window.location.href = '/forgot-password'}
+                onClick={() => navigate('/forgot-password')}
                 className="text-sm text-rose-600 font-semibold hover:text-pink-600 transition-colors"
               >
                 Forgot Password?

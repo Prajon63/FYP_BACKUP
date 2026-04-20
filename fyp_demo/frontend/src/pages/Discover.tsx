@@ -397,7 +397,7 @@ const Discover: React.FC = () => {
 
   const handleSendMessage = () => {
     setShowMatchModal(false);
-    toast.success('Message feature coming soon!');
+    navigate('/messages');
   };
 
   const handleKeepSwiping = () => {
