@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { NotificationProvider } from './contexts/NotificationContext';
 import Login from './pages/Login';
 // import Preferences from './pages/Preferences';
@@ -18,6 +19,7 @@ function App() {
   return (
     <BrowserRouter>
       <NotificationProvider>
+      <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
       <Routes>
         <Route path="/" element={<Login />} />
         {/* <Route path="/preferences" element={<Preferences />} /> */}

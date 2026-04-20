@@ -73,7 +73,7 @@ const MatchModal: React.FC<MatchModalProps> = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.5, opacity: 0 }}
             transition={{ type: 'spring', duration: 0.5 }}
-            className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl"
+            className="relative bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
@@ -125,7 +125,7 @@ const MatchModal: React.FC<MatchModalProps> = ({
               >
                 <div className="relative">
                   <img
-                    src={matchUser.profilePicture || 'https://via.placeholder.com/150'}
+                    src={matchUser.profilePicture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${matchUser.username || 'user'}`}
                     alt={matchUser.username || 'Match'}
                     className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-xl"
                   />

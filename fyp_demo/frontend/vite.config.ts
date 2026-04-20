@@ -17,7 +17,7 @@ export default defineConfig({
     },
 
     hmr: {
-      clientPort: 443, // avoids websocket issues over ngrok
+      clientPort: 443, // to  avoid websocket issues over ngrok
     },
   },
 })

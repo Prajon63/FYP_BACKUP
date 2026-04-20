@@ -32,8 +32,8 @@ app.use(cors({
 }));
 app.use(json());
 
-// connect to MongoDB
-connectDB();
+// connect to MongoDB — must complete before routes handle traffic
+await connectDB();
 
 // routes
 app.use('/api/auth', authRoute);

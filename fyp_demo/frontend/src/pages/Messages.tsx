@@ -222,7 +222,7 @@ const Messages: React.FC = () => {
                   >
                     <div className="relative">
                       <img
-                        src={m.user?.profilePicture || 'https://via.placeholder.com/80'}
+                        src={m.user?.profilePicture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${m.user?.username || 'user'}`}
                         alt={m.user?.username || 'Match'}
                         className="w-14 h-14 rounded-full object-cover border-2 border-purple-400"
                       />
@@ -259,16 +259,23 @@ const Messages: React.FC = () => {
 
           {/* Conversation items */}
           <div className="flex-1 overflow-y-auto">
-            {activeFilter === 'archived' && (
+            {activeFilter === 'archived' ? (
               <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
                 <p className="text-sm font-medium text-slate-600">No archived chats</p>
                 <p className="text-xs text-slate-400 mt-1">
                   Archived conversations will appear here
                 </p>
               </div>
-            )}
+            ) : filteredMatches.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                <p className="text-sm font-medium text-slate-600">No conversations yet</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {activeFilter === 'unread' ? 'No new matches to message' : 'Start matching to chat!'}
+                </p>
+              </div>
+            ) : null}
 
-            {filteredMatches.map((m) => (
+            {activeFilter !== 'archived' && filteredMatches.map((m) => (
               <button
                 key={m.matchId}
                 onClick={() => openChat(m)}
@@ -279,7 +286,7 @@ const Messages: React.FC = () => {
                 }`}
               >
                 <img
-                  src={m.user?.profilePicture || 'https://via.placeholder.com/80'}
+                  src={m.user?.profilePicture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${m.user?.username || 'user'}`}
                   alt={m.user?.username || 'Match'}
                   className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                 />
