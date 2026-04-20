@@ -158,10 +158,18 @@ const Discover: React.FC = () => {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResult, setSearchResult] = useState<DiscoveryUser | null | undefined>(undefined); // undefined = not yet searched, null = not found
+  const [searchResults, setSearchResults] = useState<DiscoveryUser[]>([]); // full search results
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
+  // Selected user to show full card after clicking a search result
+  const [selectedSearchUser, setSelectedSearchUser] = useState<DiscoveryUser | null>(null);
+  // Live autocomplete suggestions while typing
+  const [suggestions, setSuggestions] = useState<DiscoveryUser[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const userId = localStorage.getItem('userId') ||
     (() => { try { return JSON.parse(localStorage.getItem('user') || '{}')._id || ''; } catch { return ''; } })();
@@ -528,20 +536,54 @@ const Discover: React.FC = () => {
     }
   };
 
+  // Debounced suggestions fetch — fires 300 ms after the user stops typing
+  const fetchSuggestions = useCallback(async (q: string) => {
+    if (q.length < 1) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    try {
+      setSuggestionsLoading(true);
+      const response = await discoverService.searchUsers(userId, q);
+      setSuggestions(response.users ?? []);
+      setShowSuggestions(true);
+    } catch {
+      setSuggestions([]);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  }, [userId]);
+
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    // Clear a previous debounce timer
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!val.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    debounceRef.current = setTimeout(() => fetchSuggestions(val.trim()), 300);
+  };
+
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const q = searchQuery.trim();
     if (!q) return;
+    setShowSuggestions(false);
+    setSelectedSearchUser(null);
     try {
       setSearchLoading(true);
-      setSearchResult(undefined);
+      setSearchResults([]);
       const response = await discoverService.searchUsers(userId, q);
-      setSearchResult(response.user ?? null);
+      setSearchResults(response.users ?? []);
       setActiveSection('discover');
       setSearchActive(true);
     } catch (error: any) {
       toast.error(error.message || 'Search failed');
-      setSearchResult(null);
+      setSearchResults([]);
     } finally {
       setSearchLoading(false);
     }
@@ -549,14 +591,26 @@ const Discover: React.FC = () => {
 
   const clearSearch = () => {
     setSearchQuery('');
-    setSearchResult(undefined);
+    setSearchResults([]);
+    setSelectedSearchUser(null);
+    setSuggestions([]);
+    setShowSuggestions(false);
     setSearchActive(false);
   };
 
-  const handleLikeSearchResult = async () => {
-    if (!searchResult) return;
+  const handleSelectSuggestion = (user: DiscoveryUser) => {
+    setSearchQuery(user.username);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    setSelectedSearchUser(user);
+    setSearchResults([user]);
+    setActiveSection('discover');
+    setSearchActive(true);
+  };
+
+  const handleLikeSearchResult = async (targetUser: DiscoveryUser) => {
     try {
-      const response = await discoverService.handleInteraction(userId, searchResult._id, 'like');
+      const response = await discoverService.handleInteraction(userId, targetUser._id, 'like');
       if (response.success) {
         if (response.isMatch && response.match) {
           setMatchedUser(response.match.user);
@@ -572,20 +626,18 @@ const Discover: React.FC = () => {
     }
   };
 
-  const handlePassSearchResult = async () => {
-    if (!searchResult) return;
+  const handlePassSearchResult = async (targetUser: DiscoveryUser) => {
     try {
-      await discoverService.handleInteraction(userId, searchResult._id, 'pass');
+      await discoverService.handleInteraction(userId, targetUser._id, 'pass');
       toast('Passed', { duration: 1000, icon: '👋' });
     } catch (error: any) {
       console.error('Pass error:', error);
     }
   };
 
-  const handleSuperLikeSearchResult = async () => {
-    if (!searchResult) return;
+  const handleSuperLikeSearchResult = async (targetUser: DiscoveryUser) => {
     try {
-      const response = await discoverService.handleInteraction(userId, searchResult._id, 'super_like');
+      const response = await discoverService.handleInteraction(userId, targetUser._id, 'super_like');
       if (response.success) {
         if (response.superLikesRemaining !== undefined) {
           setStats(prev => ({ ...prev, superLikesRemaining: response.superLikesRemaining ?? 0 }));
@@ -743,29 +795,57 @@ const Discover: React.FC = () => {
               Discover
             </button>
 
-            {/* Search bar */}
+            {/* Search bar with live autocomplete */}
             <form
               onSubmit={handleSearch}
               className="flex-shrink-0 flex items-center gap-1 ml-1"
             >
               <div className="relative flex items-center">
-                <Search className="absolute left-2.5 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                <Search className="absolute left-2.5 w-3.5 h-3.5 text-slate-400 pointer-events-none z-10" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={handleSearchInputChange}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                   placeholder="Search username…"
                   className="pl-8 pr-7 py-1.5 text-xs rounded-full border border-slate-200 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent w-52 transition-all"
                 />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="absolute right-2 text-slate-400 hover:text-slate-600"
+                {(searchQuery || suggestionsLoading) && (
+                  <span className="absolute right-2 flex items-center">
+                    {suggestionsLoading
+                      ? <Loader2 className="w-3 h-3 text-slate-400 animate-spin" />
+                      : <button type="button" onClick={clearSearch} className="text-slate-400 hover:text-slate-600"><X className="w-3 h-3" /></button>
+                    }
+                  </span>
+                )}
+
+                {/* Autocomplete dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div
+                    ref={suggestionsRef}
+                    className="absolute top-full left-0 mt-1.5 w-64 bg-white rounded-2xl border border-slate-100 shadow-xl z-50 overflow-hidden"
                   >
-                    <X className="w-3 h-3" />
-                  </button>
+                    {suggestions.map((s, i) => (
+                      <button
+                        key={s._id}
+                        type="button"
+                        onMouseDown={() => handleSelectSuggestion(s)}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-rose-50 transition-colors ${i !== 0 ? 'border-t border-slate-50' : ''}`}
+                      >
+                        <img
+                          src={s.profilePicture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${s._id}`}
+                          alt=""
+                          className="w-7 h-7 rounded-full object-cover shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-slate-800 truncate">{s.username}</p>
+                          {s.bio && <p className="text-[10px] text-slate-400 truncate">{s.bio}</p>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
               <button
@@ -788,7 +868,7 @@ const Discover: React.FC = () => {
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-10 h-10 text-rose-500 animate-spin" />
             </div>
-          ) : searchResult === null ? (
+          ) : searchResults.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -801,10 +881,10 @@ const Discover: React.FC = () => {
                 className="text-2xl font-bold text-slate-800 mb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
-                User not found
+                No users found
               </h2>
               <p className="text-slate-500 mb-6">
-                No user with the username <span className="font-semibold text-slate-700">"{searchQuery}"</span> was found. Check the spelling and try again.
+                No users matching <span className="font-semibold text-slate-700">"{searchQuery}"</span> were found. Try a different name.
               </p>
               <button
                 type="button"
@@ -814,13 +894,17 @@ const Discover: React.FC = () => {
                 Back to Discover
               </button>
             </motion.div>
-          ) : searchResult ? (
+          ) : selectedSearchUser ? (
+            /* Full UserCard for the selected user */
             <div className="flex flex-col gap-3 w-full">
               <div className="flex items-center justify-between shrink-0 z-10 px-0.5">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm">
-                  <Search className="w-3.5 h-3.5 shrink-0" />
-                  Search result for "{searchQuery}"
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSearchUser(null)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" /> Results for "{searchQuery}"
+                </button>
                 <button
                   type="button"
                   onClick={clearSearch}
@@ -835,21 +919,78 @@ const Discover: React.FC = () => {
               >
                 <AnimatePresence>
                   <UserCard
-                    key={searchResult._id}
-                    user={searchResult}
-                    onLike={handleLikeSearchResult}
-                    onPass={handlePassSearchResult}
-                    onSuperLike={handleSuperLikeSearchResult}
+                    key={selectedSearchUser._id}
+                    user={selectedSearchUser}
+                    onLike={() => handleLikeSearchResult(selectedSearchUser)}
+                    onPass={() => handlePassSearchResult(selectedSearchUser)}
+                    onSuperLike={() => handleSuperLikeSearchResult(selectedSearchUser)}
                     superLikesRemaining={stats.superLikesRemaining}
                     superLikeLimit={stats.superLikeLimit}
                     currentUserId={userId}
-                    onSaveProfile={() => handleSaveProfile(searchResult._id)}
-                    isSaved={savedProfiles.has(searchResult._id)}
+                    onSaveProfile={() => handleSaveProfile(selectedSearchUser._id)}
+                    isSaved={savedProfiles.has(selectedSearchUser._id)}
                   />
                 </AnimatePresence>
               </div>
             </div>
-          ) : null
+          ) : (
+            /* List of all matched users */
+            <div className="flex flex-col gap-4 w-full">
+              <div className="flex items-center justify-between px-0.5">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm">
+                  <Search className="w-3.5 h-3.5 shrink-0" />
+                  {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}"
+                </span>
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="text-xs font-medium text-slate-500 hover:text-slate-700 flex items-center gap-1"
+                >
+                  <X className="w-3.5 h-3.5" /> Clear
+                </button>
+              </div>
+              <div className="space-y-3">
+                {searchResults.map((user, index) => (
+                  <motion.button
+                    key={user._id}
+                    type="button"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05, duration: 0.25 }}
+                    onClick={() => setSelectedSearchUser(user)}
+                    className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4 text-left hover:border-rose-200 hover:shadow-md transition-all group"
+                  >
+                    <img
+                      src={user.profilePicture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`}
+                      alt=""
+                      className="w-14 h-14 rounded-2xl object-cover shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="font-bold text-slate-800 truncate group-hover:text-rose-600 transition-colors"
+                        style={{ fontFamily: "'Playfair Display', serif" }}
+                      >
+                        {user.username}
+                      </p>
+                      {user.bio && <p className="text-sm text-slate-500 truncate mt-0.5">{user.bio}</p>}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {user.age && (
+                          <span className="text-xs text-slate-400">{user.age} yrs</span>
+                        )}
+                        {user.location && (
+                          <span className="text-xs text-slate-400 truncate">📍 {user.location}</span>
+                        )}
+                        {user.compatibilityScore > 0 && (
+                          <span className="text-xs text-rose-500 font-medium">⭐ {user.compatibilityScore}% match</span>
+                        )}
+                      </div>
+                    </div>
+                    <ChevronLeft className="w-4 h-4 text-slate-300 rotate-180 shrink-0 group-hover:text-rose-400 transition-colors" />
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          )
         ) : activeSection === 'likes' ? (
           loadingLikes ? (
             <div className="flex items-center justify-center py-20">

@@ -205,14 +205,15 @@ export const discoverService = {
   },
 
   /**
-   * Search for a user by exact username (case-insensitive)
+   * Search users by partial/prefix username match (case-insensitive).
+   * Returns up to 10 matching DiscoveryUser objects ranked by exactness.
    * @param userId - Current user ID
-   * @param query - Username to search for
+   * @param query - Partial username to search for
    */
   async searchUsers(
     userId: string,
     query: string
-  ): Promise<{ success: boolean; user: import('../types').DiscoveryUser | null; error?: string }> {
+  ): Promise<{ success: boolean; users: import('../types').DiscoveryUser[]; error?: string }> {
     try {
       const response = await api.get(`/discover/${userId}/search?q=${encodeURIComponent(query)}`);
       return response.data;
