@@ -1,5 +1,5 @@
 import api from './api';
-import { ChatMessage } from '../types';
+import { ChatMessage, ProfilePrivacy } from '../types';
 
 export interface UnreadDigestItem {
   matchId: string;
@@ -14,9 +14,17 @@ export interface UnreadDigestItem {
  * Fetch chat history for a given matchId.
  * Also marks unread messages as read server-side.
  */
-export const getChatHistory = async (matchId: string): Promise<ChatMessage[]> => {
+export interface ChatHistoryResult {
+  messages: ChatMessage[];
+  privacy: ProfilePrivacy | null;
+}
+
+export const getChatHistory = async (matchId: string): Promise<ChatHistoryResult> => {
   const { data } = await api.get(`/chat/${matchId}`);
-  return data.messages;
+  return {
+    messages: data.messages ?? [],
+    privacy: data.privacy ?? null
+  };
 };
 
 /**

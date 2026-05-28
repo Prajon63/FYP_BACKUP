@@ -6,6 +6,7 @@ import type {
   PostResponse,
   PostsResponse,
   Post,
+  ProfilePrivacy,
 } from '../types';
 
 // This service will handle user-related API calls
@@ -28,12 +29,29 @@ export const userService = {
    */
   async getPublicProfile(
     userId: string
-  ): Promise<{ success: boolean; user?: ProfileResponse['user']; posts?: Post[]; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    user?: ProfileResponse['user'];
+    posts?: Post[];
+    privacy?: ProfilePrivacy | null;
+    error?: string;
+    code?: string;
+  }> {
     try {
       const response = await api.get(`/profile/${userId}/public`);
       return response.data;
     } catch (error: any) {
-      throw new Error(error.message || 'Failed to load public profile');
+      const data = error.response?.data;
+      if (error.response?.status === 403 && data?.code === 'PROFILE_UNAVAILABLE') {
+        const err = new Error(data.error || 'This profile is not available.') as Error & {
+          code?: string;
+          privacy?: ProfilePrivacy;
+        };
+        err.code = data.code;
+        err.privacy = data.privacy;
+        throw err;
+      }
+      throw new Error(data?.error || error.message || 'Failed to load public profile');
     }
   },
 

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import Match from '../models/Match.js';
 import Message from '../models/Message.js';
+import { getBlockContext, chatBlockMessage } from '../Utils/privacyAccess.js';
 
 /**
  * Registers all socket.io chat logic on the given `io` instance.
@@ -86,6 +87,14 @@ export const registerChatSocket = (io) => {
 
         if (!isValidReceiver) {
           return socket.emit('error', { message: 'Invalid receiver for this match' });
+        }
+
+        const blockCtx = await getBlockContext(socket.userId, rid);
+        if (!blockCtx.canMessage) {
+          return socket.emit('error', {
+            message: chatBlockMessage(blockCtx) || 'Messaging is unavailable.',
+            code: blockCtx.blockedMe ? 'BLOCKED_BY_USER' : 'BLOCKED_BY_YOU'
+          });
         }
 
         // Find both directions of this match so both users,

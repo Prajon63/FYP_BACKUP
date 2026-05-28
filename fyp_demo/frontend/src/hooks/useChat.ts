@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSocket, connectSocket } from '../services/socketService';
 import { getChatHistory } from '../services/chatService';
-import { ChatMessage, SendMessagePayload } from '../types';
+import { ChatMessage, ProfilePrivacy, SendMessagePayload } from '../types';
 
 interface UseChatOptions {
   matchId: string;
@@ -17,6 +17,7 @@ interface UseChatReturn {
   onStopTyping: () => void;
   loading: boolean;
   error: string | null;
+  privacy: ProfilePrivacy | null;
 }
 
 export const useChat = ({ matchId, receiverId }: UseChatOptions): UseChatReturn => {
@@ -25,6 +26,7 @@ export const useChat = ({ matchId, receiverId }: UseChatOptions): UseChatReturn 
   const [isTyping, setIsTyping] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [privacy, setPrivacy] = useState<ProfilePrivacy | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load history & join room
@@ -36,8 +38,9 @@ export const useChat = ({ matchId, receiverId }: UseChatOptions): UseChatReturn 
     const loadHistory = async () => {
       try {
         setLoading(true);
-        const history = await getChatHistory(matchId);
+        const { messages: history, privacy: chatPrivacy } = await getChatHistory(matchId);
         setMessages(history);
+        setPrivacy(chatPrivacy);
       } catch (err) {
         setError('Failed to load chat history');
       } finally {
@@ -96,11 +99,12 @@ export const useChat = ({ matchId, receiverId }: UseChatOptions): UseChatReturn 
     (content: string) => {
       const socket = getSocket();
       if (!socket || !content.trim()) return;
+      if (privacy && privacy.canMessage === false) return;
 
       const payload: SendMessagePayload = { matchId, receiverId, content: content.trim() };
       socket.emit('send_message', payload);
     },
-    [matchId, receiverId]
+    [matchId, receiverId, privacy]
   );
 
   const onTyping = useCallback(() => {
@@ -130,7 +134,8 @@ export const useChat = ({ matchId, receiverId }: UseChatOptions): UseChatReturn 
     onTyping,
     onStopTyping,
     loading,
-    error
+    error,
+    privacy
   };
 };
 

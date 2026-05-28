@@ -23,8 +23,17 @@ const ChatWindow = ({
 }: ChatWindowProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { messages, sendMessage, isTyping, onTyping, onStopTyping, loading, error } =
+  const { messages, sendMessage, isTyping, onTyping, onStopTyping, loading, error, privacy } =
     useChat({ matchId, receiverId });
+
+  const messagingBlocked = privacy?.canMessage === false;
+  const blockBannerText =
+    privacy?.message ||
+    (privacy?.blockedByMe
+      ? 'You blocked this user.'
+      : privacy?.blockedMe
+        ? 'This user is unavailable.'
+        : null);
 
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -91,6 +100,13 @@ const ChatWindow = ({
           <X className="w-4 h-4" />
         </button>
       </div>
+
+      {messagingBlocked && blockBannerText && (
+        <div className="px-4 py-3 bg-red-50 border-b border-red-100 text-center">
+          <p className="text-sm font-semibold text-red-800">User blocked</p>
+          <p className="text-xs text-red-700/90 mt-0.5">{blockBannerText}</p>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2 bg-gray-50">
@@ -160,41 +176,47 @@ const ChatWindow = ({
       </div>
 
       {/* Input */}
-      <div className="px-3 py-3 bg-white border-t border-gray-100 flex items-center gap-2">
-        <input
-          type="text"
-          name="chat-message"
-          id="chat-message-input"
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            onTyping();
-          }}
-          onBlur={onStopTyping}
-          onKeyDown={handleKeyDown}
-          placeholder="Type a message…"
-          maxLength={1000}
-          className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-300 transition"
-          autoComplete="off"
-        />
-        <motion.button
-          type="button"
-          whileTap={{ scale: 0.95 }}
-          onClick={handleSend}
-          disabled={!input.trim()}
-          className="w-9 h-9 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-white flex items-center justify-center disabled:opacity-40 hover:opacity-90 transition flex-shrink-0"
-          aria-label="Send message"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="w-4 h-4"
+      {messagingBlocked ? (
+        <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 text-center">
+          <p className="text-xs text-slate-500">Messaging is disabled while this user is blocked.</p>
+        </div>
+      ) : (
+        <div className="px-3 py-3 bg-white border-t border-gray-100 flex items-center gap-2">
+          <input
+            type="text"
+            name="chat-message"
+            id="chat-message-input"
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              onTyping();
+            }}
+            onBlur={onStopTyping}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a message…"
+            maxLength={1000}
+            className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-300 transition"
+            autoComplete="off"
+          />
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.95 }}
+            onClick={handleSend}
+            disabled={!input.trim()}
+            className="w-9 h-9 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-white flex items-center justify-center disabled:opacity-40 hover:opacity-90 transition flex-shrink-0"
+            aria-label="Send message"
           >
-            <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-          </svg>
-        </motion.button>
-      </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-4 h-4"
+            >
+              <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+            </svg>
+          </motion.button>
+        </div>
+      )}
     </div>
   );
 };

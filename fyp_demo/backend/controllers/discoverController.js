@@ -6,6 +6,13 @@ import {
   passesBasicFilters,
   calculateDistance
 } from '../Utils/matchingAlgorithm.js';
+import {
+  getBlockContext,
+  getExcludedUserIds,
+  applyBlock,
+  applyUnblock,
+  privacyMessage
+} from '../Utils/privacyAccess.js';
 
 /** Works for populated User docs or bare ObjectIds (getUserMatches populates; this is defensive). */
 function userRefId(ref) {
@@ -34,10 +41,15 @@ export const getDiscoverUsers = async (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    // Get all users that current user has already interacted with
-    const interactedUsers = await Match.find({
-      fromUser: userId
-    }).distinct('toUser');
+    // Users already interacted with + anyone who blocked me (bidirectional privacy)
+    const [interactedUsers, privacyExcluded] = await Promise.all([
+      Match.find({ fromUser: userId }).distinct('toUser'),
+      getExcludedUserIds(userId)
+    ]);
+    const excludeIds = [...new Set([
+      ...interactedUsers.map((id) => id.toString()),
+      ...privacyExcluded
+    ])];
 
     // Build query for potential matches
     // FIX 1: Removed strict 'discoverySettings.isActive': true filter from DB query.
@@ -45,7 +57,7 @@ export const getDiscoverUsers = async (req, res) => {
     // this was silently hiding almost everyone. We now handle it more leniently in
     // passesBasicFilters instead.
     const query = {
-      _id: { $ne: userId, $nin: interactedUsers },
+      _id: { $ne: userId, $nin: excludeIds },
       // Only hard-exclude users who have explicitly set isActive to false
       'discoverySettings.isActive': { $ne: false },
     };
@@ -317,7 +329,37 @@ export const handleInteraction = async (req, res) => {
       }
     }
 
-    // FIX 4: Check for existing interaction and UPDATE rather than reject.
+    const blockCtx = await getBlockContext(userId, targetUserId);
+
+    // Block always upserts — fixes mutual-match block showing success without saving
+    if (action === 'block') {
+      const interaction = await applyBlock(userId, targetUserId);
+      return res.status(200).json({
+        success: true,
+        blocked: true,
+        message: 'User blocked successfully',
+        interaction,
+        privacy: {
+          ...blockCtx,
+          blockedByMe: true,
+          blockedMe: false,
+          canInteract: false,
+          message: privacyMessage({ blockedByMe: true, blockedMe: false })
+        }
+      });
+    }
+
+    if (!blockCtx.canInteract) {
+      return res.status(403).json({
+        success: false,
+        error: blockCtx.blockedMe
+          ? 'This user has restricted your access to their profile.'
+          : 'You blocked this user. Unblock them in Settings to interact again.',
+        code: blockCtx.blockedMe ? 'BLOCKED_BY_USER' : 'BLOCKED_BY_YOU',
+        privacy: { ...blockCtx, message: privacyMessage(blockCtx) }
+      });
+    }
+
     const existingInteraction = await Match.findOne({
       fromUser: userId,
       toUser: targetUserId
@@ -501,35 +543,44 @@ export const getMatches = async (req, res) => {
       }
     }
 
-    const formattedMatches = matches.map(match => {
-      const fromId = userRefId(match.fromUser);
-      const otherUser = fromId === uid
-        ? match.toUser
-        : match.fromUser;
+    const formattedMatches = await Promise.all(
+      matches.map(async (match) => {
+        const fromId = userRefId(match.fromUser);
+        const otherUser = fromId === uid
+          ? match.toUser
+          : match.fromUser;
 
-      const otherId = userRefId(otherUser);
-      const pairKey = otherId ? [uid, otherId].sort().join('-') : null;
-      const lastFromMessages = pairKey ? pairKeyToLastAt.get(pairKey) : null;
+        const otherId = userRefId(otherUser);
+        const pairKey = otherId ? [uid, otherId].sort().join('-') : null;
+        const lastFromMessages = pairKey ? pairKeyToLastAt.get(pairKey) : null;
 
-      const lastMessageAt = match.lastMessageAt || lastFromMessages || null;
-      const conversationStarted = !!match.conversationStarted || !!lastFromMessages;
+        const lastMessageAt = match.lastMessageAt || lastFromMessages || null;
+        const conversationStarted = !!match.conversationStarted || !!lastFromMessages;
 
-      return {
-        matchId: match._id,
-        user: {
-          _id: otherId || otherUser?._id,
-          username: otherUser?.username,
-          profilePicture: otherUser?.profilePicture,
-          bio: otherUser?.bio,
-          age: otherUser?.age,
-          location: otherUser?.location?.displayLocation || otherUser?.location?.city
-        },
-        compatibilityScore: match.matchScore,
-        matchedAt: match.createdAt,
-        conversationStarted,
-        lastMessageAt
-      };
-    });
+        const privacy = otherId
+          ? await getBlockContext(uid, otherId)
+          : null;
+
+        return {
+          matchId: match._id,
+          user: {
+            _id: otherId || otherUser?._id,
+            username: otherUser?.username,
+            profilePicture: otherUser?.profilePicture,
+            bio: otherUser?.bio,
+            age: otherUser?.age,
+            location: otherUser?.location?.displayLocation || otherUser?.location?.city
+          },
+          compatibilityScore: match.matchScore,
+          matchedAt: match.createdAt,
+          conversationStarted,
+          lastMessageAt,
+          privacy: privacy
+            ? { ...privacy, message: privacyMessage(privacy) }
+            : null
+        };
+      })
+    );
 
     return res.status(200).json({
       success: true,
@@ -553,10 +604,29 @@ export const getMatches = async (req, res) => {
 export const getLikes = async (req, res) => {
   try {
     const { userId } = req.params;
+    const uid = userId.toString();
 
     const likes = await Match.getUsersWhoLikedMe(userId);
 
-    const formattedLikes = likes.map(like => ({
+    // Drop likes from users we already have message history with (former matches after block/unblock)
+    const withHistory = await Promise.all(
+      likes.map(async (like) => {
+        const fromId = like.fromUser?._id?.toString();
+        if (!fromId) return { like, keep: false };
+        const pairMatchIds = await Match.find({
+          $or: [
+            { fromUser: uid, toUser: fromId },
+            { fromUser: fromId, toUser: uid }
+          ]
+        }).distinct('_id');
+        if (!pairMatchIds.length) return { like, keep: true };
+        const hasMsgs = await Message.exists({ matchId: { $in: pairMatchIds } });
+        return { like, keep: !hasMsgs };
+      })
+    );
+    const filteredLikes = withHistory.filter((x) => x.keep).map((x) => x.like);
+
+    const formattedLikes = filteredLikes.map(like => ({
       likeId: like._id,
       user: {
         _id: like.fromUser._id,
@@ -748,6 +818,16 @@ export const removeInteraction = async (req, res) => {
     if (!myRecord) {
       return res.status(404).json({ success: false, error: 'No interaction found' });
     }
+
+    if (myRecord.status === 'blocked') {
+      const result = await applyUnblock(userId, targetUserId);
+      return res.status(200).json({
+        success: true,
+        message: 'User unblocked',
+        restored: result.restored
+      });
+    }
+
     if (myRecord.isMutual) {
       return res.status(400).json({ success: false, error: 'Cannot remove a match' });
     }
@@ -965,10 +1045,11 @@ export const searchUsers = async (req, res) => {
     }
 
     const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const privacyExcluded = await getExcludedUserIds(userId);
 
     // Case-insensitive "contains" search – prefix matches rank first via JS sort
     const rawUsers = await User.find({
-      _id: { $ne: userId },
+      _id: { $ne: userId, $nin: privacyExcluded },
       'discoverySettings.isActive': { $ne: false },
       username: { $regex: new RegExp(escaped, 'i') }
     })
@@ -1061,6 +1142,7 @@ export default {
   getLikes,
   getLikedByMe,
   getPassed,
+  getBlocked,
   removeInteraction,
   updateMatchPreferences,
   updateDiscoverySettings,

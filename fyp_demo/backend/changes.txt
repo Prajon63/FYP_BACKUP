@@ -19,3 +19,19 @@ Nodemon will auto-restart when you save files — keep an eye on logs for DB con
 #used a proxy-ready version for frontend to automatically connect to backend without 404 issue
 - changes made in App.jsx
 -changes made in vite.config.js
+
+
+when profiles are matched mutually, when 
+try to block any of the profile, success msg shows but the profile is not actually blocked, 
+we can still search them in the discover page, it wont show in setting page's blocked section.
+
+If a user is blocked , not necessary to be mutually matched, the profile is blocked sucessgully, 
+the blocked list is  updated but the profile shows up when searched in discover page.
+
+After blocking a profile, we can still search, view their profile, like them, super like them, pass them, etc.
+no proper message shown in blocked user profile.
+
+User A blocked User B, User B can still search, view User A's profile, like them, super like them, pass them, etc.
+
+privacy feature is not clear, it should be more transparent.
+

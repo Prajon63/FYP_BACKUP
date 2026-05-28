@@ -262,7 +262,7 @@ const Settings: React.FC = () => {
           <EmptyState
             icon={<Ban className="w-8 h-8" />}
             title="No blocked users"
-            subtitle="Users you block will appear here. They won’t appear anywhere else in the app."
+            subtitle="Blocked users are hidden from search and discovery. They cannot view your profile, like you, or message you. Unblock anytime to restore access."
             ctaLabel="Back to Profile"
             onCta={() => navigate('/profile')}
           />

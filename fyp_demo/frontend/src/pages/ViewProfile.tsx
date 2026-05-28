@@ -31,7 +31,7 @@ import {
 import toast, { Toaster } from 'react-hot-toast';
 import { discoverService } from '../services/discoverService';
 import { userService } from '../services/userService';
-import type { User, Post } from '../types';
+import type { User, Post, ProfilePrivacy } from '../types';
 
 // ─── Font import ──────────────────────────────────────────────────────────────
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
@@ -233,7 +233,7 @@ function BlockConfirmModal({
           Block {username}?
         </h3>
         <p className="text-sm text-slate-500 text-center mb-6">
-          They won't be able to find you or see your profile. This can't be undone easily.
+          They will not appear in search or discovery, cannot view your profile, like you, or message you. You can unblock them anytime in Settings.
         </p>
         <div className="flex gap-3">
           <button
@@ -355,6 +355,8 @@ const ViewProfile: React.FC = () => {
   const [interactionDone, setInteractionDone] = useState<
     'liked' | 'super_liked' | 'passed' | 'blocked' | null
   >(null);
+  const [privacy, setPrivacy] = useState<ProfilePrivacy | null>(null);
+  const [profileUnavailable, setProfileUnavailable] = useState(false);
 
   // Close the three-dot menu when clicking outside of it
   useEffect(() => {
@@ -378,15 +380,27 @@ const ViewProfile: React.FC = () => {
     if (!targetUserId) return;
     try {
       setLoading(true);
+      setProfileUnavailable(false);
       const data = await userService.getPublicProfile(targetUserId);
       if (data.success && data.user) {
         setProfile(data.user as User);
         setPosts(data.posts || []);
+        setPrivacy(data.privacy ?? null);
+        if (data.privacy?.blockedByMe) {
+          setInteractionDone('blocked');
+        }
       } else {
         toast.error(data.error || 'Failed to load profile');
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load profile');
+      const err = e as Error & { code?: string; privacy?: ProfilePrivacy };
+      if (err.code === 'PROFILE_UNAVAILABLE') {
+        setProfile(null);
+        setProfileUnavailable(true);
+        setPrivacy(err.privacy ?? null);
+      } else {
+        toast.error(err.message || 'Failed to load profile');
+      }
     } finally {
       setLoading(false);
     }
@@ -400,7 +414,11 @@ const ViewProfile: React.FC = () => {
       toast.error('Please log in first');
       return;
     }
-    if (interactionDone) return;
+    if (interactionDone && action !== 'block') return;
+    if (privacy && !privacy.canInteract && action !== 'block') {
+      toast.error(privacy.message || 'You cannot interact with this profile.');
+      return;
+    }
 
     try {
       setActionLoading(action);
@@ -422,20 +440,48 @@ const ViewProfile: React.FC = () => {
         toast('Passed', { icon: '👋' });
         setInteractionDone('passed');
       } else if (action === 'block') {
-        toast.success('User blocked');
+        toast.success(res.message || 'User blocked');
         setInteractionDone('blocked');
+        setPrivacy({
+          blockedByMe: true,
+          blockedMe: false,
+          canViewProfile: true,
+          canInteract: false,
+          message: res.privacy?.message ?? 'You blocked this user.',
+        });
         setTimeout(() => navigate(-1), 1200);
       }
     } catch (err: any) {
-      toast.error(err.message || 'Action failed');
+      const msg = err.response?.data?.privacy?.message || err.message || 'Action failed';
+      toast.error(msg);
     } finally {
       setActionLoading(null);
       setShowBlockConfirm(false);
     }
   };
 
+  const handleUnblock = async () => {
+    if (!currentUserId || !targetUserId) return;
+    try {
+      setActionLoading('block');
+      await discoverService.removeInteraction(currentUserId, targetUserId);
+      setInteractionDone(null);
+      setPrivacy(null);
+      toast.success('User unblocked');
+      await loadProfile();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to unblock');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleSave = async () => {
     if (!currentUserId || !targetUserId || saveLoading) return;
+    if (privacy && !privacy.canInteract) {
+      toast.error(privacy.message || 'You cannot interact with this profile.');
+      return;
+    }
     setSaveLoading(true);
     const saving = !isSaved;
     try {
@@ -569,9 +615,14 @@ const ViewProfile: React.FC = () => {
             className="text-2xl font-bold text-slate-800"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
-            Profile not found
+            {profileUnavailable ? 'Profile unavailable' : 'Profile not found'}
           </h2>
-          <p className="text-slate-500 text-sm">This profile may be private or doesn't exist.</p>
+          <p className="text-slate-500 text-sm max-w-sm mx-auto">
+            {profileUnavailable
+              ? privacy?.message ||
+                'This user has restricted your access. You cannot view their profile or interact with them.'
+              : "This profile may be private or doesn't exist."}
+          </p>
           <button
             onClick={() => navigate(-1)}
             className="px-6 py-2.5 rounded-2xl bg-rose-500 text-white font-semibold text-sm hover:bg-rose-600 transition-colors"
@@ -601,6 +652,26 @@ const ViewProfile: React.FC = () => {
         style={{ fontFamily: "'DM Sans', sans-serif" }}
       >
         <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+
+          {privacy?.blockedByMe && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-red-800">You blocked this user</p>
+                <p className="text-xs text-red-700/90 mt-0.5">
+                  {privacy.message ||
+                    'They cannot find you, view your profile, or interact with you. Unblock in Settings or below.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleUnblock()}
+                disabled={!!actionLoading}
+                className="shrink-0 px-4 py-2 rounded-xl bg-white border border-red-200 text-red-700 text-xs font-bold hover:bg-red-100/50 transition-colors disabled:opacity-50"
+              >
+                Unblock
+              </button>
+            </div>
+          )}
 
           {/* ── Hero Card (matches profile.tsx style) ── */}
           <motion.div
@@ -907,8 +978,18 @@ const ViewProfile: React.FC = () => {
         {/* ── Sticky action bar ── */}
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 py-3 safe-area-inset-bottom">
           <div className="max-w-2xl mx-auto">
-            {interactionDone ? (
+            {interactionDone || (privacy && !privacy.canInteract) ? (
               <div className="flex gap-3">
+                {privacy?.blockedByMe && (
+                  <button
+                    type="button"
+                    onClick={() => void handleUnblock()}
+                    disabled={!!actionLoading}
+                    className="flex-1 py-3.5 rounded-2xl border border-red-200 text-red-700 font-semibold text-sm hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    Unblock
+                  </button>
+                )}
                 <button
                   onClick={() => navigate(-1)}
                   className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition-colors"

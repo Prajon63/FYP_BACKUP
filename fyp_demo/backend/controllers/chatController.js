@@ -1,5 +1,6 @@
 import Message from '../models/Message.js';
 import Match from '../models/Match.js';
+import { getBlockContext, chatBlockMessage } from '../Utils/privacyAccess.js';
 
 /**
  * GET /api/chat/:matchId
@@ -19,6 +20,15 @@ export const getChatHistory = async (req, res) => {
 
     if (!isParticipant) {
       return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const otherUserId =
+      match.fromUser.toString() === userId.toString()
+        ? match.toUser
+        : match.fromUser;
+    const privacy = await getBlockContext(userId, otherUserId);
+    if (privacy) {
+      privacy.message = chatBlockMessage(privacy);
     }
 
     // Fetch both directions of this match so each user sees a single unified thread
@@ -54,7 +64,7 @@ export const getChatHistory = async (req, res) => {
       });
     }
 
-    res.json({ messages });
+    res.json({ messages, privacy });
   } catch (err) {
     console.error('getChatHistory error:', err);
     res.status(500).json({ message: 'Server error' });

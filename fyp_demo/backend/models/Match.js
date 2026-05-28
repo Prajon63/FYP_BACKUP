@@ -135,12 +135,40 @@ matchSchema.statics.getUserMatches = async function(userId, limit = 50) {
  * Excludes anyone I've already liked, passed, or super_liked so they don't reappear after refresh.
  */
 matchSchema.statics.getUsersWhoLikedMe = async function(userId) {
+  const uid = userId.toString();
   const myInteractedUserIds = await this.find({ fromUser: userId }).distinct('toUser');
+
+  // Never treat former/current mutual matches as new likes (e.g. after block/unblock)
+  const mutualDocs = await this.find({
+    $or: [
+      { fromUser: uid, isMutual: true },
+      { toUser: uid, isMutual: true }
+    ]
+  })
+    .select('fromUser toUser')
+    .lean();
+
+  const mutualPartnerIds = new Set();
+  for (const doc of mutualDocs) {
+    const other =
+      doc.fromUser.toString() === uid
+        ? doc.toUser.toString()
+        : doc.fromUser.toString();
+    mutualPartnerIds.add(other);
+  }
+
+  const excludeIds = [
+    ...new Set([
+      ...myInteractedUserIds.map((id) => id.toString()),
+      ...mutualPartnerIds
+    ])
+  ];
+
   return this.find({
     toUser: userId,
     status: { $in: ['liked', 'super_liked'] },
     isMutual: false,
-    fromUser: { $nin: myInteractedUserIds }
+    fromUser: { $nin: excludeIds }
   })
     .populate('fromUser', 'username profilePicture bio age location interests')
     .sort({ createdAt: -1 });

@@ -83,6 +83,16 @@ export interface User {
   isVerified?: boolean;
 }
 
+/** Privacy / block state returned with public profiles and interactions */
+export interface ProfilePrivacy {
+  blockedByMe: boolean;
+  blockedMe: boolean;
+  canViewProfile: boolean;
+  canInteract: boolean;
+  canMessage?: boolean;
+  message?: string | null;
+}
+
 // Discovery User (what you see in discovery)
 export interface DiscoveryUser {
   _id: string;
@@ -148,6 +158,7 @@ export interface Match {
   matchedAt: string;
   conversationStarted?: boolean;
   lastMessageAt?: string;
+  privacy?: ProfilePrivacy | null;
 }
 
 // Like received
@@ -325,8 +336,11 @@ export interface DiscoverUsersResponse {
 
 export interface InteractionResponse {
   success: boolean;
-  interaction: MatchInteraction;
-  isMatch: boolean;
+  interaction?: MatchInteraction;
+  isMatch?: boolean;
+  blocked?: boolean;
+  message?: string;
+  privacy?: ProfilePrivacy;
   alreadyInteracted?: boolean;
   match?: {
     user: {

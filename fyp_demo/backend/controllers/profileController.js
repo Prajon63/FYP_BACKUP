@@ -5,6 +5,7 @@ CRUD operations for user profile: bio, username, profile picture, posts
 
 import { findById, findByIdAndUpdate, findByIdAndDelete } from '../models/User.js';
 import cloudinary from '../config/cloudinary.js';
+import { getBlockContext, privacyMessage } from '../Utils/privacyAccess.js';
 
 // Get user profile
 export async function getProfile(req, res) {   //function to retrieve user data 
@@ -36,6 +37,7 @@ export async function getProfile(req, res) {   //function to retrieve user data
 export async function getPublicProfile(req, res) {
   try {
     const { userId } = req.params;
+    const viewerId = req.user?._id?.toString();
 
     const user = await findById(userId).select(
       '-password -passwordResetToken -passwordResetExpires -verificationPhoto -email'
@@ -43,6 +45,24 @@ export async function getPublicProfile(req, res) {
 
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    let privacy = null;
+    if (viewerId && viewerId !== userId) {
+      const blockCtx = await getBlockContext(viewerId, userId);
+      privacy = {
+        ...blockCtx,
+        message: privacyMessage(blockCtx)
+      };
+
+      if (!blockCtx.canViewProfile) {
+        return res.status(403).json({
+          success: false,
+          error: 'This profile is not available.',
+          code: 'PROFILE_UNAVAILABLE',
+          privacy
+        });
+      }
     }
 
     const u = user.toObject();
@@ -86,12 +106,13 @@ export async function getPublicProfile(req, res) {
       lifestyle: u.lifestyle,
     };
 
-    const posts = u.posts || [];
+    const posts = privacy?.blockedByMe ? [] : (u.posts || []);
 
     return res.status(200).json({
       success: true,
       user: publicUser,
       posts,
+      privacy
     });
   } catch (error) {
     console.error('getPublicProfile error:', error);

@@ -301,10 +301,16 @@ const Messages: React.FC = () => {
                         : formatDate(m.matchedAt)}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 truncate">
-                    {m.lastMessageAt
-                      ? 'Active conversation'
-                      : `Matched ${formatDate(m.matchedAt)}`}
+                  <p className={`text-xs truncate ${
+                    m.privacy?.blockedByMe || m.privacy?.blockedMe
+                      ? 'text-red-500 font-medium'
+                      : 'text-slate-500'
+                  }`}>
+                    {m.privacy?.blockedByMe || m.privacy?.blockedMe
+                      ? 'User blocked'
+                      : m.lastMessageAt
+                        ? 'Active conversation'
+                        : `Matched ${formatDate(m.matchedAt)}`}
                   </p>
                 </div>
               </button>
