@@ -12,6 +12,7 @@ import { userService } from '../services/userService';
 import api from '../services/api';
 import type { User, Post, ProfileUpdateData } from '../types';
 import PostCard from '../components/PostCard';
+import PostViewerModal from '../components/PostViewerModal';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import ProfileCompletion from '../components/ProfileCompletion';
@@ -33,6 +34,7 @@ const Profile: React.FC = () => {
   const [isEditingGallery, setIsEditingGallery] = useState(false);
   const [isAddingPost, setIsAddingPost] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [viewingPost, setViewingPost] = useState<Post | null>(null);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
@@ -636,6 +638,7 @@ const Profile: React.FC = () => {
                     post={post}
                     username={displayName}
                     profilePicture={user.profilePicture}
+                    onView={setViewingPost}
                     onLike={handleToggleLike}
                     onEdit={handleEditPost}
                     onDelete={handleDeletePost}
@@ -670,6 +673,16 @@ const Profile: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Post full-view modal */}
+      <PostViewerModal
+        post={viewingPost}
+        username={displayName}
+        profilePicture={user?.profilePicture}
+        onClose={() => setViewingPost(null)}
+        onLike={handleToggleLike}
+        liked={viewingPost ? likedPosts.has(viewingPost._id) : false}
+      />
 
       {/* ════════════════════════════════════════════════════════════════════ */}
       {/* MODALS — logic and props identical to original, styling upgraded    */}

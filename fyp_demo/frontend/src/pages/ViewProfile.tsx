@@ -32,6 +32,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { discoverService } from '../services/discoverService';
 import { userService } from '../services/userService';
 import type { User, Post, ProfilePrivacy } from '../types';
+import PostViewerModal from '../components/PostViewerModal';
 
 // ─── Font import ──────────────────────────────────────────────────────────────
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
@@ -152,7 +153,13 @@ function GalleryCarousel({ photos }: { photos: string[] }) {
 }
 
 /** Post card for the posts tab */
-function PostItem({ post }: { post: Post }) {
+function PostItem({
+  post,
+  onView,
+}: {
+  post: Post;
+  onView: (post: Post) => void;
+}) {
   const [liked, setLiked] = useState(false);
 
   return (
@@ -162,18 +169,22 @@ function PostItem({ post }: { post: Post }) {
       className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
     >
       {post.images?.length > 0 && (
-        <div className="relative">
+        <button
+          type="button"
+          onClick={() => onView(post)}
+          className="relative w-full block cursor-pointer"
+        >
           <img
             src={post.images[0]}
             alt=""
             className="w-full h-64 object-cover"
           />
           {post.images.length > 1 && (
-            <span className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full font-medium">
+            <span className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full font-medium pointer-events-none">
               +{post.images.length - 1}
             </span>
           )}
-        </div>
+        </button>
       )}
       <div className="p-4 space-y-3">
         {post.caption && (
@@ -341,6 +352,7 @@ const ViewProfile: React.FC = () => {
 
   const [profile, setProfile] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [viewingPost, setViewingPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -967,7 +979,9 @@ const ViewProfile: React.FC = () => {
                     <p className="text-sm font-medium">No public posts yet</p>
                   </div>
                 ) : (
-                  posts.map((post) => <PostItem key={post._id} post={post} />)
+                  posts.map((post) => (
+                    <PostItem key={post._id} post={post} onView={setViewingPost} />
+                  ))
                 )}
               </motion.div>
             )}
@@ -1074,6 +1088,13 @@ const ViewProfile: React.FC = () => {
             )}
           </div>
         </div>
+
+        <PostViewerModal
+          post={viewingPost}
+          username={profile?.username}
+          profilePicture={profile?.profilePicture}
+          onClose={() => setViewingPost(null)}
+        />
 
         {/* ── Block confirm modal ── */}
         <AnimatePresence>

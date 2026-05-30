@@ -10,6 +10,7 @@ interface PostCardProps {
   onLike?: (postId: string) => void;
   onEdit?: (post: Post) => void;
   onDelete?: (postId: string) => void;
+  onView?: (post: Post) => void;
   isOwnPost?: boolean;
   liked?: boolean;
 }
@@ -21,6 +22,7 @@ const PostCard: React.FC<PostCardProps> = ({
   onLike,
   onEdit,
   onDelete,
+  onView,
   isOwnPost = false,
   liked = false,
 }) => {
@@ -52,9 +54,20 @@ const PostCard: React.FC<PostCardProps> = ({
       animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow"
     >
-      {/* Post Image Carousel */}
+      {/* Post Image Carousel — click to open full view */}
       <div className="relative">
-        <div className="relative h-64 bg-gray-100">
+        <div
+          role={onView ? 'button' : undefined}
+          tabIndex={onView ? 0 : undefined}
+          onClick={() => onView?.(post)}
+          onKeyDown={(e) => {
+            if (onView && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault();
+              onView(post);
+            }
+          }}
+          className={`relative h-64 bg-gray-100 ${onView ? 'cursor-pointer' : ''}`}
+        >
           {(() => {
             const displayImages = post.images && post.images.length > 0 ? post.images : [];
 

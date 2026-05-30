@@ -2,7 +2,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search,
-  ArrowLeft,
   Menu,
   SlidersHorizontal
 } from 'lucide-react';
@@ -11,6 +10,28 @@ import { discoverService } from '../services/discoverService';
 import ChatWindow from '../components/ChatWindow';
 import type { Match } from '../types';
 import { getStoredUserId } from '../utils/auth';
+
+const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
+
+const CapellaLogo = ({
+  onClick,
+  className = 'text-2xl',
+}: {
+  onClick: () => void;
+  className?: string;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`font-bold shrink-0 cursor-pointer hover:opacity-90 transition-opacity ${className}`}
+    style={{ fontFamily: "'Playfair Display', serif" }}
+    aria-label="Go to home"
+  >
+    <span className="bg-gradient-to-r from-rose-500 to-pink-500 bg-clip-text text-transparent">
+      Capella
+    </span>
+  </button>
+);
 
 const Messages: React.FC = () => {
   const navigate = useNavigate();
@@ -148,17 +169,16 @@ const Messages: React.FC = () => {
 
   // ── Render ───────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-50 flex flex-col">
+    <div
+      className="min-h-screen bg-[#faf9f7] flex flex-col"
+      style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}
+    >
+      <style>{FONTS}</style>
 
       {/* Mobile top bar */}
-      <div className="lg:hidden bg-white shadow-sm px-4 py-3 flex items-center justify-between">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 rounded-full hover:bg-slate-100"
-        >
-          <ArrowLeft className="w-5 h-5 text-slate-700" />
-        </button>
-        <h1 className="text-lg font-semibold text-slate-900">Messages</h1>
+      <div className="lg:hidden bg-white/80 backdrop-blur-lg border-b border-slate-100 px-4 py-3 flex items-center justify-between">
+        <CapellaLogo onClick={() => navigate('/home')} className="text-xl" />
+        <h1 className="text-sm font-semibold text-slate-600">Messages</h1>
         <div className="flex gap-2">
           <button className="p-2 rounded-full hover:bg-slate-100">
             <SlidersHorizontal className="w-5 h-5 text-slate-600" />
@@ -170,27 +190,22 @@ const Messages: React.FC = () => {
       </div>
 
       {/* Desktop header */}
-      <header className="hidden lg:flex items-center justify-between px-8 py-4 bg-white shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center shadow-sm">
-            <span className="text-white font-bold text-sm">C</span>
-          </div>
-          <span className="font-bold text-slate-900 tracking-tight">Capella</span>
-        </div>
+      <header className="hidden lg:flex items-center justify-between px-8 py-4 bg-white/80 backdrop-blur-lg border-b border-slate-100 sticky top-0 z-40">
+        <CapellaLogo onClick={() => navigate('/home')} />
         <div className="flex-1 mx-8 max-w-xl relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search matches"
-            className="w-full pl-10 pr-4 py-2 rounded-full bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+            className="w-full pl-10 pr-4 py-2 rounded-full bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-transparent text-sm"
           />
         </div>
         <nav className="flex items-center gap-6 text-sm text-slate-600">
-          <button onClick={() => navigate('/home')} className="hover:text-purple-600">Home</button>
-          <button onClick={() => navigate('/matches')} className="hover:text-purple-600">Matches</button>
-          <span className="font-semibold text-purple-600">Messages</span>
-          <button onClick={() => navigate('/profile')} className="hover:text-purple-600">Profile</button>
+          <button type="button" onClick={() => navigate('/home')} className="hover:text-rose-500 transition-colors">Home</button>
+          <button type="button" onClick={() => navigate('/matches')} className="hover:text-rose-500 transition-colors">Matches</button>
+          <span className="font-semibold text-rose-500">Messages</span>
+          <button type="button" onClick={() => navigate('/profile')} className="hover:text-rose-500 transition-colors">Profile</button>
         </nav>
       </header>
 
