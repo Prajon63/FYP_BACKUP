@@ -561,6 +561,12 @@ export const getMatches = async (req, res) => {
           ? await getBlockContext(uid, otherId)
           : null;
 
+        const myRecord = otherId
+          ? await Match.findOne({ fromUser: uid, toUser: otherId })
+            .select('isArchived archivedAt')
+            .lean()
+          : null;
+
         return {
           matchId: match._id,
           user: {
@@ -575,6 +581,8 @@ export const getMatches = async (req, res) => {
           matchedAt: match.createdAt,
           conversationStarted,
           lastMessageAt,
+          isArchived: myRecord?.isArchived === true,
+          archivedAt: myRecord?.archivedAt || null,
           privacy: privacy
             ? { ...privacy, message: privacyMessage(privacy) }
             : null
@@ -1135,10 +1143,85 @@ export const searchUsers = async (req, res) => {
   }
 };
 
+/**
+ * Archive or unarchive a chat (per-user; hidden from main list when archived).
+ * POST /api/discover/:userId/archive-chat
+ * Body: { targetUserId, archived?: boolean }
+ */
+export const setChatArchive = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { targetUserId, archived = true } = req.body;
+
+    if (!targetUserId) {
+      return res.status(400).json({ success: false, error: 'targetUserId is required' });
+    }
+
+    const uid = userId.toString();
+    const tid = targetUserId.toString();
+    const shouldArchive = archived !== false;
+
+    let updated = await Match.findOneAndUpdate(
+      { fromUser: uid, toUser: tid },
+      {
+        $set: {
+          isArchived: shouldArchive,
+          archivedAt: shouldArchive ? new Date() : null,
+          updatedAt: new Date()
+        }
+      },
+      { new: true }
+    );
+
+    if (!updated) {
+      const pair = await Match.findOne({
+        $or: [
+          { fromUser: uid, toUser: tid },
+          { fromUser: tid, toUser: uid }
+        ],
+        isMutual: true
+      });
+
+      if (!pair) {
+        return res.status(404).json({ success: false, error: 'Match not found' });
+      }
+
+      updated = await Match.findOneAndUpdate(
+        { fromUser: uid, toUser: tid },
+        {
+          $set: {
+            status: pair.status === 'blocked' ? pair.status : 'matched',
+            isMutual: pair.isMutual,
+            matchScore: pair.matchScore,
+            isArchived: shouldArchive,
+            archivedAt: shouldArchive ? new Date() : null,
+            updatedAt: new Date()
+          }
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      archived: shouldArchive,
+      matchId: updated._id
+    });
+  } catch (error) {
+    console.error('setChatArchive error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to update archive status',
+      detail: error.message
+    });
+  }
+};
+
 export default {
   getDiscoverUsers,
   handleInteraction,
   getMatches,
+  setChatArchive,
   getLikes,
   getLikedByMe,
   getPassed,

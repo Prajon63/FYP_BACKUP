@@ -145,6 +145,25 @@ export const discoverService = {
    * @param userId - Current user ID
    * @param targetUserId - User to remove interaction with
    */
+  /**
+   * Archive or unarchive a chat conversation
+   */
+  async setChatArchive(
+    userId: string,
+    targetUserId: string,
+    archived: boolean
+  ): Promise<{ success: boolean; archived: boolean; error?: string }> {
+    try {
+      const response = await api.post(`/discover/${userId}/archive-chat`, {
+        targetUserId,
+        archived,
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to update archive');
+    }
+  },
+
   async removeInteraction(userId: string, targetUserId: string): Promise<RemoveInteractionResponse> {
     try {
       const response = await api.post<RemoveInteractionResponse>(

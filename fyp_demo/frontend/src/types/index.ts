@@ -158,6 +158,8 @@ export interface Match {
   matchedAt: string;
   conversationStarted?: boolean;
   lastMessageAt?: string;
+  isArchived?: boolean;
+  archivedAt?: string;
   privacy?: ProfilePrivacy | null;
 }
 

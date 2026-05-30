@@ -37,6 +37,14 @@ const matchSchema = new mongoose.Schema({
   lastMessageAt: {
     type: Date
   },
+  isArchived: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  archivedAt: {
+    type: Date
+  },
   createdAt: {
     type: Date,
     default: Date.now,

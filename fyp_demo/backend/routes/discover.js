@@ -13,7 +13,8 @@ import {
   updateDiscoverySettings,
   getDiscoveryStats,
   unmatch,
-  searchUsers
+  searchUsers,
+  setChatArchive
 } from '../controllers/discoverController.js';
 
 const router = express.Router();
@@ -59,6 +60,9 @@ router.get('/:userId/stats', protect, getDiscoveryStats);
 
 // POST /api/discover/:userId/unmatch - Unmatch with a user
 router.post('/:userId/unmatch', protect, unmatch);
+
+// POST /api/discover/:userId/archive-chat - Archive or unarchive a conversation
+router.post('/:userId/archive-chat', protect, setChatArchive);
 
 // GET /api/discover/:userId/search - Search users by username
 router.get('/:userId/search', protect, searchUsers);
