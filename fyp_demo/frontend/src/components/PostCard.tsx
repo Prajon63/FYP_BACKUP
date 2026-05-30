@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, MessageCircle, Share2, MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Post } from '../types';
+import SafeImage from './SafeImage';
 
 interface PostCardProps {
   post: Post;
@@ -75,8 +76,9 @@ const PostCard: React.FC<PostCardProps> = ({
 
             return (
               <>
-                <img
+                <SafeImage
                   src={displayImages[currentImageIndex]}
+                  fallbackSeed={post._id}
                   alt={`Post ${currentImageIndex + 1}`}
                   className="w-full h-full object-cover"
                 />

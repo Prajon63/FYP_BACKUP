@@ -5,11 +5,14 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
+import SafeImage from './SafeImage';
+
 interface PhotoCarouselProps {
   photos: string[];
+  fallbackSeed?: string;
 }
 
-const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ photos }) => {
+const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ photos, fallbackSeed = 'photos' }) => {
   if (!photos?.length) return null;
 
   return (
@@ -33,8 +36,9 @@ const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ photos }) => {
         {photos.map((url, idx) => (
           <SwiperSlide key={idx}>
             <div className="aspect-square rounded-2xl overflow-hidden shadow-lg">
-              <img
+              <SafeImage
                 src={url}
+                fallbackSeed={`${fallbackSeed}-${idx}`}
                 alt={`Photo ${idx + 1}`}
                 className="w-full h-full object-cover"
               />

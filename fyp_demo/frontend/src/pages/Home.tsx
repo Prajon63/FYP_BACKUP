@@ -22,6 +22,7 @@ import { discoverService } from '../services/discoverService';
 import type { DiscoveryUser } from '../types';
 import toast from 'react-hot-toast';
 import NotificationBell from '../components/NotificationBell';
+import SafeImage from '../components/SafeImage';
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
 
@@ -224,8 +225,9 @@ function ProfileCard({
     >
       {/* ── Banner ── */}
       <div className="relative h-52 overflow-hidden">
-        <img
+        <SafeImage
           src={bannerSrc}
+          fallbackSeed={user._id}
           alt={user.username || 'Profile'}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
@@ -246,8 +248,9 @@ function ProfileCard({
         >
           <div className="shrink-0 pointer-events-none">
             <div className="w-14 h-14 rounded-2xl p-0.5 bg-gradient-to-br from-rose-400 to-pink-500 shadow-lg">
-              <img
+              <SafeImage
                 src={avatarSrc}
+                fallbackSeed={user._id}
                 alt={user.username || ''}
                 className="w-full h-full rounded-xl object-cover border-2 border-white"
               />
@@ -336,8 +339,9 @@ function ProfileCard({
             TODO: replace bodyImageSrc with post.images[0] once post data
             is included in the discover API response. */}
         <div className="relative rounded-2xl overflow-hidden">
-          <img
+          <SafeImage
             src={bodyImageSrc}
+            fallbackSeed={user._id}
             alt={`${user.username || 'User'}'s photo`}
             className="w-full h-56 object-cover"
           />

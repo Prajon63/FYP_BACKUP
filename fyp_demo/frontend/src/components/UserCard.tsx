@@ -16,6 +16,7 @@ import {
   Bookmark,
 } from 'lucide-react';
 import type { DiscoveryUser } from '../types';
+import SafeImage from './SafeImage';
 
 interface UserCardProps {
   user: DiscoveryUser;
@@ -143,8 +144,9 @@ const UserCard: React.FC<UserCardProps> = ({
         <div className="relative h-80 flex-shrink-0 bg-gray-100 md:h-full md:w-[45%] md:flex-shrink-0">
           {photos.length > 0 ? (
             <>
-              <img
+              <SafeImage
                 src={photos[currentPhotoIndex]}
+                fallbackSeed={user._id}
                 alt={user.username || 'User'}
                 className="w-full h-full object-cover"
                 style={{ objectPosition: 'center 20%' }}

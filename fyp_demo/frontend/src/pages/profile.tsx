@@ -580,7 +580,7 @@ const Profile: React.FC = () => {
               )}
             </div>
             {user.photos && user.photos.length > 0 && (
-              <PhotoCarousel photos={user.photos} />
+              <PhotoCarousel photos={user.photos} fallbackSeed={user._id} />
             )}
           </motion.div>
         ) : (

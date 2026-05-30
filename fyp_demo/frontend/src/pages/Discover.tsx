@@ -17,6 +17,7 @@ import {
 import NotificationBell from '../components/NotificationBell';
 import toast from 'react-hot-toast';
 import UserCard from '../components/UserCard';
+import SafeImage from '../components/SafeImage';
 import MatchModal from '../components/MatchModal';
 import FilterModal from '../components/FilterModal';
 import { discoverService } from '../services/discoverService';
@@ -104,7 +105,7 @@ function PersonRow({
         className="shrink-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
         aria-label={`View ${name}'s profile`}
       >
-        <img src={image} alt="" className="w-14 h-14 rounded-2xl object-cover" />
+        <SafeImage src={image} fallbackSeed={profileUserId} alt="" className="w-14 h-14 rounded-2xl object-cover" />
       </motion.button>
       <div className="flex-1 min-w-0">
         <motion.button
@@ -834,8 +835,9 @@ const Discover: React.FC = () => {
                         onMouseDown={() => handleSelectSuggestion(s)}
                         className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-rose-50 transition-colors ${i !== 0 ? 'border-t border-slate-50' : ''}`}
                       >
-                        <img
-                          src={s.profilePicture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${s._id}`}
+                        <SafeImage
+                          src={s.profilePicture}
+                          fallbackSeed={s._id}
                           alt=""
                           className="w-7 h-7 rounded-full object-cover shrink-0"
                         />
@@ -960,8 +962,9 @@ const Discover: React.FC = () => {
                     onClick={() => setSelectedSearchUser(user)}
                     className="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4 text-left hover:border-rose-200 hover:shadow-md transition-all group"
                   >
-                    <img
-                      src={user.profilePicture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`}
+                    <SafeImage
+                      src={user.profilePicture}
+                      fallbackSeed={user._id}
                       alt=""
                       className="w-14 h-14 rounded-2xl object-cover shrink-0"
                     />

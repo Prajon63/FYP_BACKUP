@@ -22,24 +22,28 @@ import User from './models/User.js';
 
 dotenv.config();
 
+/** Stable Unsplash CDN URLs (auto=format avoids ORB/MIME issues in browsers). */
+const unsplash = (photoId, w = 400, h = 600) =>
+  `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=${w}&h=${h}&q=80`;
+
 // ─── Lifestyle / activity secondary photos ────────────────────────────────────
-// These are shared as secondary shots across profiles (normal for test data).
+// Verified reachable via scripts/checkUnsplashUrls.js (404 IDs replaced).
 const ACT = [
-  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&h=600&fit=crop', //  0 mountains/hiking
-  'https://images.unsplash.com/photo-1481627834876-b7833e8f5a27?w=400&h=600&fit=crop', //  1 reading/books
-  'https://images.unsplash.com/photo-1495474472359-6ac945d4f3f8?w=400&h=600&fit=crop', //  2 coffee shop
-  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=600&fit=crop', //  3 beach/ocean
-  'https://images.unsplash.com/photo-1534258936659-a03a93644edb?w=400&h=600&fit=crop', //  4 gym/workout
-  'https://images.unsplash.com/photo-1488085061851-e29e3a83e7c6?w=400&h=600&fit=crop', //  5 travel/city night
-  'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=400&h=600&fit=crop', //  6 food/dining
-  'https://images.unsplash.com/photo-1511671001471-7e8f0fe32aec?w=400&h=600&fit=crop', //  7 music/guitar
-  'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&h=600&fit=crop', //  8 yoga/wellness
-  'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&h=600&fit=crop', //  9 nature/forest
-  'https://images.unsplash.com/photo-1480714378702-995f7f447af8?w=400&h=600&fit=crop', // 10 city skyline
-  'https://images.unsplash.com/photo-1513364776144-0e0d7b9ef415?w=400&h=600&fit=crop', // 11 art studio
-  'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=400&h=600&fit=crop', // 12 running/fitness
-  'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=400&h=600&fit=crop', // 13 travel/adventure
-  'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=400&h=600&fit=crop', // 14 cooking
+  unsplash('photo-1464822759023-fed622ff2c3b'), //  0 mountains/hiking
+  unsplash('photo-1506905925346-21bda4d32df4'), //  1 mountains/landscape
+  unsplash('photo-1476224203421-9ac39bcb3327'), //  2 food/dining
+  unsplash('photo-1507525428034-b723cf961d3e'), //  3 beach/ocean
+  unsplash('photo-1530549387789-4c1017266635'), //  4 running/fitness
+  unsplash('photo-1503220317375-aaad61436b1b'), //  5 travel/adventure
+  unsplash('photo-1476224203421-9ac39bcb3327'), //  6 food/dining
+  unsplash('photo-1517457373958-b7bdd4587205'), //  7 cooking
+  unsplash('photo-1506126613408-eca07ce68773'), //  8 yoga/wellness
+  unsplash('photo-1501854140801-50d01698950b'), //  9 nature/forest
+  unsplash('photo-1507525428034-b723cf961d3e'), // 10 beach/skyline
+  unsplash('photo-1464822759023-fed622ff2c3b'), // 11 outdoors
+  unsplash('photo-1530549387789-4c1017266635'), // 12 running/fitness
+  unsplash('photo-1503220317375-aaad61436b1b'), // 13 travel/adventure
+  unsplash('photo-1517457373958-b7bdd4587205'), // 14 cooking
 ];
 
 // Helper: pick 2 activity photos for secondary shots, offset per user index
@@ -80,9 +84,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Vegetarian' },
     matchPreferences: { ageRange: { min: 25, max: 35 }, distanceRange: 50, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(0),
     ],
     isVerified: true,
@@ -116,9 +120,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Never', exercise: 'Very active', diet: 'Vegan' },
     matchPreferences: { ageRange: { min: 22, max: 30 }, distanceRange: 30, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(1),
     ],
     isVerified: false,
@@ -152,9 +156,9 @@ const testUsers = [
     lifestyle: { smoking: 'Socially', drinking: 'Socially', exercise: 'Sometimes', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 26, max: 35 }, distanceRange: 50, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(2),
     ],
     isVerified: true,
@@ -188,9 +192,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 27, max: 37 }, distanceRange: 40, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(3),
     ],
     isVerified: false,
@@ -224,9 +228,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Sometimes', diet: 'Vegetarian' },
     matchPreferences: { ageRange: { min: 23, max: 31 }, distanceRange: 25, genderPreference: ['Men', 'Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(4),
     ],
     isVerified: false,
@@ -260,9 +264,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Sometimes', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 24, max: 32 }, distanceRange: 20, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(5),
     ],
     isVerified: true,
@@ -296,9 +300,9 @@ const testUsers = [
     lifestyle: { smoking: 'Socially', drinking: 'Socially', exercise: 'Sometimes', diet: 'Vegan' },
     matchPreferences: { ageRange: { min: 26, max: 38 }, distanceRange: 20, genderPreference: ['Everyone'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1488716820095-cbe80883c496?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1488716820095-cbe80883c496?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(6),
     ],
     isVerified: false,
@@ -332,9 +336,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Never', exercise: 'Regularly', diet: 'Vegetarian' },
     matchPreferences: { ageRange: { min: 29, max: 38 }, distanceRange: 30, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1484863137850-59afcfe05386?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1484863137850-59afcfe05386?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1484863137850-59afcfe05386?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1484863137850-59afcfe05386?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(7),
     ],
     isVerified: true,
@@ -368,9 +372,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 25, max: 34 }, distanceRange: 30, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(8),
     ],
     isVerified: false,
@@ -404,9 +408,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 26, max: 35 }, distanceRange: 40, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(9),
     ],
     isVerified: false,
@@ -440,9 +444,9 @@ const testUsers = [
     lifestyle: { smoking: 'Socially', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 21, max: 30 }, distanceRange: 20, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(10),
     ],
     isVerified: false,
@@ -476,9 +480,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Vegetarian' },
     matchPreferences: { ageRange: { min: 27, max: 36 }, distanceRange: 20, genderPreference: ['Men', 'Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(11),
     ],
     isVerified: true,
@@ -512,9 +516,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Sometimes', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 23, max: 32 }, distanceRange: 15, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(12),
     ],
     isVerified: false,
@@ -548,9 +552,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Vegetarian' },
     matchPreferences: { ageRange: { min: 25, max: 34 }, distanceRange: 40, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(13),
     ],
     isVerified: false,
@@ -584,9 +588,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 24, max: 33 }, distanceRange: 30, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(14),
     ],
     isVerified: false,
@@ -624,9 +628,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 22, max: 32 }, distanceRange: 50, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(0),
     ],
     isVerified: true,
@@ -660,9 +664,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 25, max: 35 }, distanceRange: 50, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(1),
     ],
     isVerified: true,
@@ -696,9 +700,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 23, max: 32 }, distanceRange: 50, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(2),
     ],
     isVerified: false,
@@ -732,9 +736,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 24, max: 33 }, distanceRange: 40, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(3),
     ],
     isVerified: false,
@@ -768,9 +772,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 27, max: 37 }, distanceRange: 30, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1463453091185-61582044d556?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1463453091185-61582044d556?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1463453091185-61582044d556?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1463453091185-61582044d556?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(4),
     ],
     isVerified: false,
@@ -804,9 +808,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Sometimes', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 22, max: 30 }, distanceRange: 20, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(5),
     ],
     isVerified: false,
@@ -840,9 +844,9 @@ const testUsers = [
     lifestyle: { smoking: 'Socially', drinking: 'Socially', exercise: 'Sometimes', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 24, max: 35 }, distanceRange: 20, genderPreference: ['Women', 'Everyone'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(6),
     ],
     isVerified: false,
@@ -876,9 +880,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Vegetarian' },
     matchPreferences: { ageRange: { min: 27, max: 36 }, distanceRange: 30, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(7),
     ],
     isVerified: true,
@@ -912,9 +916,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 24, max: 33 }, distanceRange: 25, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(8),
     ],
     isVerified: false,
@@ -948,9 +952,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Never', exercise: 'Very active', diet: 'Halal' },
     matchPreferences: { ageRange: { min: 25, max: 34 }, distanceRange: 50, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(9),
     ],
     isVerified: true,
@@ -984,9 +988,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 22, max: 32 }, distanceRange: 20, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1553267751-1c148a7280a1?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1553267751-1c148a7280a1?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1553267751-1c148a7280a1?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1553267751-1c148a7280a1?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(10),
     ],
     isVerified: false,
@@ -1020,9 +1024,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Vegetarian' },
     matchPreferences: { ageRange: { min: 27, max: 38 }, distanceRange: 25, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1479936343636-73cdc5aae0c3?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1479936343636-73cdc5aae0c3?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1479936343636-73cdc5aae0c3?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1479936343636-73cdc5aae0c3?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(11),
     ],
     isVerified: false,
@@ -1056,9 +1060,9 @@ const testUsers = [
     lifestyle: { smoking: 'Socially', drinking: 'Socially', exercise: 'Sometimes', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 24, max: 34 }, distanceRange: 20, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1504257432389-52343af06ae3?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1504257432389-52343af06ae3?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(12),
     ],
     isVerified: false,
@@ -1092,9 +1096,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 25, max: 35 }, distanceRange: 40, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1542909168-82c3e7fdcd5b?w=400&h=400&fit=crop',
+    profilePicture: unsplash('photo-1506905925346-21bda4d32df4', 400, 400),
     photos: [
-      'https://images.unsplash.com/photo-1542909168-82c3e7fdcd5b?w=400&h=600&fit=crop',
+      unsplash('photo-1506905925346-21bda4d32df4', 400, 600),
       ...actPair(13),
     ],
     isVerified: false,
@@ -1128,9 +1132,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 24, max: 33 }, distanceRange: 30, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(14),
     ],
     isVerified: false,
@@ -1172,9 +1176,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Vegetarian' },
     matchPreferences: { ageRange: { min: 23, max: 32 }, distanceRange: 500, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(0),
     ],
     isVerified: true,
@@ -1208,9 +1212,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Never', exercise: 'Regularly', diet: 'Vegetarian' },
     matchPreferences: { ageRange: { min: 26, max: 35 }, distanceRange: 500, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1554151228-14d9def656e4?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1554151228-14d9def656e4?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(1),
     ],
     isVerified: false,
@@ -1244,9 +1248,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 26, max: 35 }, distanceRange: 500, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(2),
     ],
     isVerified: false,
@@ -1280,9 +1284,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 24, max: 33 }, distanceRange: 500, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1524638431109-93d95c968f03?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1524638431109-93d95c968f03?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1524638431109-93d95c968f03?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1524638431109-93d95c968f03?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(3),
     ],
     isVerified: false,
@@ -1316,9 +1320,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Sometimes', diet: 'Vegetarian' },
     matchPreferences: { ageRange: { min: 22, max: 30 }, distanceRange: 500, genderPreference: ['Men'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1601412436009-d964bd02edbc?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1601412436009-d964bd02edbc?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1601412436009-d964bd02edbc?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1601412436009-d964bd02edbc?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(4),
     ],
     isVerified: true,
@@ -1354,9 +1358,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 22, max: 32 }, distanceRange: 500, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1552058544-f2b08422138a?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1552058544-f2b08422138a?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1552058544-f2b08422138a?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1552058544-f2b08422138a?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(5),
     ],
     isVerified: false,
@@ -1390,9 +1394,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 24, max: 34 }, distanceRange: 500, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1500048993953-d23a436266cf?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1500048993953-d23a436266cf?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1500048993953-d23a436266cf?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1500048993953-d23a436266cf?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(6),
     ],
     isVerified: true,
@@ -1426,9 +1430,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Very active', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 24, max: 34 }, distanceRange: 500, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(7),
     ],
     isVerified: false,
@@ -1462,9 +1466,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Socially', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 23, max: 32 }, distanceRange: 500, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1595152452543-e5fc28ebc2b8?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1595152452543-e5fc28ebc2b8?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1595152452543-e5fc28ebc2b8?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1595152452543-e5fc28ebc2b8?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(8),
     ],
     isVerified: false,
@@ -1498,9 +1502,9 @@ const testUsers = [
     lifestyle: { smoking: 'Never', drinking: 'Never', exercise: 'Regularly', diet: 'Anything' },
     matchPreferences: { ageRange: { min: 25, max: 35 }, distanceRange: 500, genderPreference: ['Women'] },
     discoverySettings: { isActive: true, ageRangeVisible: true, distanceVisible: true, lastActiveVisible: true },
-    profilePicture: 'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=400&h=400&fit=crop',
+    profilePicture: 'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?auto=format&fit=crop&w=400&h=400&q=80',
     photos: [
-      'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=400&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?auto=format&fit=crop&w=400&h=600&q=80',
       ...actPair(9),
     ],
     isVerified: false,
@@ -1524,6 +1528,16 @@ async function seedDatabase() {
     const pictureUrls = testUsers.map((u) => u.profilePicture);
     const uniquePictures = new Set(pictureUrls);
     if (uniquePictures.size !== pictureUrls.length) {
+      const seen = new Map();
+      const dups = [];
+      for (const u of testUsers) {
+        if (seen.has(u.profilePicture)) {
+          dups.push(`${seen.get(u.profilePicture)} & ${u.username} → ${u.profilePicture}`);
+        } else {
+          seen.set(u.profilePicture, u.username);
+        }
+      }
+      console.error('Duplicate profilePicture URLs:\n' + dups.join('\n'));
       throw new Error('Duplicate profilePicture URLs detected — fix seedData.js before continuing.');
     }
 

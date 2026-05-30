@@ -11,6 +11,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { discoverService } from '../services/discoverService';
 import ChatWindow from '../components/ChatWindow';
+import SafeImage from '../components/SafeImage';
 import type { Match } from '../types';
 import { getStoredUserId } from '../utils/auth';
 
@@ -228,11 +229,9 @@ const Messages: React.FC = () => {
           : ''
       }`}
     >
-      <img
-        src={
-          m.user?.profilePicture ||
-          `https://api.dicebear.com/7.x/avataaars/svg?seed=${m.user?.username || 'user'}`
-        }
+      <SafeImage
+        src={m.user?.profilePicture}
+        fallbackSeed={m.user?._id || m.user?.username || 'user'}
         alt={m.user?.username || 'Match'}
         className="w-10 h-10 rounded-full object-cover flex-shrink-0"
       />

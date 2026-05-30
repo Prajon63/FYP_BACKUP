@@ -9,6 +9,7 @@ import {
   Share2,
 } from 'lucide-react';
 import type { Post } from '../types';
+import SafeImage from './SafeImage';
 
 interface PostViewerModalProps {
   post: Post | null;
@@ -140,8 +141,9 @@ const PostViewerModal: React.FC<PostViewerModalProps> = ({
             <div className="relative bg-slate-900 flex items-center justify-center min-h-[200px] max-h-[min(65vh,520px)]">
               {images.length > 0 ? (
                 <>
-                  <img
+                  <SafeImage
                     src={images[imageIndex]}
+                    fallbackSeed={post._id}
                     alt={post.caption ? `Post: ${post.caption.slice(0, 40)}` : 'Post image'}
                     className="max-w-full max-h-[min(65vh,520px)] w-auto h-auto object-contain"
                   />
