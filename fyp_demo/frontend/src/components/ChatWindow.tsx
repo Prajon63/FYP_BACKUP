@@ -50,12 +50,15 @@ const ChatWindow = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const messagingBlocked = privacy?.canMessage === false;
+  const blockedByMe = privacy?.blockedByMe === true;
+  const blockedByOther = privacy?.blockedMe === true;
+
   const blockBannerText =
     privacy?.message ||
-    (privacy?.blockedByMe
-      ? 'You blocked this user.'
-      : privacy?.blockedMe
-        ? 'This user is unavailable.'
+    (blockedByMe
+      ? 'You blocked this user. Unblock them in Settings to send messages again.'
+      : blockedByOther
+        ? 'This user is unavailable. You cannot send messages to them.'
         : null);
 
   const [input, setInput] = useState('');
@@ -222,9 +225,25 @@ const ChatWindow = ({
       </div>
 
       {messagingBlocked && blockBannerText && (
-        <div className="px-4 py-3 bg-red-50 border-b border-red-100 text-center">
-          <p className="text-sm font-semibold text-red-800">User blocked</p>
-          <p className="text-xs text-red-700/90 mt-0.5">{blockBannerText}</p>
+        <div
+          className={`px-4 py-3 border-b text-center ${
+            blockedByMe
+              ? 'bg-red-50 border-red-100'
+              : 'bg-slate-50 border-slate-100'
+          }`}
+        >
+          {blockedByMe && (
+            <p className="text-sm font-semibold text-red-800">User blocked</p>
+          )}
+          <p
+            className={`text-sm ${
+              blockedByMe
+                ? 'text-xs text-red-700/90 mt-0.5'
+                : 'text-slate-600 leading-snug'
+            }`}
+          >
+            {blockBannerText}
+          </p>
         </div>
       )}
 
@@ -375,7 +394,11 @@ const ChatWindow = ({
       {/* Input */}
       {messagingBlocked ? (
         <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 text-center">
-          <p className="text-xs text-slate-500">Messaging is disabled while this user is blocked.</p>
+          <p className="text-xs text-slate-500">
+            {blockedByMe
+              ? 'Messaging is disabled while this user is blocked.'
+              : 'You cannot send messages in this conversation.'}
+          </p>
         </div>
       ) : (
         <div className="bg-white border-t border-gray-100">

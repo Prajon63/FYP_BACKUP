@@ -6,6 +6,7 @@ CRUD operations for user profile: bio, username, profile picture, posts
 import { findById, findByIdAndUpdate, findByIdAndDelete } from '../models/User.js';
 import cloudinary from '../config/cloudinary.js';
 import { getBlockContext, privacyMessage } from '../Utils/privacyAccess.js';
+import { resolveViewerMatchId } from '../Utils/chatMatch.js';
 
 // Get user profile
 export async function getProfile(req, res) {   //function to retrieve user data 
@@ -48,6 +49,8 @@ export async function getPublicProfile(req, res) {
     }
 
     let privacy = null;
+    let relationship = { isMutualMatch: false, matchId: null };
+
     if (viewerId && viewerId !== userId) {
       const blockCtx = await getBlockContext(viewerId, userId);
       privacy = {
@@ -62,6 +65,15 @@ export async function getPublicProfile(req, res) {
           code: 'PROFILE_UNAVAILABLE',
           privacy
         });
+      }
+
+      const chatMatchId = await resolveViewerMatchId(viewerId, userId);
+
+      if (chatMatchId) {
+        relationship = {
+          isMutualMatch: true,
+          matchId: chatMatchId,
+        };
       }
     }
 
@@ -112,7 +124,8 @@ export async function getPublicProfile(req, res) {
       success: true,
       user: publicUser,
       posts,
-      privacy
+      privacy,
+      relationship,
     });
   } catch (error) {
     console.error('getPublicProfile error:', error);

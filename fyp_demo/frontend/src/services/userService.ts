@@ -7,6 +7,7 @@ import type {
   PostsResponse,
   Post,
   ProfilePrivacy,
+  ProfileRelationship,
 } from '../types';
 
 // This service will handle user-related API calls
@@ -34,6 +35,7 @@ export const userService = {
     user?: ProfileResponse['user'];
     posts?: Post[];
     privacy?: ProfilePrivacy | null;
+    relationship?: ProfileRelationship | null;
     error?: string;
     code?: string;
   }> {

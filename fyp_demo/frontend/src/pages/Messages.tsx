@@ -90,34 +90,47 @@ const Messages: React.FC = () => {
     void fetchMatches();
   }, [userId, navigate]);
 
-  useEffect(() => {
-    if (!matches.length) return;
+  const openChatFromMatch = (match: Match) => {
+    if (!match.user?._id) return;
+    setSelectedId(match.matchId);
+    setActiveChat({
+      matchId: match.matchId,
+      receiverId: match.user._id,
+      receiverName: match.user.username || 'Match',
+      receiverPhoto: match.user.profilePicture,
+    });
+  };
 
+  useEffect(() => {
     const matchIdParam = searchParams.get('matchId');
     const receiverIdParam = searchParams.get('receiverId');
+    const hasUrlIntent = !!(matchIdParam || receiverIdParam);
 
-    if (matchIdParam && receiverIdParam) {
-      const match = matches.find((m) => m.matchId === matchIdParam);
-      if (match && match.user?._id === receiverIdParam) {
-        setSelectedId(match.matchId);
-        setActiveChat({
-          matchId: match.matchId,
-          receiverId: match.user._id,
-          receiverName: match.user.username || 'Match',
-          receiverPhoto: match.user.profilePicture,
-        });
+    if (!matches.length) return;
+
+    // Prefer receiverId — works even when profile sent the sibling Match document id
+    if (receiverIdParam) {
+      const byReceiver = matches.find((m) => m.user?._id === receiverIdParam);
+      if (byReceiver) {
+        openChatFromMatch(byReceiver);
         initialOpenDone.current = true;
+        return;
       }
-    } else if (!initialOpenDone.current && matches[0]?.user?._id) {
+    }
+
+    if (matchIdParam) {
+      const byMatchId = matches.find((m) => m.matchId === matchIdParam);
+      if (byMatchId?.user?._id) {
+        openChatFromMatch(byMatchId);
+        initialOpenDone.current = true;
+        return;
+      }
+    }
+
+    if (!hasUrlIntent && !initialOpenDone.current) {
       const first = matches.find((m) => !m.isArchived) ?? matches[0];
       if (first?.user?._id) {
-        setSelectedId(first.matchId);
-        setActiveChat({
-          matchId: first.matchId,
-          receiverId: first.user._id,
-          receiverName: first.user.username || 'Match',
-          receiverPhoto: first.user.profilePicture,
-        });
+        openChatFromMatch(first);
         initialOpenDone.current = true;
       }
     }
@@ -248,14 +261,14 @@ const Messages: React.FC = () => {
         </div>
         <p
           className={`text-xs truncate ${
-            m.privacy?.blockedByMe || m.privacy?.blockedMe
+            m.privacy?.blockedByMe
               ? 'text-red-500 font-medium'
               : m.isArchived
                 ? 'text-slate-400 italic'
                 : 'text-slate-500'
           }`}
         >
-          {m.privacy?.blockedByMe || m.privacy?.blockedMe
+          {m.privacy?.blockedByMe
             ? 'User blocked'
             : m.isArchived
               ? 'Archived'

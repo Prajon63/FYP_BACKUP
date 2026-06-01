@@ -26,12 +26,13 @@ import {
   Flag,
   UserCheck,
   AlertTriangle,
+  MessageCircle,
   ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { discoverService } from '../services/discoverService';
 import { userService } from '../services/userService';
-import type { User, Post, ProfilePrivacy } from '../types';
+import type { User, Post, ProfilePrivacy, ProfileRelationship } from '../types';
 import PostViewerModal from '../components/PostViewerModal';
 import GalleryViewerModal from '../components/GalleryViewerModal';
 import SafeImage from '../components/SafeImage';
@@ -390,6 +391,7 @@ const ViewProfile: React.FC = () => {
     'liked' | 'super_liked' | 'passed' | 'blocked' | null
   >(null);
   const [privacy, setPrivacy] = useState<ProfilePrivacy | null>(null);
+  const [relationship, setRelationship] = useState<ProfileRelationship | null>(null);
   const [profileUnavailable, setProfileUnavailable] = useState(false);
 
   // Close the three-dot menu when clicking outside of it
@@ -415,11 +417,13 @@ const ViewProfile: React.FC = () => {
     try {
       setLoading(true);
       setProfileUnavailable(false);
+      setRelationship(null);
       const data = await userService.getPublicProfile(targetUserId);
       if (data.success && data.user) {
         setProfile(data.user as User);
         setPosts(data.posts || []);
         setPrivacy(data.privacy ?? null);
+        setRelationship(data.relationship ?? null);
         if (data.privacy?.blockedByMe) {
           setInteractionDone('blocked');
         }
@@ -448,6 +452,7 @@ const ViewProfile: React.FC = () => {
       toast.error('Please log in first');
       return;
     }
+    if (isMutualMatch && action !== 'block') return;
     if (interactionDone && action !== 'block') return;
     if (privacy && !privacy.canInteract && action !== 'block') {
       toast.error(privacy.message || 'You cannot interact with this profile.');
@@ -669,12 +674,51 @@ const ViewProfile: React.FC = () => {
   }
 
   // ── Interaction result overlay ────────────────────────────────────────────
+  const isMutualMatch = relationship?.isMutualMatch === true;
+
+  const handleOpenChat = async () => {
+    if (!targetUserId) {
+      navigate('/messages');
+      return;
+    }
+
+    const goToChat = (matchId: string) => {
+      navigate(
+        `/messages?matchId=${encodeURIComponent(matchId)}&receiverId=${encodeURIComponent(targetUserId)}`
+      );
+    };
+
+    // Use the same match row as the Messages sidebar (viewer-centric id)
+    if (currentUserId) {
+      try {
+        const res = await discoverService.getMatches(currentUserId);
+        const row = res.matches?.find((m) => m.user?._id === targetUserId);
+        if (row?.user?._id) {
+          goToChat(row.matchId);
+          return;
+        }
+      } catch {
+        // fall through to relationship matchId or receiver-only URL
+      }
+    }
+
+    if (relationship?.matchId) {
+      goToChat(relationship.matchId);
+      return;
+    }
+
+    navigate(`/messages?receiverId=${encodeURIComponent(targetUserId)}`);
+  };
+
   const interactionLabels = {
     liked: { emoji: '❤️', text: 'You liked this profile', color: 'bg-rose-50 border-rose-200 text-rose-700' },
     super_liked: { emoji: '⭐', text: 'You super liked this profile', color: 'bg-amber-50 border-amber-200 text-amber-700' },
     passed: { emoji: '👋', text: 'You passed on this profile', color: 'bg-slate-50 border-slate-200 text-slate-600' },
     blocked: { emoji: '🚫', text: 'User blocked', color: 'bg-red-50 border-red-200 text-red-700' },
   };
+
+  const showDiscoverActions =
+    !isMutualMatch && !interactionDone && (!privacy || privacy.canInteract);
 
   return (
     <>
@@ -850,9 +894,19 @@ const ViewProfile: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Interaction status banner */}
+          {/* Interaction / match status banner */}
           <AnimatePresence>
-            {interactionDone && (
+            {isMutualMatch && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 px-4 py-3 rounded-2xl border text-sm font-semibold bg-gradient-to-r from-rose-50 to-pink-50 border-rose-200 text-rose-700"
+              >
+                <span>🎉</span>
+                <span>You&apos;re matched — say hi in Messages</span>
+              </motion.div>
+            )}
+            {interactionDone && !isMutualMatch && (
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1025,7 +1079,26 @@ const ViewProfile: React.FC = () => {
         {/* ── Sticky action bar ── */}
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 py-3 safe-area-inset-bottom">
           <div className="max-w-2xl mx-auto">
-            {interactionDone || (privacy && !privacy.canInteract) ? (
+            {isMutualMatch ? (
+              <div className="flex gap-3">
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.93 }}
+                  onClick={handleOpenChat}
+                  className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold text-sm hover:from-rose-600 hover:to-pink-600 transition-all shadow-lg shadow-rose-200/60"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Message
+                </motion.button>
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition-colors"
+                >
+                  Go back
+                </button>
+              </div>
+            ) : interactionDone || (privacy && !privacy.canInteract) ? (
               <div className="flex gap-3">
                 {privacy?.blockedByMe && (
                   <button
@@ -1050,7 +1123,7 @@ const ViewProfile: React.FC = () => {
                   Keep exploring
                 </button>
               </div>
-            ) : (
+            ) : showDiscoverActions ? (
               <div className="flex gap-3">
                 {/* Pass */}
                 <motion.button
@@ -1096,10 +1169,10 @@ const ViewProfile: React.FC = () => {
                   Like
                 </motion.button>
               </div>
-            )}
+            ) : null}
 
             {/* Not interested / Save row */}
-            {!interactionDone && (
+            {showDiscoverActions && (
               <div className="flex justify-between mt-2">
                 <button
                   onClick={() => handleInteraction('pass')}
@@ -1108,6 +1181,21 @@ const ViewProfile: React.FC = () => {
                   Not interested
                 </button>
                 <button
+                  onClick={() => void handleSave()}
+                  disabled={saveLoading}
+                  className={`flex items-center gap-1 text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
+                    isSaved ? 'text-rose-500' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-rose-500' : ''}`} />
+                  {isSaved ? 'Saved' : 'Save profile'}
+                </button>
+              </div>
+            )}
+            {isMutualMatch && (
+              <div className="flex justify-end mt-2">
+                <button
+                  type="button"
                   onClick={() => void handleSave()}
                   disabled={saveLoading}
                   className={`flex items-center gap-1 text-xs px-2 py-1 transition-colors disabled:opacity-50 ${

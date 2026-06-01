@@ -93,6 +93,12 @@ export interface ProfilePrivacy {
   message?: string | null;
 }
 
+/** Viewer ↔ profile owner relationship (public profile endpoint) */
+export interface ProfileRelationship {
+  isMutualMatch: boolean;
+  matchId?: string | null;
+}
+
 // Discovery User (what you see in discovery)
 export interface DiscoveryUser {
   _id: string;
