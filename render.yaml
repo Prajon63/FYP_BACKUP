@@ -33,6 +33,11 @@ services:
     rootDir: fyp_demo/frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
+    # SPA: serve index.html for client-side routes (F5 on /discover, etc.)
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VITE_API_URL
         sync: false
