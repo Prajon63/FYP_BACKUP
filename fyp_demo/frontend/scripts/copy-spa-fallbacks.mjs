@@ -1,6 +1,6 @@
 /**
- * Render may serve 0-byte stubs at SPA paths and skip rewrites.
- * Copy index.html to each static route path so F5 on /discover, /home, etc. works.
+ * Render may serve extensionless route stubs as downloads (F5 prompts to save "home").
+ * Use <route>/index.html so the CDN serves text/html correctly.
  */
 import fs from 'fs';
 import path from 'path';
@@ -29,9 +29,11 @@ const staticPaths = [
 ];
 
 for (const routePath of staticPaths) {
-  const target = path.join(distDir, routePath);
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.writeFileSync(target, html);
+  const dir = path.join(distDir, routePath);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'index.html'), html);
 }
 
-console.log(`copy-spa-fallbacks: wrote index.html to ${staticPaths.length} route paths`);
+console.log(
+  `copy-spa-fallbacks: wrote index.html under ${staticPaths.length} route folders`
+);

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Heart, Sparkles, ArrowRight, Eye, EyeOff } from 'lucide-react';
-import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import Input from '../components/Input';
 import Button from '../components/Button';
@@ -46,8 +45,6 @@ const Login = () => {
         ${FONTS}
         * { box-sizing: border-box; }
       `}</style>
-      <Toaster position="top-center" />
-
       {/* Ambient background blobs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-24 -left-20 w-72 h-72 rounded-full bg-rose-200/40 blur-3xl" />

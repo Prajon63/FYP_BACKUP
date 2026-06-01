@@ -29,7 +29,7 @@ import {
   MessageCircle,
   ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { discoverService } from '../services/discoverService';
 import { userService } from '../services/userService';
 import type { User, Post, ProfilePrivacy, ProfileRelationship } from '../types';
@@ -726,7 +726,6 @@ const ViewProfile: React.FC = () => {
   return (
     <>
       <style>{FONTS}</style>
-      <Toaster position="top-center" />
 
       <div
         className="min-h-screen bg-[#faf9f7]"

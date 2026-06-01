@@ -6,7 +6,7 @@ import {
   Settings, LogOut, Camera, MapPin, Heart,
   Grid3X3, BookOpen, ChevronRight, Loader2
 } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 import api from '../services/api';
@@ -308,10 +308,11 @@ const Profile: React.FC = () => {
   };
 
   const handleLogout = () => {
+    toast.dismiss();
     authService.logout();
     localStorage.removeItem('userId');
-    toast.success('👋 Logged out successfully!');
     navigate('/');
+    toast.success('Logged out', { duration: 2000 });
   };
 
   const openEditProfile = () => {
@@ -385,7 +386,6 @@ const Profile: React.FC = () => {
       style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}
     >
       <style>{FONTS}</style>
-      <Toaster position="top-center" />
 
       {/* ── Nav ──────────────────────────────────────────────────────────── */}
       <nav className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-100">

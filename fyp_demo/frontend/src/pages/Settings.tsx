@@ -10,7 +10,7 @@ import {
   Sparkles,
   ExternalLink,
 } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { discoverService } from '../services/discoverService';
 import type { LikedByMeItem, BlockedItem } from '../types';
 import { getStoredUserId } from '../utils/auth';
@@ -159,7 +159,6 @@ const Settings: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#faf9f7]" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <style>{FONTS}</style>
-      <Toaster position="top-center" />
 
       <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-100">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">

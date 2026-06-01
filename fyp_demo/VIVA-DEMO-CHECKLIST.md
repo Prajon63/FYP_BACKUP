@@ -145,7 +145,9 @@ Render must rewrite unknown paths to `index.html`. In **Redirects / Rewrites**:
 
 **Verify:** open `https://YOUR-SITE.onrender.com/discover` → right-click → View page source. You should see `<script ... src="/assets/index-....js">`. If the page is empty or has `/src/main.tsx`, the deploy is wrong.
 
-**If rewrite is set but F5 still white:** Render may be serving **0-byte files** at `/discover` (rewrite never runs). Push latest code (build copies `index.html` onto each route path), then **Manual Deploy → Clear build cache**. After deploy, `/discover` response size should be ~500 bytes, not 0.
+**If F5 opens “Save as” for a file named `home`:** an old build copied `index.html` to extensionless files (`home`, `discover`). Redeploy latest code — build now uses `home/index.html` folders so the browser renders HTML instead of downloading.
+
+**If rewrite is set but F5 still white:** push latest code, **Manual Deploy → Clear build cache**, confirm `/discover` View Source shows `/assets/index-….js`.
 
 **Vercel:** same env vars under Project → Settings → Environment Variables, build command `npm run build`, output `dist`.
 

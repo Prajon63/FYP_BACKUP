@@ -31,10 +31,8 @@ export const useAuth = () => {
           // Connect socket only after new token is persisted
           connectSocket();
         }
-        toast.success('Welcome back! Redirecting...');
-        setTimeout(() => {
-          navigate('/home');
-        }, 1000);
+        toast.success('Welcome back!', { duration: 2000 });
+        navigate('/home');
         return { success: true };
       } else {
         toast.error(response.error || 'Login failed');
@@ -61,10 +59,8 @@ export const useAuth = () => {
           // Connect socket only after new token is persisted
           connectSocket();
         }
-        toast.success('Account created! Setting up your profile...');
-        setTimeout(() => {
-          navigate('/preferences/setup');
-        }, 1000);
+        toast.success('Account created!', { duration: 2000 });
+        navigate('/preferences/setup');
         return { success: true };
       } else {
         toast.error(response.error || 'Registration failed');
@@ -79,11 +75,12 @@ export const useAuth = () => {
   };
 
   const logout = () => {
+    toast.dismiss();
     authService.logout();
     localStorage.removeItem('userId');
     setUser(null);
     navigate('/');
-    toast.success('Logged out successfully');
+    toast.success('Logged out', { duration: 2000 });
   };
 
   return {

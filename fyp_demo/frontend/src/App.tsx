@@ -19,7 +19,14 @@ function App() {
   return (
     <BrowserRouter>
       <NotificationProvider>
-      <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
+      <Toaster
+        position="top-center"
+        containerClassName="capella-toaster"
+        toastOptions={{
+          duration: 2500,
+          style: { maxWidth: 'min(420px, 92vw)' },
+        }}
+      />
       <Routes>
         <Route path="/" element={<Login />} />
         {/* <Route path="/preferences" element={<Preferences />} /> */}

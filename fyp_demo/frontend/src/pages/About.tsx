@@ -11,7 +11,7 @@ import type { User as UserType } from '../types';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import InterestTags from '../components/InterestTags';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
 
@@ -209,7 +209,6 @@ const About: React.FC = () => {
         textarea:focus { outline: none; }
       `}</style>
 
-      <Toaster position="top-center" />
 
       <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-40 border-b border-slate-100">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">

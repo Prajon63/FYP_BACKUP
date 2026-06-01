@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Lock, Heart, CheckCircle, Eye, EyeOff } from 'lucide-react';
-import { Toaster } from 'react-hot-toast';
 import { authService } from '../services/authService';
 import Input from '../components/Input';
 import Button from '../components/Button';
@@ -75,7 +74,6 @@ const ResetPassword = () => {
   if (isSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 flex items-center justify-center p-4">
-        <Toaster position="top-center" />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -104,7 +102,6 @@ const ResetPassword = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 flex items-center justify-center p-4">
-      <Toaster position="top-center" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
