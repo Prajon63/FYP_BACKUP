@@ -1,8 +1,15 @@
 import axios, { AxiosInstance, AxiosError, AxiosHeaders } from 'axios';
 
-// Create axios instance with default config
+/** Dev: Vite proxy `/api` → localhost:5000. Prod: set VITE_API_URL to your backend origin. */
+function resolveApiBaseUrl(): string {
+  const raw = import.meta.env.VITE_API_URL?.trim();
+  if (!raw) return '/api';
+  const base = raw.replace(/\/$/, '');
+  return base.endsWith('/api') ? base : `${base}/api`;
+}
+
 const api: AxiosInstance = axios.create({
-  baseURL: '/api', // Vite proxy will handle this
+  baseURL: resolveApiBaseUrl(),
   timeout: 60000,
 });
 
