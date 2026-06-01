@@ -4,7 +4,12 @@ import Message from '../models/Message.js';
 import {
   calculateCompatibilityScore,
   passesBasicFilters,
-  calculateDistance
+  calculateDistance,
+  expandGenderPreference,
+  filterMatchesByDistance,
+  computeDistanceBetweenUsers,
+  applyDiscoverDistanceToQuery,
+  isWorldwideDistance,
 } from '../Utils/matchingAlgorithm.js';
 import {
   getBlockContext,
@@ -62,25 +67,16 @@ export const getDiscoverUsers = async (req, res) => {
       'discoverySettings.isActive': { $ne: false },
     };
 
-    // Apply gender preference filter.
-    // The genderPreference stores 'Men'/'Women' (preference labels), but user.gender
-    // may be stored as 'Male'/'Female' (identity labels). Expand both so we match
-    // all natural variations regardless of which convention was used when registering.
-    if (currentUser.matchPreferences?.genderPreference?.length > 0) {
-      const genderMap = {
-        'Men': ['Men', 'Male'],
-        'Women': ['Women', 'Female'],
-        'Non-binary': ['Non-binary'],
-        'Everyone': ['Male', 'Female', 'Men', 'Women', 'Non-binary', 'Other', ''],
-      };
-      const expandedGenders = [...new Set(
-        currentUser.matchPreferences.genderPreference.flatMap(g => genderMap[g] || [g])
-      )];
-      // If 'Everyone' is in the preference, skip the gender filter entirely
-      if (!currentUser.matchPreferences.genderPreference.includes('Everyone')) {
-        query.gender = { $in: expandedGenders };
-      }
+    // Gender: empty or "Everyone" = no filter (show all genders). Otherwise expand labels.
+    const expandedGenders = expandGenderPreference(
+      currentUser.matchPreferences?.genderPreference
+    );
+    if (expandedGenders) {
+      query.gender = { $in: expandedGenders };
     }
+
+    const distanceRange = currentUser.matchPreferences?.distanceRange;
+    const geoDistance = applyDiscoverDistanceToQuery(query, currentUser);
 
     // Apply age range filter.
     // Use $or so users who haven't stored an age yet (age: undefined/null)
@@ -99,30 +95,28 @@ export const getDiscoverUsers = async (req, res) => {
     // FIX 2: Fetch all candidates first (no DB-level offset), then sort/score,
     // then paginate. Using DB offset before scoring produces wrong results because
     // the DB order != the scored order. We fetch a generous pool instead.
+    // Distance filter requested but profile has no real coordinates — do not show worldwide profiles
+    if (geoDistance.locationRequired) {
+      return res.status(200).json({
+        success: true,
+        users: [],
+        total: 0,
+        hasMore: false,
+        filterNotice: 'LOCATION_REQUIRED',
+      });
+    }
+
     const poolSize = Math.max(200, parseInt(limit) * 10);
     let potentialMatches = await User.find(query)
       .select('-password -passwordResetToken -passwordResetExpires')
       .limit(poolSize)
       .lean();
 
-    console.log('🔍 DEBUG - userId:', userId);
-    console.log('🔍 DEBUG - currentUser found:', !!currentUser, '| age:', currentUser.age, '| gender:', currentUser.gender);
-    console.log('🔍 DEBUG - matchPreferences:', JSON.stringify(currentUser.matchPreferences));
-    console.log('🔍 DEBUG - interactedUsers count:', interactedUsers.length);
-    console.log('🔍 DEBUG - DB query:', JSON.stringify(query));
-    console.log('🔍 DEBUG - potentialMatches from DB:', potentialMatches.length, potentialMatches.map(u => `${u.username}(active:${u.discoverySettings?.isActive})`));
-
     // Calculate compatibility scores
     let scoredMatches = potentialMatches
       .map(user => {
         const score = calculateCompatibilityScore(currentUser, user);
-
-        let distance = null;
-        if (currentUser.location?.coordinates && user.location?.coordinates) {
-          const [lon1, lat1] = currentUser.location.coordinates;
-          const [lon2, lat2] = user.location.coordinates;
-          distance = calculateDistance(lat1, lon1, lat2, lon2);
-        }
+        const distance = computeDistanceBetweenUsers(currentUser, user);
 
         return {
           ...user,
@@ -132,26 +126,21 @@ export const getDiscoverUsers = async (req, res) => {
       })
       .filter(user => user.compatibilityScore >= parseInt(minScore));
 
-    console.log('🔍 DEBUG - after scoring, count:', scoredMatches.length, scoredMatches.map(u => `${u.username}(score:${u.compatibilityScore})`));
+    const { matches: distanceFiltered, locationRequired } = filterMatchesByDistance(
+      scoredMatches,
+      currentUser
+    );
+    scoredMatches = distanceFiltered;
 
-    // Apply distance filter only when:
-    //  1. The current user has a real (non-zero) location
-    //  2. They have a distanceRange preference saved
-    //  3. That value is below 500 km (the "Worldwide" sentinel used by the UI slider)
-    // When the slider is pushed to its maximum (500) the user explicitly means
-    // "show me everyone regardless of distance", so we skip the filter entirely.
-    const userCoords = currentUser.location?.coordinates;
-    const hasRealLocation = userCoords && !(userCoords[0] === 0 && userCoords[1] === 0);
-    const distanceRange = currentUser.matchPreferences?.distanceRange;
-    const isWorldwide = !distanceRange || distanceRange >= 500;
-    console.log('🔍 DEBUG - hasRealLocation:', hasRealLocation, '| distanceRange:', distanceRange, '| isWorldwide:', isWorldwide);
-    if (hasRealLocation && !isWorldwide) {
-      scoredMatches = scoredMatches.filter(user =>
-        !user.distance || user.distance <= distanceRange
-      );
+    if (locationRequired) {
+      return res.status(200).json({
+        success: true,
+        users: [],
+        total: 0,
+        hasMore: false,
+        filterNotice: 'LOCATION_REQUIRED',
+      });
     }
-
-    console.log('🔍 DEBUG - after distance filter, final count:', scoredMatches.length);
 
     // Sort based on preference
     switch (sortBy) {
@@ -226,7 +215,11 @@ export const getDiscoverUsers = async (req, res) => {
       success: true,
       users: formattedMatches,
       total: scoredMatches.length,
-      hasMore: scoredMatches.length > parsedOffset + parsedLimit
+      hasMore: scoredMatches.length > parsedOffset + parsedLimit,
+      ...(!isWorldwideDistance(distanceRange) &&
+        geoDistance.applied && {
+          distanceFilterKm: distanceRange,
+        }),
     });
 
   } catch (error) {

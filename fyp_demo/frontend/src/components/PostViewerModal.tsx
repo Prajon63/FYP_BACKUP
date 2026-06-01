@@ -137,15 +137,15 @@ const PostViewerModal: React.FC<PostViewerModalProps> = ({
               </button>
             </div>
 
-            {/* Image — standard focused viewport */}
-            <div className="relative bg-slate-900 flex items-center justify-center min-h-[200px] max-h-[min(65vh,520px)]">
+            {/* Image — fixed viewport; only the image scales inside */}
+            <div className="relative bg-slate-900 w-full h-[min(65vh,520px)] shrink-0 overflow-hidden">
               {images.length > 0 ? (
                 <>
                   <SafeImage
                     src={images[imageIndex]}
                     fallbackSeed={post._id}
                     alt={post.caption ? `Post: ${post.caption.slice(0, 40)}` : 'Post image'}
-                    className="max-w-full max-h-[min(65vh,520px)] w-auto h-auto object-contain"
+                    className="w-full h-full object-contain"
                   />
                   {images.length > 1 && (
                     <>

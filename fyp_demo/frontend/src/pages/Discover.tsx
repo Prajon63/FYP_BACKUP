@@ -21,6 +21,7 @@ import SafeImage from '../components/SafeImage';
 import MatchModal from '../components/MatchModal';
 import FilterModal from '../components/FilterModal';
 import { discoverService } from '../services/discoverService';
+import { userService } from '../services/userService';
 import type { DiscoveryUser, MatchPreferences, Like, LikedByMeItem, PassedItem } from '../types';
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
@@ -138,6 +139,9 @@ const Discover: React.FC = () => {
   const [matchScore, setMatchScore] = useState(0);
   // FIX 9: Track total available on server so we know when loadMore is worthwhile
   const [totalAvailable, setTotalAvailable] = useState(0);
+  const [hasMoreOnServer, setHasMoreOnServer] = useState(false);
+  const [discoverNotice, setDiscoverNotice] = useState<'LOCATION_REQUIRED' | null>(null);
+  const fetchGenerationRef = useRef(0);
   const [stats, setStats] = useState({
     likesReceived: 0,
     likedByMePending: 0,
@@ -199,33 +203,69 @@ const Discover: React.FC = () => {
     }
   }, [userId]);
 
+  const loadPreferences = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const profile = await userService.getUserProfile(userId);
+      if (profile.success && profile.user?.matchPreferences) {
+        const mp = profile.user.matchPreferences;
+        setPreferences({
+          ageRange: mp.ageRange ?? { min: 18, max: 100 },
+          distanceRange: mp.distanceRange ?? 500,
+          genderPreference: mp.genderPreference ?? [],
+        });
+      }
+    } catch (e) {
+      console.error('Failed to load match preferences:', e);
+    }
+  }, [userId]);
+
   useEffect(() => {
     if (!userId) {
       navigate('/');
       return;
     }
-    fetchUsers();
+    loadPreferences().then(() => fetchUsers());
     fetchStats();
     fetchLikes(true);
   }, [userId]);
 
   const fetchUsers = async () => {
+    const generation = ++fetchGenerationRef.current;
     try {
       setLoading(true);
+      setUsers([]);
+      setCurrentIndex(0);
+      setTotalAvailable(0);
+      setHasMoreOnServer(false);
+      setDiscoverNotice(null);
+
       const response = await discoverService.getDiscoverUsers(userId, {
         limit: 20,
-        sortBy: 'score'
+        sortBy: 'score',
+        offset: 0,
       });
 
+      if (generation !== fetchGenerationRef.current) return;
+
       if (response.success) {
+        const total = response.total ?? response.users.length;
         setUsers(response.users);
-        setTotalAvailable(response.total || response.users.length);
+        setTotalAvailable(total);
+        setHasMoreOnServer(response.hasMore ?? false);
         setCurrentIndex(0);
+        setDiscoverNotice(
+          response.filterNotice === 'LOCATION_REQUIRED' ? 'LOCATION_REQUIRED' : null
+        );
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to load users');
+      if (generation === fetchGenerationRef.current) {
+        toast.error(error.message || 'Failed to load users');
+      }
     } finally {
-      setLoading(false);
+      if (generation === fetchGenerationRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -291,9 +331,12 @@ const Discover: React.FC = () => {
         sortBy: 'score'
       });
 
-      if (response.success && response.users.length > 0) {
-        setUsers(prev => [...prev, ...response.users]);
-        setTotalAvailable(response.total || 0);
+      if (response.success) {
+        if (response.users.length > 0) {
+          setUsers((prev) => [...prev, ...response.users]);
+        }
+        setTotalAvailable(response.total ?? 0);
+        setHasMoreOnServer(response.hasMore ?? false);
       }
     } catch (error: any) {
       console.error('Failed to load more users:', error);
@@ -308,12 +351,12 @@ const Discover: React.FC = () => {
     setCurrentIndex(prev => {
       const next = prev + 1;
       // Load more when 3 cards from the end
-      if (next >= users.length - 3 && !loadingMore) {
+      if (next >= users.length - 3 && !loadingMore && hasMoreOnServer) {
         loadMoreUsers();
       }
       return next;
     });
-  }, [users.length, loadingMore, loadMoreUsers]);
+  }, [users.length, loadingMore, loadMoreUsers, hasMoreOnServer]);
 
   const handleLike = async () => {
     const currentUser = users[currentIndex];
@@ -398,7 +441,7 @@ const Discover: React.FC = () => {
       await discoverService.updateMatchPreferences(userId, newPreferences);
       setPreferences(newPreferences);
       toast.success('Filters updated!');
-      fetchUsers();
+      await fetchUsers();
     } catch (error: any) {
       toast.error(error.message || 'Failed to update filters');
     }
@@ -663,7 +706,16 @@ const Discover: React.FC = () => {
   };
 
   const currentUser = users[currentIndex];
-  const noMoreUsers = !loading && currentIndex >= users.length;
+  const profileTotal = Math.max(totalAvailable, users.length, 0);
+  const noMoreUsers =
+    !loading &&
+    (profileTotal === 0 ||
+      (currentIndex >= users.length && !hasMoreOnServer));
+  const filtersActive =
+    preferences.genderPreference.length > 0 ||
+    preferences.distanceRange < 500 ||
+    preferences.ageRange.min !== 18 ||
+    preferences.ageRange.max !== 100;
   const noMoreLikes = !loadingLikes && likesList.length === 0;
   const hasLikes = likesList.length > 0;
 
@@ -709,7 +761,7 @@ const Discover: React.FC = () => {
                 className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors relative"
               >
                 <Settings className="w-5 h-5 text-slate-600" />
-                {preferences.genderPreference.length > 0 && (
+                {filtersActive && (
                   <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
                 )}
               </button>
@@ -1123,9 +1175,23 @@ const Discover: React.FC = () => {
             <EmptyCard
               icon={<TrendingUp className="w-8 h-8" />}
               title="You're all caught up!"
-              description="No more users to show right now. Check back later for new matches."
-              ctaLabel="Refresh"
-              onCta={fetchUsers}
+              description={
+                discoverNotice === 'LOCATION_REQUIRED'
+                  ? 'Set your location in Preferences (use “Use current location” or search your city) so we can find people near you.'
+                  : filtersActive && preferences.distanceRange < 500
+                    ? `No profiles within ${preferences.distanceRange} km match your filters. Try increasing distance or choosing Everyone.`
+                    : filtersActive
+                      ? 'No profiles match your current filters. Try widening distance or choosing Everyone.'
+                      : 'No more users to show right now. Check back later for new matches.'
+              }
+              ctaLabel={
+                discoverNotice === 'LOCATION_REQUIRED' ? 'Set location' : 'Refresh'
+              }
+              onCta={
+                discoverNotice === 'LOCATION_REQUIRED'
+                  ? () => navigate('/preferences/setup')
+                  : fetchUsers
+              }
             />
             <button
               onClick={() => navigate('/matches')}
@@ -1143,7 +1209,9 @@ const Discover: React.FC = () => {
                 Super likes: {stats.superLikesRemaining}/{stats.superLikeLimit}
               </span>
               <span className="text-xs font-medium text-slate-600 tabular-nums">
-                {Math.min(currentIndex + 1, Math.max(users.length, 1))}/{Math.max(users.length, 1)}
+                {profileTotal === 0
+                  ? '0/0'
+                  : `${Math.min(currentIndex + 1, profileTotal)}/${profileTotal}`}
               </span>
             </div>
 
@@ -1183,7 +1251,7 @@ const Discover: React.FC = () => {
                 className="h-full bg-gradient-to-r from-rose-500 to-pink-500"
                 initial={false}
                 animate={{
-                  width: `${users.length > 0 ? Math.min(((currentIndex + 1) / users.length) * 100, 100) : 0}%`,
+                  width: `${profileTotal > 0 ? Math.min(((currentIndex + 1) / profileTotal) * 100, 100) : 0}%`,
                 }}
                 transition={{ duration: 0.35 }}
               />
@@ -1194,7 +1262,9 @@ const Discover: React.FC = () => {
         {activeSection === 'discover' && !noMoreUsers && !searchActive && (
           <div className="text-center mt-6">
             <p className="text-sm text-slate-500">
-              {currentIndex + 1} / {users.length}
+              {profileTotal === 0
+                ? '0 profiles'
+                : `${Math.min(currentIndex + 1, profileTotal)} / ${profileTotal}`}
               {loadingMore && ' (loading more...)'}
             </p>
           </div>

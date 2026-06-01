@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSocket, connectSocket } from '../services/socketService';
-import { getChatHistory } from '../services/chatService';
-import { ChatMessage, ProfilePrivacy, SendMessagePayload } from '../types';
+import {
+  getChatHistory,
+  uploadChatImages,
+  deleteChatMessage as deleteChatMessageApi,
+  MAX_CHAT_IMAGES,
+} from '../services/chatService';
+import { ChatMessage, ProfilePrivacy, SendMessagePayload, MessageDeletedPayload } from '../types';
 
 interface UseChatOptions {
   matchId: string;
@@ -11,6 +16,11 @@ interface UseChatOptions {
 interface UseChatReturn {
   messages: ChatMessage[];
   sendMessage: (content: string) => void;
+  sendImageMessages: (files: File[]) => Promise<void>;
+  unsendMessage: (messageId: string) => Promise<void>;
+  unsendingMessageId: string | null;
+  maxChatImages: number;
+  isUploadingImage: boolean;
   isConnected: boolean;
   isTyping: boolean;
   onTyping: () => void;
@@ -27,6 +37,8 @@ export const useChat = ({ matchId, receiverId }: UseChatOptions): UseChatReturn 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [privacy, setPrivacy] = useState<ProfilePrivacy | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [unsendingMessageId, setUnsendingMessageId] = useState<string | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load history & join room
@@ -80,11 +92,17 @@ export const useChat = ({ matchId, receiverId }: UseChatOptions): UseChatReturn 
       setMessages(prev => prev.map(m => ({ ...m, read: true })));
     };
 
+    const handleMessageDeleted = ({ messageId, matchId: deletedMatchId }: MessageDeletedPayload) => {
+      if (deletedMatchId !== matchId) return;
+      setMessages((prev) => prev.filter((m) => m._id !== messageId));
+    };
+
     socket.on('receive_message', handleReceiveMessage);
     socket.on('user_typing', handleUserTyping);
     socket.on('user_stopped_typing', handleUserStoppedTyping);
     socket.on('error', handleError);
     socket.on('messages_read', handleMessagesRead);
+    socket.on('message_deleted', handleMessageDeleted);
 
     return () => {
       socket.off('receive_message', handleReceiveMessage);
@@ -92,6 +110,7 @@ export const useChat = ({ matchId, receiverId }: UseChatOptions): UseChatReturn 
       socket.off('user_stopped_typing', handleUserStoppedTyping);
       socket.off('error', handleError);
       socket.off('messages_read', handleMessagesRead);
+      socket.off('message_deleted', handleMessageDeleted);
     };
   }, [matchId]);
 
@@ -103,6 +122,52 @@ export const useChat = ({ matchId, receiverId }: UseChatOptions): UseChatReturn 
 
       const payload: SendMessagePayload = { matchId, receiverId, content: content.trim() };
       socket.emit('send_message', payload);
+    },
+    [matchId, receiverId, privacy]
+  );
+
+  const sendImageMessages = useCallback(
+    async (files: File[]) => {
+      if (privacy && privacy.canMessage === false) return;
+      if (!files.length) return;
+
+      const invalid = files.find((f) => !f.type.startsWith('image/'));
+      if (invalid) {
+        setError('Please choose image files only');
+        return;
+      }
+      const tooLarge = files.find((f) => f.size > 5 * 1024 * 1024);
+      if (tooLarge) {
+        setError('Each image must be 5MB or smaller');
+        return;
+      }
+      if (files.length > MAX_CHAT_IMAGES) {
+        setError(`You can send up to ${MAX_CHAT_IMAGES} images at a time`);
+        return;
+      }
+
+      try {
+        setIsUploadingImage(true);
+        setError(null);
+        const sent = await uploadChatImages(matchId, receiverId, files);
+        setMessages((prev) => {
+          const next = [...prev];
+          for (const message of sent) {
+            if (!next.find((m) => m._id === message._id)) {
+              next.push(message);
+            }
+          }
+          return next;
+        });
+      } catch (err: unknown) {
+        const msg =
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Failed to send images';
+        setError(msg);
+        throw err;
+      } finally {
+        setIsUploadingImage(false);
+      }
     },
     [matchId, receiverId, privacy]
   );
@@ -126,9 +191,34 @@ export const useChat = ({ matchId, receiverId }: UseChatOptions): UseChatReturn 
     socket.emit('stop_typing', { matchId });
   }, [matchId]);
 
+  const unsendMessage = useCallback(
+    async (messageId: string) => {
+      try {
+        setUnsendingMessageId(messageId);
+        setError(null);
+        await deleteChatMessageApi(matchId, messageId);
+        setMessages((prev) => prev.filter((m) => m._id !== messageId));
+      } catch (err: unknown) {
+        const msg =
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Failed to unsend message';
+        setError(msg);
+        throw err;
+      } finally {
+        setUnsendingMessageId(null);
+      }
+    },
+    [matchId]
+  );
+
   return {
     messages,
     sendMessage,
+    sendImageMessages,
+    unsendMessage,
+    unsendingMessageId,
+    maxChatImages: MAX_CHAT_IMAGES,
+    isUploadingImage,
     isConnected,
     isTyping,
     onTyping,

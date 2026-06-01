@@ -125,7 +125,7 @@ const userSchema = new mongoose.Schema({
       min: { type: Number, default: 18 },
       max: { type: Number, default: 100 }
     },
-    distanceRange: { type: Number, default: 50 }, // in km
+    distanceRange: { type: Number, default: 500 }, // 500+ = worldwide in discover UI
     genderPreference: [{ type: String }], // Same as interestedIn
     dealBreakers: {
       type: [String],

@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import Match from '../models/Match.js';
-import Message from '../models/Message.js';
-import { getBlockContext, chatBlockMessage } from '../Utils/privacyAccess.js';
+import { dispatchChatMessage } from '../Utils/dispatchChatMessage.js';
 
 /**
  * Registers all socket.io chat logic on the given `io` instance.
@@ -65,100 +64,20 @@ export const registerChatSocket = (io) => {
           });
         }
 
-        if (content.trim().length > 1000) {
-          return socket.emit('error', { message: 'Message too long (max 1000 chars)' });
-        }
-
-        const match = await Match.findById(matchId);
-        if (!match) return socket.emit('error', { message: 'Match not found' });
-
-        const isParticipant =
-          match.fromUser.toString() === socket.userId.toString() ||
-          match.toUser.toString() === socket.userId.toString();
-
-        if (!isParticipant) {
-          return socket.emit('error', { message: 'Not authorized for this match' });
-        }
-
-        const rid = String(receiverId);
-        const isValidReceiver =
-          match.fromUser.toString() === rid ||
-          match.toUser.toString() === rid;
-
-        if (!isValidReceiver) {
-          return socket.emit('error', { message: 'Invalid receiver for this match' });
-        }
-
-        const blockCtx = await getBlockContext(socket.userId, rid);
-        if (!blockCtx.canMessage) {
-          return socket.emit('error', {
-            message: chatBlockMessage(blockCtx) || 'Messaging is unavailable.',
-            code: blockCtx.blockedMe ? 'BLOCKED_BY_USER' : 'BLOCKED_BY_YOU'
-          });
-        }
-
-        // Find both directions of this match so both users,
-        // regardless of which Match document their UI uses,
-        // share a single real-time thread.
-        const pairMatches = await Match.find({
-          $or: [
-            { fromUser: match.fromUser, toUser: match.toUser },
-            { fromUser: match.toUser, toUser: match.fromUser }
-          ]
-        }).select('_id');
-
-        const targetMatchId = match._id;
-
-        const message = await Message.create({
-          matchId: targetMatchId,
-          sender: socket.userId,
-          receiver: rid,
-          content: content.trim()
-        });
-
-        const now = new Date();
-        const pairIds = pairMatches.length
-          ? pairMatches.map((m) => m._id)
-          : [targetMatchId];
-        await Match.updateMany(
-          { _id: { $in: pairIds } },
-          {
-            $set: {
-              lastMessageAt: now,
-              conversationStarted: true,
-              updatedAt: now,
-            },
-          }
-        );
-
-        const populated = await message.populate([
-          { path: 'sender', select: 'username profilePicture' },
-          { path: 'receiver', select: 'username profilePicture' }
-        ]);
-
-        // Broadcast to both possible match rooms so each side receives updates
-        const matchIdsToNotify = pairMatches.length
-          ? pairMatches.map((m) => m._id.toString())
-          : [targetMatchId.toString()];
-
-        matchIdsToNotify.forEach((id) => {
-          io.to(`chat:${id}`).emit('receive_message', populated);
-        });
-
-        const preview = content.trim().slice(0, 60);
-        const senderName = populated.sender?.username;
-
-        const receiverRoomId = rid;
-
-        io.to(`user:${receiverRoomId}`).emit('new_message_notification', {
-          matchId: String(matchId),
-          senderId: String(socket.userId),
-          preview,
-          senderUsername: senderName
+        await dispatchChatMessage({
+          io,
+          matchId,
+          senderId: socket.userId,
+          receiverId,
+          content: content.trim(),
+          messageType: 'text',
         });
       } catch (err) {
         console.error('[Socket] send_message error:', err);
-        socket.emit('error', { message: 'Could not send message' });
+        socket.emit('error', {
+          message: err.message || 'Could not send message',
+          code: err.code,
+        });
       }
     });
 

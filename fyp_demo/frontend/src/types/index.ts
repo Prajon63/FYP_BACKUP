@@ -333,6 +333,8 @@ export interface DiscoverUsersResponse {
   users: DiscoveryUser[];
   total: number;
   hasMore: boolean;
+  filterNotice?: 'LOCATION_REQUIRED';
+  distanceFilterKm?: number;
   error?: string;
 }
 
@@ -436,7 +438,9 @@ export interface ChatMessage {
     username: string;
     profilePicture?: string;
   };
+  messageType?: 'text' | 'image';
   content: string;
+  imageUrl?: string;
   read: boolean;
   createdAt: string;
   updatedAt: string;
@@ -455,5 +459,10 @@ export interface NewMessageNotification {
 }
 
 export interface MessagesReadPayload {
+  matchId: string;
+}
+
+export interface MessageDeletedPayload {
+  messageId: string;
   matchId: string;
 }

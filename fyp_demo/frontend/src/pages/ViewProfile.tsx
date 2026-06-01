@@ -33,6 +33,8 @@ import { discoverService } from '../services/discoverService';
 import { userService } from '../services/userService';
 import type { User, Post, ProfilePrivacy } from '../types';
 import PostViewerModal from '../components/PostViewerModal';
+import GalleryViewerModal from '../components/GalleryViewerModal';
+import SafeImage from '../components/SafeImage';
 
 // ─── Font import ──────────────────────────────────────────────────────────────
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
@@ -99,24 +101,43 @@ function InfoRow({
 }
 
 /** Photo carousel for the gallery tab */
-function GalleryCarousel({ photos }: { photos: string[] }) {
+function GalleryCarousel({
+  photos,
+  onPhotoClick,
+  fallbackSeed = 'gallery',
+}: {
+  photos: string[];
+  onPhotoClick?: (index: number) => void;
+  fallbackSeed?: string;
+}) {
   const [idx, setIdx] = useState(0);
   if (!photos.length) return null;
 
   return (
     <div className="relative mx-auto w-full max-w-xs rounded-2xl overflow-hidden bg-slate-100" style={{ aspectRatio: '4/5' }}>
-      <AnimatePresence mode="wait">
-        <motion.img
-          key={photos[idx]}
-          src={photos[idx]}
-          alt=""
-          initial={{ opacity: 0, x: 40 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -40 }}
-          transition={{ duration: 0.25 }}
-          className="w-full h-full object-cover"
-        />
-      </AnimatePresence>
+      <button
+        type="button"
+        onClick={() => onPhotoClick?.(idx)}
+        className={`w-full h-full block ${onPhotoClick ? 'cursor-pointer' : ''}`}
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={photos[idx]}
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -40 }}
+            transition={{ duration: 0.25 }}
+            className="w-full h-full"
+          >
+            <SafeImage
+              src={photos[idx]}
+              fallbackSeed={`${fallbackSeed}-${idx}`}
+              alt={`Gallery photo ${idx + 1}`}
+              className="w-full h-full object-cover"
+            />
+          </motion.div>
+        </AnimatePresence>
+      </button>
 
       {/* Dots */}
       <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
@@ -353,6 +374,7 @@ const ViewProfile: React.FC = () => {
   const [profile, setProfile] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [viewingPost, setViewingPost] = useState<Post | null>(null);
+  const [viewingGalleryIndex, setViewingGalleryIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -944,16 +966,27 @@ const ViewProfile: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <GalleryCarousel photos={photos} />
+                    <GalleryCarousel
+                      photos={photos}
+                      fallbackSeed={profile?._id}
+                      onPhotoClick={setViewingGalleryIndex}
+                    />
                     {photos.length > 1 && (
                       <div className="grid grid-cols-3 gap-2">
                         {photos.map((photo, i) => (
-                          <img
+                          <button
                             key={i}
-                            src={photo}
-                            alt=""
-                            className="aspect-square rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                          />
+                            type="button"
+                            onClick={() => setViewingGalleryIndex(i)}
+                            className="aspect-square rounded-xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                          >
+                            <SafeImage
+                              src={photo}
+                              fallbackSeed={`${profile?._id}-thumb-${i}`}
+                              alt={`Gallery thumbnail ${i + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
                         ))}
                       </div>
                     )}
@@ -1094,6 +1127,16 @@ const ViewProfile: React.FC = () => {
           username={profile?.username}
           profilePicture={profile?.profilePicture}
           onClose={() => setViewingPost(null)}
+        />
+
+        <GalleryViewerModal
+          photos={photos}
+          initialIndex={viewingGalleryIndex ?? 0}
+          isOpen={viewingGalleryIndex !== null}
+          onClose={() => setViewingGalleryIndex(null)}
+          username={profile?.username}
+          profilePicture={profile?.profilePicture}
+          fallbackSeed={profile?._id}
         />
 
         {/* ── Block confirm modal ── */}

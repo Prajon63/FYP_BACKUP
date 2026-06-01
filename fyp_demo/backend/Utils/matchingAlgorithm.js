@@ -76,17 +76,13 @@ export const calculateLocationScore = (userLocation, targetLocation, maxDistance
     return 50; // Neutral score if location not available
   }
 
-  const [lon1, lat1] = userLocation.coordinates;
-  const [lon2, lat2] = targetLocation.coordinates;
-
-  // If either user has default [0,0] coordinates (no real location set), return neutral
-  const userHasRealLocation = !(lon1 === 0 && lat1 === 0);
-  const targetHasRealLocation = !(lon2 === 0 && lat2 === 0);
-  if (!userHasRealLocation || !targetHasRealLocation) {
+  const distance = computeDistanceBetweenUsers(
+    { location: userLocation },
+    { location: targetLocation }
+  );
+  if (distance == null) {
     return 50;
   }
-
-  const distance = calculateDistance(lat1, lon1, lat2, lon2);
 
   // Return 50 (neutral) if beyond max distance, so they still appear but ranked lower
   if (distance > maxDistance) {
@@ -343,6 +339,104 @@ const calculateRelationshipGoalScore = (userGoal, targetGoal) => {
   return 30;
 };
 
+/** Maps discovery filter labels to stored profile gender values */
+export const GENDER_PREFERENCE_MAP = {
+  Men: ['Men', 'Male'],
+  Women: ['Women', 'Female'],
+  'Non-binary': ['Non-binary', 'Other'],
+  Everyone: ['Male', 'Female', 'Men', 'Women', 'Non-binary', 'Other', ''],
+};
+
+/**
+ * Expand UI gender preference labels for DB / in-memory matching.
+ */
+export const expandGenderPreference = (genderPreference = []) => {
+  if (!genderPreference?.length || genderPreference.includes('Everyone')) {
+    return null;
+  }
+  return [
+    ...new Set(
+      genderPreference.flatMap((g) => GENDER_PREFERENCE_MAP[g] || [g])
+    ),
+  ];
+};
+
+export const targetMatchesGenderPreference = (targetGender, genderPreference = []) => {
+  const expanded = expandGenderPreference(genderPreference);
+  if (!expanded) return true;
+  return expanded.includes(targetGender);
+};
+
+/**
+ * Valid GeoJSON-style [longitude, latitude], not the schema default [0, 0].
+ */
+export const hasRealUserLocation = (user) => {
+  const coords = user?.location?.coordinates;
+  if (!Array.isArray(coords) || coords.length < 2) return false;
+  const lon = Number(coords[0]);
+  const lat = Number(coords[1]);
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) return false;
+  if (Math.abs(lon) < 0.0001 && Math.abs(lat) < 0.0001) return false;
+  return true;
+};
+
+export const isWorldwideDistance = (distanceRange) =>
+  !distanceRange || distanceRange >= 500;
+
+/**
+ * Distance in km between two users, or null if either location is invalid.
+ */
+export const computeDistanceBetweenUsers = (userA, userB) => {
+  if (!hasRealUserLocation(userA) || !hasRealUserLocation(userB)) return null;
+  const [lon1, lat1] = userA.location.coordinates.map(Number);
+  const [lon2, lat2] = userB.location.coordinates.map(Number);
+  return calculateDistance(lat1, lon1, lat2, lon2);
+};
+
+/**
+ * MongoDB $geoWithin filter for discover (km radius from current user).
+ */
+export const applyDiscoverDistanceToQuery = (query, currentUser) => {
+  const distanceRange = currentUser.matchPreferences?.distanceRange;
+  if (isWorldwideDistance(distanceRange) || !hasRealUserLocation(currentUser)) {
+    return { applied: false, locationRequired: !isWorldwideDistance(distanceRange) };
+  }
+
+  const [lon, lat] = currentUser.location.coordinates.map(Number);
+  const radiusRadians = distanceRange / 6378.137;
+
+  query['location.coordinates'] = {
+    $geoWithin: {
+      $centerSphere: [[lon, lat], radiusRadians],
+    },
+  };
+
+  return { applied: true, locationRequired: false };
+};
+
+/**
+ * Strict post-score distance filter (safety net after geo query).
+ */
+export const filterMatchesByDistance = (scoredMatches, currentUser) => {
+  const distanceRange = currentUser.matchPreferences?.distanceRange;
+  if (isWorldwideDistance(distanceRange)) {
+    return { matches: scoredMatches, locationRequired: false };
+  }
+
+  if (!hasRealUserLocation(currentUser)) {
+    return { matches: [], locationRequired: true };
+  }
+
+  const filtered = scoredMatches.filter(
+    (user) =>
+      user.distance != null &&
+      Number.isFinite(user.distance) &&
+      user.distance <= distanceRange
+  );
+
+  return { matches: filtered, locationRequired: false };
+};
+
 /**
  * Filter users based on basic criteria
  * @param {object} currentUser - Current user
@@ -355,14 +449,14 @@ export const passesBasicFilters = (currentUser, targetUser) => {
   // Check age range
   if (prefs.ageRange) {
     const { min = 18, max = 100 } = prefs.ageRange;
-    if (targetUser.age < min || targetUser.age > max) {
+    if (targetUser.age != null && (targetUser.age < min || targetUser.age > max)) {
       return false;
     }
   }
 
-  // Check gender preference
-  if (prefs.genderPreference && prefs.genderPreference.length > 0) {
-    if (!prefs.genderPreference.includes(targetUser.gender)) {
+  // Check gender preference (Men/Women labels vs Male/Female storage)
+  if (prefs.genderPreference?.length > 0) {
+    if (!targetMatchesGenderPreference(targetUser.gender, prefs.genderPreference)) {
       return false;
     }
   }
@@ -382,6 +476,13 @@ export const passesBasicFilters = (currentUser, targetUser) => {
 export default {
   calculateCompatibilityScore,
   calculateDistance,
+  expandGenderPreference,
+  targetMatchesGenderPreference,
+  filterMatchesByDistance,
+  computeDistanceBetweenUsers,
+  applyDiscoverDistanceToQuery,
+  hasRealUserLocation,
+  isWorldwideDistance,
   passesBasicFilters,
   calculateAgeScore,
   calculateLocationScore,

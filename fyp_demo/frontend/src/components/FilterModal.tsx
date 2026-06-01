@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sliders } from 'lucide-react';
 import type { MatchPreferences } from '../types';
@@ -20,6 +20,10 @@ const FilterModal: React.FC<FilterModalProps> = ({
 }) => {
   const [preferences, setPreferences] = useState<MatchPreferences>(currentPreferences);
 
+  useEffect(() => {
+    if (isOpen) setPreferences(currentPreferences);
+  }, [isOpen, currentPreferences]);
+
   const handleApply = () => {
     onApplyFilters(preferences);
     onClose();
@@ -34,15 +38,30 @@ const FilterModal: React.FC<FilterModalProps> = ({
     setPreferences(defaultPrefs);
   };
 
+  const isGenderSelected = (gender: string) => {
+    const selected = preferences.genderPreference || [];
+    if (gender === 'Everyone') {
+      return selected.length === 0 || selected.includes('Everyone');
+    }
+    return selected.includes(gender);
+  };
+
   const toggleGender = (gender: string) => {
     const current = preferences.genderPreference || [];
-    const newGenders = current.includes(gender)
-      ? current.filter(g => g !== gender)
-      : [...current, gender];
-    
+
+    if (gender === 'Everyone') {
+      setPreferences({ ...preferences, genderPreference: [] });
+      return;
+    }
+
+    const withoutEveryone = current.filter((g) => g !== 'Everyone');
+    const newGenders = withoutEveryone.includes(gender)
+      ? withoutEveryone.filter((g) => g !== gender)
+      : [...withoutEveryone, gender];
+
     setPreferences({
       ...preferences,
-      genderPreference: newGenders
+      genderPreference: newGenders,
     });
   };
 
@@ -173,7 +192,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                       key={gender}
                       onClick={() => toggleGender(gender)}
                       className={`py-3 px-4 rounded-xl font-medium transition-all ${
-                        preferences.genderPreference?.includes(gender)
+                        isGenderSelected(gender)
                           ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
@@ -183,7 +202,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                   ))}
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  Select multiple options to see more people
+                  Everyone shows all profiles. Select Men and/or Women to narrow results.
                 </p>
               </div>
             </div>

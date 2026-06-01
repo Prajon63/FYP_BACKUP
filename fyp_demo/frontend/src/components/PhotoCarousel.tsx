@@ -10,9 +10,14 @@ import SafeImage from './SafeImage';
 interface PhotoCarouselProps {
   photos: string[];
   fallbackSeed?: string;
+  onViewPhoto?: (index: number) => void;
 }
 
-const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ photos, fallbackSeed = 'photos' }) => {
+const PhotoCarousel: React.FC<PhotoCarouselProps> = ({
+  photos,
+  fallbackSeed = 'photos',
+  onViewPhoto,
+}) => {
   if (!photos?.length) return null;
 
   return (
@@ -35,14 +40,20 @@ const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ photos, fallbackSeed = 'p
       >
         {photos.map((url, idx) => (
           <SwiperSlide key={idx}>
-            <div className="aspect-square rounded-2xl overflow-hidden shadow-lg">
+            <button
+              type="button"
+              onClick={() => onViewPhoto?.(idx)}
+              className={`aspect-square rounded-2xl overflow-hidden shadow-lg w-full block ${
+                onViewPhoto ? 'cursor-pointer' : ''
+              }`}
+            >
               <SafeImage
                 src={url}
                 fallbackSeed={`${fallbackSeed}-${idx}`}
                 alt={`Photo ${idx + 1}`}
                 className="w-full h-full object-cover"
               />
-            </div>
+            </button>
           </SwiperSlide>
         ))}
       </Swiper>

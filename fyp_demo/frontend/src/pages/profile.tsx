@@ -13,6 +13,7 @@ import api from '../services/api';
 import type { User, Post, ProfileUpdateData } from '../types';
 import PostCard from '../components/PostCard';
 import PostViewerModal from '../components/PostViewerModal';
+import GalleryViewerModal from '../components/GalleryViewerModal';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import ProfileCompletion from '../components/ProfileCompletion';
@@ -35,6 +36,7 @@ const Profile: React.FC = () => {
   const [isAddingPost, setIsAddingPost] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [viewingPost, setViewingPost] = useState<Post | null>(null);
+  const [viewingGalleryIndex, setViewingGalleryIndex] = useState<number | null>(null);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
@@ -580,7 +582,11 @@ const Profile: React.FC = () => {
               )}
             </div>
             {user.photos && user.photos.length > 0 && (
-              <PhotoCarousel photos={user.photos} fallbackSeed={user._id} />
+              <PhotoCarousel
+                photos={user.photos}
+                fallbackSeed={user._id}
+                onViewPhoto={setViewingGalleryIndex}
+              />
             )}
           </motion.div>
         ) : (
@@ -682,6 +688,16 @@ const Profile: React.FC = () => {
         onClose={() => setViewingPost(null)}
         onLike={handleToggleLike}
         liked={viewingPost ? likedPosts.has(viewingPost._id) : false}
+      />
+
+      <GalleryViewerModal
+        photos={user?.photos || []}
+        initialIndex={viewingGalleryIndex ?? 0}
+        isOpen={viewingGalleryIndex !== null}
+        onClose={() => setViewingGalleryIndex(null)}
+        username={displayName}
+        profilePicture={user?.profilePicture}
+        fallbackSeed={user?._id}
       />
 
       {/* ════════════════════════════════════════════════════════════════════ */}

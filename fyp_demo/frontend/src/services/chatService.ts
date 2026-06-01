@@ -45,3 +45,38 @@ export const getUnreadMessageDigest = async (): Promise<UnreadDigestItem[]> => {
   return data.items ?? [];
 };
 
+export const MAX_CHAT_IMAGES = 4;
+
+/**
+ * Upload up to 4 images and send each as a chat message (multipart via multer).
+ */
+export const uploadChatImages = async (
+  matchId: string,
+  receiverId: string,
+  files: File[]
+): Promise<ChatMessage[]> => {
+  if (!files.length) return [];
+
+  const formData = new FormData();
+  files.forEach((file) => formData.append('images', file));
+  formData.append('receiverId', receiverId);
+
+  const { data } = await api.post<{
+    success: boolean;
+    messages: ChatMessage[];
+    message?: ChatMessage;
+  }>(`/chat/${matchId}/image`, formData);
+
+  return data.messages ?? (data.message ? [data.message] : []);
+};
+
+/**
+ * Unsend/delete a message (own messages only).
+ */
+export const deleteChatMessage = async (
+  matchId: string,
+  messageId: string
+): Promise<void> => {
+  await api.delete(`/chat/${matchId}/messages/${messageId}`);
+};
+

@@ -1,6 +1,21 @@
 import Message from '../models/Message.js';
 import Match from '../models/Match.js';
+import cloudinary from '../config/cloudinary.js';
 import { getBlockContext, chatBlockMessage } from '../Utils/privacyAccess.js';
+import { dispatchChatMessage, messagePreview } from '../Utils/dispatchChatMessage.js';
+import { deleteChatMessage as removeChatMessage } from '../Utils/deleteChatMessage.js';
+
+const uploadChatImageToCloudinary = (file) =>
+  new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: 'capella_chat', resource_type: 'image' },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result.secure_url);
+      }
+    );
+    stream.end(file.buffer);
+  });
 
 /**
  * GET /api/chat/:matchId
@@ -110,7 +125,7 @@ export const getUnreadDigest = async (req, res) => {
       matchId: m.matchId.toString(),
       senderId: m.sender?._id?.toString?.() || '',
       senderUsername: m.sender?.username || 'Someone',
-      preview: (m.content || '').slice(0, 60),
+      preview: messagePreview(m),
       createdAt: m.createdAt?.toISOString?.() || new Date().toISOString(),
       messageId: m._id.toString()
     }));
@@ -119,6 +134,94 @@ export const getUnreadDigest = async (req, res) => {
   } catch (err) {
     console.error('getUnreadDigest error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+const MAX_CHAT_IMAGES = 4;
+
+/**
+ * POST /api/chat/:matchId/image
+ * Upload chat images (multipart field: images, max 4). Body: receiverId
+ */
+export const uploadChatImage = async (req, res) => {
+  try {
+    const { matchId } = req.params;
+    const { receiverId } = req.body;
+
+    if (!receiverId) {
+      return res.status(400).json({ message: 'receiverId is required' });
+    }
+
+    const files = req.files;
+    if (!files?.length) {
+      return res.status(400).json({ message: 'At least one image is required' });
+    }
+
+    if (files.length > MAX_CHAT_IMAGES) {
+      return res.status(400).json({
+        message: `You can send up to ${MAX_CHAT_IMAGES} images at a time`,
+      });
+    }
+
+    const imageUrls = await Promise.all(
+      files.map((file) => uploadChatImageToCloudinary(file))
+    );
+    const io = req.app.get('io');
+
+    const messages = [];
+    const count = imageUrls.length;
+    const batchPreview =
+      count > 1 ? `📷 ${count} photos` : '📷 Photo';
+
+    for (let i = 0; i < imageUrls.length; i++) {
+      const message = await dispatchChatMessage({
+        io,
+        matchId,
+        senderId: req.user._id,
+        receiverId,
+        messageType: 'image',
+        imageUrl: imageUrls[i],
+        content: '',
+        notify: i === imageUrls.length - 1,
+        notificationPreview: batchPreview,
+      });
+      messages.push(message);
+    }
+
+    res.status(201).json({ success: true, messages, message: messages[0] });
+  } catch (err) {
+    console.error('uploadChatImage error:', err);
+    const status = err.status || 500;
+    res.status(status).json({
+      message: err.message || 'Failed to upload images',
+      code: err.code,
+    });
+  }
+};
+
+/**
+ * DELETE /api/chat/:matchId/messages/:messageId
+ * Unsend/delete a message (sender only). Text and image messages.
+ */
+export const deleteChatMessage = async (req, res) => {
+  try {
+    const { matchId, messageId } = req.params;
+    const io = req.app.get('io');
+
+    const result = await removeChatMessage({
+      io,
+      matchId,
+      messageId,
+      userId: req.user._id,
+    });
+
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('deleteChatMessage error:', err);
+    const status = err.status || 500;
+    res.status(status).json({
+      message: err.message || 'Failed to delete message',
+    });
   }
 };
 
