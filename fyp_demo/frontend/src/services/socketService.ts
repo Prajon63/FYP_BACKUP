@@ -1,20 +1,7 @@
 import { io, Socket } from 'socket.io-client';
+import { resolveSocketUrl } from '../config/apiConfig';
 
 const SOCKET_RESET_EVENT = 'capella-socket-reset';
-
-function resolveSocketUrl(): string {
-  const direct = import.meta.env.VITE_SOCKET_URL?.replace(/\/$/, '');
-  if (direct) return direct;
-
-  const api = import.meta.env.VITE_API_URL;
-  if (api) return api.replace(/\/api\/?$/, '').replace(/\/$/, '') || 'http://localhost:5000';
-
-  if (typeof window !== 'undefined') {
-    const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:5000`;
-  }
-  return 'http://localhost:5000';
-}
 
 function notifySocketInstanceChanged(): void {
   if (typeof window === 'undefined') return;
