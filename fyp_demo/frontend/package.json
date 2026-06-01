@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/verify-dist.mjs",
+    "build": "vite build && node scripts/copy-spa-fallbacks.mjs && node scripts/verify-dist.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
