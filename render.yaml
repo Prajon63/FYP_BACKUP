@@ -1,0 +1,40 @@
+# Render Blueprint — deploy from repo root (FYP_BACKUP)
+# Dashboard: New > Blueprint > connect repo, or apply these settings manually.
+
+services:
+  - type: web
+    name: capella-api
+    runtime: node
+    rootDir: fyp_demo/backend
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  - type: web
+    name: capella-app
+    runtime: static
+    rootDir: fyp_demo/frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+      - key: VITE_SOCKET_URL
+        sync: false

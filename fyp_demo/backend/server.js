@@ -22,14 +22,45 @@ dotenv.config();  //es module style ma environment var load gareko
 const app = express();
 
 const isDev = (process.env.NODE_ENV || 'development') !== 'production';
-const clientOrigin =
-  process.env.CLIENT_URL || 'http://localhost:5173';
 
-//middleware — in dev, reflect browser origin so LAN (192.168.x) + localhost both work
-app.use(cors({
-  origin: isDev ? true : clientOrigin,
-  credentials: true
-}));
+/** Comma-separated CLIENT_URL / FRONTEND_URL, no trailing slashes */
+function getAllowedOrigins() {
+  const raw =
+    process.env.CLIENT_URL ||
+    process.env.FRONTEND_URL ||
+    'http://localhost:5173';
+  return [
+    ...new Set(
+      raw
+        .split(',')
+        .map((o) => o.trim().replace(/\/$/, ''))
+        .filter(Boolean)
+    ),
+  ];
+}
+
+const allowedOrigins = getAllowedOrigins();
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (isDev) return callback(null, true);
+    const normalized = origin.replace(/\/$/, '');
+    if (allowedOrigins.includes(normalized)) {
+      return callback(null, true);
+    }
+    console.warn(
+      `[CORS] Blocked origin: ${origin} | Allowed: ${allowedOrigins.join(', ')}`
+    );
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(json());
 
 // connect to MongoDB — must complete before routes handle traffic
@@ -80,10 +111,10 @@ const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: isDev ? true : clientOrigin,
+    origin: isDev ? true : allowedOrigins,
     methods: ['GET', 'POST'],
-    credentials: true
-  }
+    credentials: true,
+  },
 });
 
 app.set('io', io);
@@ -93,4 +124,7 @@ registerChatSocket(io);
 httpServer.listen(PORT, () => {
   console.log(`Backend server running → http://localhost:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  if (!isDev) {
+    console.log(`CORS allowed origins: ${allowedOrigins.join(', ')}`);
+  }
 });

@@ -6,13 +6,22 @@
 import mongoose from "mongoose";
 import dotenv from 'dotenv';
 dotenv.config();
-const connectDB = async () => { //async await use garnu parxa
+const connectDB = async () => {
+  const uri = process.env.MONGO_URI?.trim();
+  if (!uri) {
+    console.error(
+      'MongoDB Connection Error: MONGO_URI is not set. ' +
+        'Add it in Render → Environment (or backend/.env locally).'
+    );
+    process.exit(1);
+  }
+
   try {
-    await mongoose.connect(process.env.MONGO_URI);   //from .env file
-    console.log("MongoDB Connected");
+    await mongoose.connect(uri);
+    console.log('MongoDB Connected');
   } catch (err) {
-    console.error("MongoDB Connection Error:", err);
-    process.exit(1); // Stop server if DB fails
+    console.error('MongoDB Connection Error:', err.message || err);
+    process.exit(1);
   }
 };
 
