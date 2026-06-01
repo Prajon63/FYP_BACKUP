@@ -197,11 +197,6 @@ function ProfileCard({
   const coverImage = (user as any).coverImage as string | undefined;
   const bannerSrc = coverImage || user.profilePicture || dicebear;
 
-  // Body image (the "post" preview section):
-  //   profilePicture → dicebear
-  // Once real posts are available from the API, swap to post.images[0].
-  const bodyImageSrc = user.profilePicture || dicebear;
-
   // ── Handlers ────────────────────────────────────────────────────────
   const goToProfile = () => {
     if (user._id === currentUserId) navigate('/profile');
@@ -334,19 +329,6 @@ function ProfileCard({
             )}
           </div>
         )}
-
-        {/* Body image — profile pic (or dicebear).
-            TODO: replace bodyImageSrc with post.images[0] once post data
-            is included in the discover API response. */}
-        <div className="relative rounded-2xl overflow-hidden">
-          <SafeImage
-            src={bodyImageSrc}
-            fallbackSeed={user._id}
-            alt={`${user.username || 'User'}'s photo`}
-            className="w-full h-56 object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-        </div>
 
         {/* Action row */}
         <div className={`flex items-center justify-between pt-1 ${cardAction ? 'opacity-50 pointer-events-none' : ''}`}>
