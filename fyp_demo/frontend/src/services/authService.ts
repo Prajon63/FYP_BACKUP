@@ -45,12 +45,15 @@ export const authService = {
   /**
    * Logout user (clear token, etc.)
    */
-  logout(): void {
-    // Disconnect socket before clearing auth data
+  clearAuthSession(): void {
     disconnectSocket();
-    // Clear any stored auth data
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('userId');
+  },
+
+  logout(): void {
+    this.clearAuthSession();
   },
 
   /**

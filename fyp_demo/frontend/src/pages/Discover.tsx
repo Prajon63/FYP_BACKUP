@@ -229,6 +229,17 @@ const Discover: React.FC = () => {
   }, [userId]);
 
   useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      if (stored._id && stored._id !== localStorage.getItem('userId')) {
+        localStorage.setItem('userId', stored._id);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
     if (!userId) {
       navigate('/');
       return;
@@ -268,7 +279,12 @@ const Discover: React.FC = () => {
       }
     } catch (error: any) {
       if (generation === fetchGenerationRef.current) {
-        toast.error(error.message || 'Failed to load users');
+        const msg = error.message || 'Failed to load users';
+        if (msg.toLowerCase().includes('route not found')) {
+          toast.error('API not reachable. Check VITE_API_URL points to fyp-backup.onrender.com');
+        } else {
+          toast.error(msg);
+        }
       }
     } finally {
       if (generation === fetchGenerationRef.current) {

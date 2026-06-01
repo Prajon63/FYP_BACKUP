@@ -1,5 +1,19 @@
 import axios, { AxiosInstance, AxiosError, AxiosHeaders } from 'axios';
 import { resolveApiBaseUrl } from '../config/apiConfig';
+import { authService } from './authService';
+
+const SESSION_INVALID_MESSAGES = [
+  'user not found',
+  'not authorized',
+  'token expired',
+  'invalid token',
+  'no token provided',
+];
+
+function isSessionInvalid(status: number | undefined, message: string): boolean {
+  if (status !== 401) return false;
+  return SESSION_INVALID_MESSAGES.some((m) => message.toLowerCase().includes(m));
+}
 
 const api: AxiosInstance = axios.create({
   baseURL: resolveApiBaseUrl(),
@@ -40,8 +54,13 @@ api.interceptors.response.use(
   (error: AxiosError) => {
     // Handle common errors here
     if (error.response) {
-      // Server responded with error status
       const message = (error.response.data as any)?.error || 'An error occurred';
+      if (isSessionInvalid(error.response.status, message)) {
+        authService.clearAuthSession();
+        if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+          window.location.replace('/');
+        }
+      }
       return Promise.reject(new Error(message));
     } else if (error.request) {
       // Request made but no response received

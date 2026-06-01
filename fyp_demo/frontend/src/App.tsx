@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { NotificationProvider } from './contexts/NotificationContext';
 import Login from './pages/Login';
@@ -35,6 +35,7 @@ function App() {
         <Route path="/discover" element={<Discover />} />
         <Route path="/matches" element={<Matches />} />
         <Route path="/messages" element={<Messages />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </NotificationProvider>
     </BrowserRouter>

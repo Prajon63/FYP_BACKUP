@@ -127,6 +127,24 @@ node seedData.js
 
 6. Redeploy backend with `CLIENT_URL` = your static site URL.
 
+**F5 / refresh on `/discover` (white screen fix):**
+
+Render must rewrite unknown paths to `index.html`. In **Redirects / Rewrites**:
+
+1. **Delete all existing rules** (bad rules can create 0-byte responses for `/discover`, `/home`, etc.).
+2. Add **one** rule only:
+
+| Field | Value |
+|-------|--------|
+| Source | `/*` |
+| Destination | `/index.html` |
+| Action | **Rewrite** (not Redirect) |
+
+3. **Publish directory** must be `dist` (not `fyp_demo/frontend` root).
+4. **Manual Deploy** → **Clear build cache** → deploy.
+
+**Verify:** open `https://YOUR-SITE.onrender.com/discover` → right-click → View page source. You should see `<script ... src="/assets/index-....js">`. If the page is empty or has `/src/main.tsx`, the deploy is wrong.
+
 **Vercel:** same env vars under Project → Settings → Environment Variables, build command `npm run build`, output `dist`.
 
 ### Step 4 — Post-deploy smoke test
