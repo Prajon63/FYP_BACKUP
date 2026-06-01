@@ -8,6 +8,7 @@ import { useChat } from '../hooks/useChat';
 import { useAuth } from '../hooks/useAuth';
 import type { ChatMessage } from '../types';
 import { MAX_CHAT_IMAGES } from '../services/chatService';
+import ChatProfileShareBubble from './ChatProfileShareBubble';
 
 interface PendingImage {
   id: string;
@@ -341,41 +342,49 @@ const ChatWindow = ({
                   </div>
                 )}
 
-                <div
-                  className={`rounded-2xl text-sm leading-snug overflow-hidden ${
-                    msg.messageType === 'image'
-                      ? 'p-1'
-                      : `px-3 py-2 ${
-                          isMine
-                            ? 'bg-gradient-to-br from-pink-500 to-rose-500 text-white rounded-br-sm'
-                            : 'bg-white text-gray-800 shadow-sm rounded-bl-sm'
-                        }`
-                  } ${
-                    msg.messageType === 'image' && isMine
-                      ? 'bg-gradient-to-br from-pink-500 to-rose-500 rounded-br-sm'
-                      : msg.messageType === 'image'
-                        ? 'bg-white shadow-sm rounded-bl-sm'
-                        : ''
-                  }`}
-                >
-                  {msg.messageType === 'image' && msg.imageUrl ? (
-                    <a
-                      href={msg.imageUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block"
-                    >
-                      <SafeImage
-                        src={msg.imageUrl}
-                        fallbackSeed={msg._id}
-                        alt="Shared image"
-                        className="max-w-[220px] max-h-[280px] w-auto h-auto rounded-xl object-cover"
-                      />
-                    </a>
-                  ) : (
-                    msg.content
-                  )}
-                </div>
+                {msg.messageType === 'profile' && msg.sharedProfile ? (
+                  <ChatProfileShareBubble
+                    message={msg}
+                    isMine={isMine}
+                    onOpenProfile={(id) => navigate(`/profile/${id}`)}
+                  />
+                ) : (
+                  <div
+                    className={`rounded-2xl text-sm leading-snug overflow-hidden ${
+                      msg.messageType === 'image'
+                        ? 'p-1'
+                        : `px-3 py-2 ${
+                            isMine
+                              ? 'bg-gradient-to-br from-pink-500 to-rose-500 text-white rounded-br-sm'
+                              : 'bg-white text-gray-800 shadow-sm rounded-bl-sm'
+                          }`
+                    } ${
+                      msg.messageType === 'image' && isMine
+                        ? 'bg-gradient-to-br from-pink-500 to-rose-500 rounded-br-sm'
+                        : msg.messageType === 'image'
+                          ? 'bg-white shadow-sm rounded-bl-sm'
+                          : ''
+                    }`}
+                  >
+                    {msg.messageType === 'image' && msg.imageUrl ? (
+                      <a
+                        href={msg.imageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <SafeImage
+                          src={msg.imageUrl}
+                          fallbackSeed={msg._id}
+                          alt="Shared image"
+                          className="max-w-[220px] max-h-[280px] w-auto h-auto rounded-xl object-cover"
+                        />
+                      </a>
+                    ) : (
+                      msg.content
+                    )}
+                  </div>
+                )}
                 <p
                   className={`text-[10px] text-gray-400 mt-0.5 ${
                     isMine ? 'text-right' : 'text-left'
@@ -533,6 +542,7 @@ const ChatWindow = ({
           </div>
         </div>
       )}
+
     </div>
   );
 };

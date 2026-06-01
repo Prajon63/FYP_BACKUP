@@ -23,6 +23,8 @@ import type { DiscoveryUser } from '../types';
 import toast from 'react-hot-toast';
 import NotificationBell from '../components/NotificationBell';
 import SafeImage from '../components/SafeImage';
+import ShareProfileModal from '../components/ShareProfileModal';
+import { useShareProfileToChat } from '../hooks/useShareProfileToChat';
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
 
@@ -157,6 +159,7 @@ function ProfileCard({
   index,
   liked,
   onToggleLike,
+  onShare,
   currentUserId,
   cardAction,
   onOverflowAction,
@@ -168,6 +171,7 @@ function ProfileCard({
   index: number;
   liked: boolean;
   onToggleLike: () => void;
+  onShare: () => void;
   currentUserId: string;
   cardAction?: 'pass' | 'block' | null;
   onOverflowAction: (action: 'pass' | 'like' | 'block') => void;
@@ -352,9 +356,18 @@ function ProfileCard({
               <span className="text-sm font-semibold">{formatNumber(localComments)}</span>
             </button>
 
-            <button type="button" className="text-slate-400 hover:text-rose-500 transition-colors">
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.85 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onShare();
+              }}
+              className="text-slate-400 hover:text-rose-500 transition-colors"
+              aria-label="Share profile"
+            >
               <Share2 className="w-5 h-5" />
-            </button>
+            </motion.button>
           </div>
 
           {/* ⋯ triggers portal dropdown */}
@@ -437,6 +450,7 @@ const Home: React.FC = () => {
 
   const userId = getStoredUserId();
   const storedUser = getStoredUser();
+  const profileShare = useShareProfileToChat(userId);
 
   const fetchFeed = useCallback(async (isRefresh = false) => {
     if (!userId) { navigate('/'); return; }
@@ -794,6 +808,9 @@ const Home: React.FC = () => {
                   index={index}
                   liked={likedPosts.has(user._id)}
                   onToggleLike={() => toggleLike(user._id)}
+                  onShare={() =>
+                    void profileShare.openShare(user._id, user.username)
+                  }
                   currentUserId={userId}
                   cardAction={cardActions[user._id] || null}
                   isSaved={savedProfiles.has(user._id)}
@@ -854,6 +871,22 @@ const Home: React.FC = () => {
           );
         })}
       </nav>
+
+      <ShareProfileModal
+        open={profileShare.open}
+        onClose={profileShare.closeShare}
+        title="Share to chat"
+        subtitle={
+          profileShare.sharedUsername
+            ? `Send ${profileShare.sharedUsername}'s profile to a mutual match`
+            : 'Send this profile to a mutual match'
+        }
+        matches={profileShare.matches}
+        loading={profileShare.loading}
+        sendingId={profileShare.sendingId}
+        excludeUserId={profileShare.sharedUserId ?? undefined}
+        onSelect={(m) => void profileShare.shareToMatch(m)}
+      />
     </div>
   );
 };

@@ -20,6 +20,8 @@ import UserCard from '../components/UserCard';
 import SafeImage from '../components/SafeImage';
 import MatchModal from '../components/MatchModal';
 import FilterModal from '../components/FilterModal';
+import ShareProfileModal from '../components/ShareProfileModal';
+import { useShareProfileToChat } from '../hooks/useShareProfileToChat';
 import { discoverService } from '../services/discoverService';
 import { userService } from '../services/userService';
 import type { DiscoveryUser, MatchPreferences, Like, LikedByMeItem, PassedItem } from '../types';
@@ -178,6 +180,12 @@ const Discover: React.FC = () => {
 
   const userId = localStorage.getItem('userId') ||
     (() => { try { return JSON.parse(localStorage.getItem('user') || '{}')._id || ''; } catch { return ''; } })();
+
+  const profileShare = useShareProfileToChat(userId);
+
+  const handleShareDiscoveryProfile = (user: DiscoveryUser) => {
+    void profileShare.openShare(user._id, user.username);
+  };
 
   const [preferences, setPreferences] = useState<MatchPreferences>({
     ageRange: { min: 18, max: 100 },
@@ -982,6 +990,7 @@ const Discover: React.FC = () => {
                     superLikeLimit={stats.superLikeLimit}
                     currentUserId={userId}
                     onSaveProfile={() => handleSaveProfile(selectedSearchUser._id)}
+                    onShareProfile={() => handleShareDiscoveryProfile(selectedSearchUser)}
                     isSaved={savedProfiles.has(selectedSearchUser._id)}
                   />
                 </AnimatePresence>
@@ -1073,6 +1082,9 @@ const Discover: React.FC = () => {
                   superLikeLimit={stats.superLikeLimit}
                   currentUserId={userId}
                   onSaveProfile={() => handleSaveProfile(currentLike.user._id)}
+                  onShareProfile={() =>
+                    handleShareDiscoveryProfile(likeToDiscoveryUser(currentLike))
+                  }
                   isSaved={savedProfiles.has(currentLike.user._id)}
                 />
               </AnimatePresence>
@@ -1231,6 +1243,7 @@ const Discover: React.FC = () => {
                     superLikeLimit={stats.superLikeLimit}
                     currentUserId={userId}
                     onSaveProfile={() => handleSaveProfile(currentUser._id)}
+                    onShareProfile={() => handleShareDiscoveryProfile(currentUser)}
                     isSaved={savedProfiles.has(currentUser._id)}
                   />
                 )}
@@ -1285,6 +1298,22 @@ const Discover: React.FC = () => {
         onClose={() => setShowFilterModal(false)}
         currentPreferences={preferences}
         onApplyFilters={handleApplyFilters}
+      />
+
+      <ShareProfileModal
+        open={profileShare.open}
+        onClose={profileShare.closeShare}
+        title="Share to chat"
+        subtitle={
+          profileShare.sharedUsername
+            ? `Send ${profileShare.sharedUsername}'s profile to a mutual match`
+            : 'Send this profile to a mutual match'
+        }
+        matches={profileShare.matches}
+        loading={profileShare.loading}
+        sendingId={profileShare.sendingId}
+        excludeUserId={profileShare.sharedUserId ?? undefined}
+        onSelect={(m) => void profileShare.shareToMatch(m)}
       />
     </div>
   );

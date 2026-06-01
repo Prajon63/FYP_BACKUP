@@ -20,8 +20,16 @@ const messageSchema = new mongoose.Schema(
     },
     messageType: {
       type: String,
-      enum: ['text', 'image'],
+      enum: ['text', 'image', 'profile'],
       default: 'text'
+    },
+    sharedProfile: {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      username: { type: String, trim: true },
+      profilePicture: { type: String, trim: true },
     },
     content: {
       type: String,
@@ -45,6 +53,12 @@ messageSchema.pre('validate', function (next) {
   if (this.messageType === 'image') {
     if (!this.imageUrl) {
       return next(new Error('Image URL is required for image messages'));
+    }
+    return next();
+  }
+  if (this.messageType === 'profile') {
+    if (!this.sharedProfile?.userId) {
+      return next(new Error('Shared profile user is required'));
     }
     return next();
   }

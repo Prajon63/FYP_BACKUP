@@ -35,7 +35,9 @@ import { userService } from '../services/userService';
 import type { User, Post, ProfilePrivacy, ProfileRelationship } from '../types';
 import PostViewerModal from '../components/PostViewerModal';
 import GalleryViewerModal from '../components/GalleryViewerModal';
+import ShareProfileModal from '../components/ShareProfileModal';
 import SafeImage from '../components/SafeImage';
+import { useShareProfileToChat } from '../hooks/useShareProfileToChat';
 
 // ─── Font import ──────────────────────────────────────────────────────────────
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
@@ -393,6 +395,7 @@ const ViewProfile: React.FC = () => {
   const [privacy, setPrivacy] = useState<ProfilePrivacy | null>(null);
   const [relationship, setRelationship] = useState<ProfileRelationship | null>(null);
   const [profileUnavailable, setProfileUnavailable] = useState(false);
+  const profileShare = useShareProfileToChat(currentUserId);
 
   // Close the three-dot menu when clicking outside of it
   useEffect(() => {
@@ -796,6 +799,21 @@ const ViewProfile: React.FC = () => {
                         <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-rose-500 text-rose-500' : ''}`} />
                         {isSaved ? 'Unsave profile' : 'Save profile'}
                       </button>
+                      {targetUserId && targetUserId !== currentUserId && (
+                        <button
+                          onClick={() => {
+                            setShowMenu(false);
+                            void profileShare.openShare(
+                              targetUserId,
+                              profile?.username
+                            );
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          <Share2 className="w-4 h-4" />
+                          Share to chat
+                        </button>
+                      )}
                       <button
                         onClick={() => { setShowMenu(false); setShowReportModal(true); }}
                         className="w-full flex items-center gap-3 px-4 py-3 text-sm text-orange-600 hover:bg-orange-50 transition-colors"
@@ -1248,6 +1266,22 @@ const ViewProfile: React.FC = () => {
             />
           )}
         </AnimatePresence>
+
+        <ShareProfileModal
+          open={profileShare.open}
+          onClose={profileShare.closeShare}
+          title="Share to chat"
+          subtitle={
+            profileShare.sharedUsername
+              ? `Send ${profileShare.sharedUsername}'s profile to a mutual match`
+              : 'Send this profile to a mutual match'
+          }
+          matches={profileShare.matches}
+          loading={profileShare.loading}
+          sendingId={profileShare.sendingId}
+          excludeUserId={profileShare.sharedUserId ?? undefined}
+          onSelect={(m) => void profileShare.shareToMatch(m)}
+        />
 
       </div>
     </>

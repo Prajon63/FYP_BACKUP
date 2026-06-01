@@ -80,3 +80,18 @@ export const deleteChatMessage = async (
   await api.delete(`/chat/${matchId}/messages/${messageId}`);
 };
 
+/**
+ * Share a profile in a chat conversation (recipient must be a mutual match).
+ */
+export const shareProfileInChat = async (
+  matchId: string,
+  receiverId: string,
+  sharedUserId: string
+): Promise<ChatMessage> => {
+  const { data } = await api.post<{ success: boolean; message: ChatMessage }>(
+    `/chat/${matchId}/profile-share`,
+    { receiverId, sharedUserId }
+  );
+  return data.message;
+};
+

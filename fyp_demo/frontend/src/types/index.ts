@@ -431,6 +431,12 @@ export interface DiscoveryFilters {
 
 // ─── Chat Types ───────────────────────────────────────────────────
 
+export interface SharedProfilePayload {
+  userId: string;
+  username: string;
+  profilePicture?: string;
+}
+
 export interface ChatMessage {
   _id: string;
   matchId: string;
@@ -444,9 +450,10 @@ export interface ChatMessage {
     username: string;
     profilePicture?: string;
   };
-  messageType?: 'text' | 'image';
+  messageType?: 'text' | 'image' | 'profile';
   content: string;
   imageUrl?: string;
+  sharedProfile?: SharedProfilePayload;
   read: boolean;
   createdAt: string;
   updatedAt: string;

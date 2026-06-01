@@ -2,7 +2,11 @@ import Message from '../models/Message.js';
 import Match from '../models/Match.js';
 import cloudinary from '../config/cloudinary.js';
 import { getBlockContext, chatBlockMessage } from '../Utils/privacyAccess.js';
-import { dispatchChatMessage, messagePreview } from '../Utils/dispatchChatMessage.js';
+import {
+  dispatchChatMessage,
+  dispatchProfileShare,
+  messagePreview,
+} from '../Utils/dispatchChatMessage.js';
 import { deleteChatMessage as removeChatMessage } from '../Utils/deleteChatMessage.js';
 
 const uploadChatImageToCloudinary = (file) =>
@@ -194,6 +198,41 @@ export const uploadChatImage = async (req, res) => {
     const status = err.status || 500;
     res.status(status).json({
       message: err.message || 'Failed to upload images',
+      code: err.code,
+    });
+  }
+};
+
+/**
+ * POST /api/chat/:matchId/profile-share
+ * Share any profile in chat. Body: { receiverId, sharedUserId }
+ */
+export const shareProfileInChat = async (req, res) => {
+  try {
+    const { matchId } = req.params;
+    const { receiverId, sharedUserId } = req.body;
+
+    if (!receiverId || !sharedUserId) {
+      return res.status(400).json({
+        message: 'receiverId and sharedUserId are required',
+      });
+    }
+
+    const io = req.app.get('io');
+    const message = await dispatchProfileShare({
+      io,
+      matchId,
+      senderId: req.user._id,
+      receiverId,
+      sharedUserId,
+    });
+
+    res.status(201).json({ success: true, message });
+  } catch (err) {
+    console.error('shareProfileInChat error:', err);
+    const status = err.status || 500;
+    res.status(status).json({
+      message: err.message || 'Failed to share profile',
       code: err.code,
     });
   }

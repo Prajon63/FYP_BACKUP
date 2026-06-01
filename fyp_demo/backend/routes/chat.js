@@ -5,6 +5,7 @@ import {
   getUnreadCount,
   getUnreadDigest,
   uploadChatImage,
+  shareProfileInChat,
   deleteChatMessage,
 } from '../controllers/chatController.js';
 import { protect } from '../middleware/auth.js';
@@ -43,6 +44,7 @@ const handleImageUpload = (req, res, next) => {
 };
 
 router.post('/:matchId/image', protect, handleImageUpload, uploadChatImage);
+router.post('/:matchId/profile-share', protect, shareProfileInChat);
 router.delete('/:matchId/messages/:messageId', protect, deleteChatMessage);
 router.get('/:matchId', protect, getChatHistory);
 

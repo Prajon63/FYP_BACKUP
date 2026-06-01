@@ -14,6 +14,7 @@ import {
   Info,
   ExternalLink,
   Bookmark,
+  Share2,
 } from 'lucide-react';
 import type { DiscoveryUser } from '../types';
 import SafeImage from './SafeImage';
@@ -24,6 +25,7 @@ interface UserCardProps {
   onPass: () => void;
   onSuperLike: () => void;
   onSaveProfile?: () => void;
+  onShareProfile?: () => void;
   isSaved?: boolean;
   onCardClick?: () => void;
   style?: React.CSSProperties;
@@ -50,6 +52,7 @@ const UserCard: React.FC<UserCardProps> = ({
   onPass,
   onSuperLike,
   onSaveProfile,
+  onShareProfile,
   isSaved = false,
   onCardClick,
   style,
@@ -195,23 +198,44 @@ const UserCard: React.FC<UserCardProps> = ({
                 </div>
               )}
 
-              {/* Save / bookmark — bottom-right of image */}
-              {onSaveProfile && (
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.9 }}
-                  onClick={(e) => { e.stopPropagation(); onSaveProfile(); }}
-                  className={`
-                    absolute bottom-3 right-3 z-10
-                    w-9 h-9 rounded-full flex items-center justify-center
-                    shadow-lg backdrop-blur-sm transition-colors
-                    ${isSaved ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 text-white'}
-                  `}
-                  title={isSaved ? 'Saved' : 'Save profile'}
-                  aria-label="Save profile"
-                >
-                  <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-white' : ''}`} />
-                </motion.button>
+              {/* Share + save — bottom-right of image */}
+              {(onShareProfile || onSaveProfile) && (
+                <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-2">
+                  {onShareProfile && (
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onShareProfile();
+                      }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm bg-black/40 hover:bg-black/60 text-white transition-colors"
+                      title="Share profile"
+                      aria-label="Share profile"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </motion.button>
+                  )}
+                  {onSaveProfile && (
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSaveProfile();
+                      }}
+                      className={`
+                        w-9 h-9 rounded-full flex items-center justify-center
+                        shadow-lg backdrop-blur-sm transition-colors
+                        ${isSaved ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 text-white'}
+                      `}
+                      title={isSaved ? 'Saved' : 'Save profile'}
+                      aria-label="Save profile"
+                    >
+                      <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-white' : ''}`} />
+                    </motion.button>
+                  )}
+                </div>
               )}
 
               {/* View profile — bottom-left of image */}
